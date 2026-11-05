@@ -27,9 +27,9 @@
 | E16 | Agenda · Presença pendente (244:37671) | “você e o Administrador geral são avisados”. | “você é avisado e o Administrador geral recebe um resumo do dia”. | RN30 | ☑ |
 | E18 | Relatórios (216:34990), Atividade (116:3074) | Estado “Atendido” (ex.: “Salão masculino, 10:00 · Atendido”). | O estado é “Concluído”. “Atendido” fica só no botão de ação do detalhe. | E18 | ☑ |
 | E18 | Editor · Confirmar publicação (113:1314) | “03/11/2026 às 08h00 (horário de Brasília)”. | “03/11/2026 às 08h00”. | E18 | ☑ |
-| E01 | Login da equipe (169:18816 / 169:18946) | “Associados entram pelo site, no botão ‘Entrar’.” | Na Fase 1 não há “Entrar” no site. Tirar a frase ou dizer que o acesso do associado chega depois. | E01 | ☐ |
-| RN50 | Equipe e perfis (168:18397) e telas derivadas | Só Mariana Souza tem o perfil Administrador geral. | Os dados de exemplo devem ter pelo menos 2 administradores gerais ativos. A tela N5 usa “[Nome]” para o segundo. | RN50 | ☐ |
-| E13, E14 | Fundo de Editor · Confirmar publicação (113:1314) e Pré-visualização (122:5800) | O editor ao fundo ainda mostra a chave “Destacar na página inicial”. | Igual ao Editor · Notícia corrigido (112:1091): “Fixar no topo de Notícias até <data>” e o link “Destacar na Home”. | RF46, RN58 | ☐ |
+| E01 | Login da equipe (169:18816 / 169:18946) | “Associados entram pelo site, no botão ‘Entrar’.” | Na Fase 1 não há “Entrar” no site. Tirar a frase ou dizer que o acesso do associado chega depois. | E01 | ☑ |
+| RN50 | Equipe e perfis (168:18397) e telas derivadas | Só Mariana Souza tem o perfil Administrador geral. | Os dados de exemplo devem ter pelo menos 2 administradores gerais ativos. Feito: Roberto Andrade (roberto@sintravc.org.br) entrou como segundo administrador geral, e a tela N5 usa o nome dele. | RN50 | ☑ |
+| E13, E14 | Fundo de Editor · Confirmar publicação (113:1314) | O editor ao fundo ainda mostra a chave “Destacar na página inicial”. (A Pré-visualização, 122:5800, mostra só a prévia do site e não tinha o problema.) | Igual ao Editor · Notícia corrigido (112:1091): “Fixar no topo de Notícias até <data>” e o link “Destacar na Home”, com o rascunho completo, coerente com “Tudo certo” do modal. | RF46, RN58 | ☑ |
 
 ## Telas a desenhar (novas)
 

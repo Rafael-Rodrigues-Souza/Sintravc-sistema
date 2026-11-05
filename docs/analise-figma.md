@@ -128,7 +128,7 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Editor · confirmar publicação (modal) | 113:1314 | Resumo: entra no ar, onde aparece, visibilidade e checagem. | [FATO] |
 | Editor · pré-visualização | 122:5800 | Prévia como no site. | [FATO] |
 | Editor · documento oficial | 114:1972 (ADM) | Título oficial, número, tipo de edital, data do documento, data do evento ou prazo, vigência (início e fim), resumo (400), PDF oficial e “texto pesquisável”. | [FATO] |
-| Editor · acordo ou convenção | — | Só existe a variante edital. RF41 cita “abrangência e partes signatárias”, que não aparecem. | [NÃO CONFIRMADO] |
+| Editor · acordo ou convenção | — | Sem tela: segue o layout do editor de edital (114:1972), com “Abrangência” e “Partes signatárias” (RF41). Nota na issue #12. | [FATO] decisão · sem tela |
 | Comunicados | 165:16358 (M 170:18854) | Prévia no ar, contadores, tabela (mensagem, período, estado) e regras. | [FATO] |
 | Comunicados · novo (modal / folha inferior) | 165:16711 / 170:18978 | Mensagem (140), link “Saiba mais”, início e fim, prévia, rascunho e agendar. | [FATO] |
 | Rádio Chofer | 166:17373 | Programa ao vivo (canal, dias e horário) e lista de episódios com estado. | [FATO] |
@@ -137,7 +137,7 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Benefícios (parceiros) | 167:17772 (ADM) | Tabela com categoria, desconto, validade e estado, e alerta de vencimento. | [FATO] |
 | Benefícios · novo parceiro (painel lateral) | 167:18087 | Logo, nome, categoria, desconto, como usar, quem pode usar, começa em (opcional), válido até e endereço ou site. | [FATO] |
 | Mídia | 116:2727 | Biblioteca com filtros, envio com progresso, erro de formato, detalhes, texto alternativo, legenda, “Usado em” e copiar link. | [FATO] |
-| Busca global (Ctrl K) | — | Está em RF33, mas **não está desenhada**. | [FATO] doc · [NÃO CONFIRMADO] tela |
+| Busca global (Ctrl K) | — | Sem tela: usa o `CommandDialog` padrão do shadcn/ui, no estilo do painel (RF33). Nota na issue #23. | [FATO] decisão · sem tela |
 
 ### 1.6 Painel · administração (Fase 1, acesso ADM)
 

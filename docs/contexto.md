@@ -24,6 +24,7 @@ Links, pessoas, arquivos de apoio e histórico. As regras do sistema estão em `
 - **Ana Lima**: Atendimento, responsável por Salões.
 - **Paulo Mendes**: Atendimento com convite pendente, responsável por Jurídico e Exames.
 - **Carlos Ribeiro**: Comunicação.
+- **Mariana Souza** e **Roberto Andrade**: os dois Administradores gerais (a RN50 exige pelo menos 2).
 - O “hoje” das telas é quarta, 28/10/2026. A Assembleia é na sexta, 30/10/2026, às 19h, e o edital 012 vale de 20/10 a 30/10. O mês de exemplo dos relatórios é outubro/2026, com 312 atendimentos realizados.
 
 ## Onde estão os arquivos
