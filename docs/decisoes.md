@@ -1,0 +1,143 @@
+# Registro de decisões
+
+Decisões tomadas depois dos docs v1.1. Elas valem sobre os docs anteriores até serem consolidadas no `spec.md`.
+
+## A. Regra de desempate (05/11/2026)
+
+- Quando os docs v1.1 forem explícitos, eles valem sobre o Figma. A divergência é registrada em `correcoes-figma.md` e não vira pergunta.
+- **C1, C2, C3, C9 e C15** foram resolvidos assim (ver `correcoes-figma.md`).
+- **C4, C7 e C14** são dados de exemplo e foram ignorados.
+
+## B. Briefing de outubro
+
+Informação repassada pelo responsável. O briefing não está em `docs/`.
+
+| # | Decisão |
+|---|---|
+| B1 | Nenhum conteúdo do site atual será migrado. |
+| B2 | As URLs antigas devem ser preservadas por SEO, com redirecionamento 301 para as novas ou com o mesmo caminho. A lista de URLs é a dependência D7. |
+| B3 | A infraestrutura continua no Cloudflare. |
+| B4 | Os backups ficam no servidor do sindicato. Responsável de TI: Leandro. |
+
+**Ponto a esclarecer sobre B3.** Antes do deploy, é preciso saber o que significa “infraestrutura no Cloudflare”.
+
+- **Se for DNS, CDN e proxy na frente de um servidor:** é compatível com a stack.
+- **Se for hospedar a aplicação no Cloudflare (Workers ou Pages):** há conflito com a stack, porque o PostgreSQL com pg-boss e o sharp com libheif (conversão de HEIC) precisam de um servidor com processo contínuo.
+
+Vai para o bloco de hospedagem da entrevista.
+
+## C. Entrevista
+
+As decisões são registradas por bloco, à medida que cada um é fechado.
+
+### C.1 Fases
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E01 | Login do associado na Fase 1 ou na Fase 2? | **Vai para a Fase 2**, junto com a Área do associado. Na Fase 1 não há “Entrar” no cabeçalho, só “Filiar-se”. | **Saem da Fase 1:** M02 e M17 (passam para a Fase 2) e os requisitos RF11–RF17. **Resolvidos:** C12 (sino) e C13 (atalho Agendar), que entram na Fase 2. **Muda:** a Fase 1 deixa de depender da API do sindicato (D1). **Fica sem efeito:** RF17 (“Em breve” no Login). **Na Fase 1:** cabeçalho na variante visitante, sem “Entrar”; menu mobile sem “Entrar”; o rodapé e as páginas Contato e Benefícios também perdem os links para “Entrar” e para a Área do associado. |
+| E02 | Escopo do “sem internet” (RF34)? | **Só o rascunho do editor** (notícia e documento) fica guardado no navegador. Sem internet: faixa de aviso em todas as telas; Publicar e Agendar desativados. Quando a conexão volta, o rascunho é salvo sozinho; se o servidor tiver uma versão mais nova, a pessoa escolhe qual manter. Os outros formulários só mostram o aviso. | RF34 e RN42 atualizados. Precisa de uma tela: “Conflito de versões”. |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `visao-geral.md`, `escopo.md`, `requisitos.md`, `historias-de-usuario.md` e `regras-de-negocio.md`.
+
+### C.2 Acesso do associado
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E03 | Como funciona a recuperação de senha do associado (C17)? | **Igual à da equipe.** A resposta é sempre a mesma: “Se este CPF tiver acesso, enviamos um link para o e-mail cadastrado”, sem mostrar o e-mail. O link vale **1 h** e uma única vez. Ao trocar a senha, as outras sessões são encerradas e chega um e-mail de “senha alterada”. Quem não lembra o e-mail é orientado a falar no WhatsApp. Motivo: filiação sindical é dado sensível (LGPD, art. 5º, II). | **Figma:** muda a tela Recuperar senha (155:9386). **Faltam telas:** nova senha do associado e link vencido. **Novo e-mail:** redefinir senha do associado. RF16 é detalhado. **[INFERÊNCIA], pelo mesmo motivo:** o bloqueio “filiação Pausada” só aparece depois de CPF e senha corretos. |
+| E04 | Senha e sessão do associado? | Senha com **no mínimo 8 caracteres**, com letras e números, diferente do CPF e da data de nascimento. **5 erros seguidos bloqueiam o login por 15 min.** Com “Lembrar de mim”, a sessão dura **30 dias**; sem ele, termina ao fechar o navegador. | Novas regras e parâmetros. **Falta tela:** login com erro e conta bloqueada. A comparação com a data de nascimento só vale se a API a informar (D1) **[NÃO CONFIRMADO]**. |
+| E05 | Duração da sessão da equipe? | A sessão expira depois de **2 h sem uso** ou **12 h após o login**, o que vier primeiro. Depois disso, pede de novo a senha e as duas etapas. | RNF02 é detalhado. **Falta tela:** “Sessão expirada”, que volta para a mesma página depois do login. O rascunho do editor fica protegido pelo salvamento automático (E02). |
+| E06 | Confirmação para trocar o e-mail ou a senha do associado? | As duas trocas pedem a **senha atual**. O novo e-mail só passa a valer depois que a pessoa clica no **link enviado a ele (válido por 24 h)**. O e-mail antigo recebe um aviso da troca. | RF21 é detalhado. **Novos e-mails:** confirmar novo e-mail e aviso de e-mail alterado. **Falta tela:** “Confirme seu novo e-mail” (pendente) em Meus dados. |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `regras-de-negocio.md` (RN51–RN53 e parâmetros) e `requisitos.md` (RF16, RF21 e RNF02).
+
+### C.3 Permissões
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E07 | O que pode ser excluído de vez? | **Só rascunho que nunca foi publicado.** Pode ser excluído pelo autor ou pelo ADM, com confirmação. O que já foi ao ar (notícia, documento, comunicado, episódio, parceiro) **nunca é apagado**, só arquivado. A exclusão de mídia sem uso continua como está (RN16). | RF40 é detalhado. **Falta tela:** confirmação “Excluir rascunho?”. **[INFERÊNCIA]:** o banco precisa guardar a marca “já publicado em algum momento”. |
+| E08 | A COM mexe em conteúdo de outra pessoa? | **Sim.** Qualquer pessoa da COM edita, publica, oculta e arquiva qualquer notícia, comunicado, episódio e destaque, de qualquer autor. A Atividade registra quem fez o quê. **Exceções:** excluir rascunho fica com o autor e o ADM (E07); documentos oficiais continuam só com o ADM (RN08). | Sem filtro por autor nas permissões; o autor é só informação e filtro de lista. |
+| E09 | Uma pessoa pode ter mais de um perfil? | **Não, um perfil só**, como no Figma. Quem precisa de mais de uma área vira ADM ou fica com o perfil principal. | O modelo de dados tem um campo de perfil por pessoa; sem mudança no Figma. |
+| E10 | O que o ATD vê nos serviços dos outros? | A **grade** (livre, ocupado, bloqueado) e o **nome** de quem marcou. **Não abre o detalhe**: sem telefone, e-mail, matrícula nem histórico. O detalhe completo fica com os responsáveis do serviço e o ADM. | A regra é conferida no servidor (RNF01). **Figma:** nos serviços “Somente consulta”, os itens não são clicáveis (205:32599). |
+| E11 | O que o histórico do associado mostra no detalhe? | **Só os atendimentos dos serviços pelos quais quem está vendo é responsável.** O ADM vê tudo. | Filtro aplicado no servidor. **Figma:** no detalhe 190:25620, Ana (Salões) não deveria ver a “Assessoria jurídica”. |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `regras-de-negocio.md` (RN54–RN56), `requisitos.md` (RF40, RF57) e `correcoes-figma.md`.
+
+### C.4 Divergências de conteúdo
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E12 | Parceiro “Agendado” sem data de início (C10)? | O painel do parceiro ganha o campo **“Começa em” (opcional; vazio = entra no ar ao publicar)**. Com data futura, o parceiro fica Agendado e entra sozinho. Ao vencer o “Válido até”, sai do site e vai para Arquivado. Usa o mesmo ciclo de vida da RN10. | RF47 e o painel 167:18087 ganham o campo. A tarefa automática (pg-boss) cuida da entrada e da saída. |
+| E13 | Destaque da Home em dois lugares (C11)? | **Só a área Página inicial controla.** No editor, a opção vira o link “Destacar na Home”, que abre a Página inicial com a notícia sugerida. | **Figma:** muda o editor 112:1091. RF46 é a única fonte. |
+| E14 | “Fixar no topo de Notícias” (R9)? | **Fica, uma por vez.** O bloco DESTAQUE da página Notícias mostra a notícia fixada até a data escolhida; sem nenhuma fixada, mostra a mais recente. Fixar outra substitui a anterior, com aviso. Fica no editor e na Edição rápida, para ADM e COM. | Novo requisito. **Figma:** o campo também deve aparecer no editor (hoje só está na Edição rápida). Tarefa automática para a data de saída. |
+| E15 | De onde vêm os temas do Rádio Chofer (C16)? | De **Configurações › Categorias**, que ganha a opção **“Rádio Chofer”** em “Onde aparece”. O tema do episódio é uma dessas categorias, gerida pelo ADM. A categoria de Notícias “Rádio Chofer” continua, para notícias sobre o programa. | RF54 e o modal 117:3453 ganham a opção. Os filtros da página Rádio Chofer vêm das categorias. |
+| E16 | Quem é avisado da pendência (C6)? | **Cada responsável** recebe a notificação das pendências dos seus serviços. O **ADM recebe um único resumo por dia** (ex.: “5 pendências em 2 serviços”). | RN30 é detalhada. **Figma:** texto da tela 244:37671 (“você é avisado; o Administrador geral recebe um resumo”). |
+| E17 | O calendário mostra comunicados (C3)? | **Sim, só para consulta.** Barras do período no ar, em cor própria, com filtro para esconder. Não dá para arrastar; o clique abre o comunicado na área Comunicados. | RF36 é detalhado. |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `requisitos.md` (RF36, RF46, RF47, RF54 e o novo RF78), `regras-de-negocio.md` (RN30 e as novas RN57 e RN58) e `correcoes-figma.md`.
+
+### C.5 Nomes na tela
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E18 | “Atendido” × “Concluído” e o rótulo do fuso (C5, C8)? | A **ação** se chama “Atendido · Faltou”; o **estado** resultante é “Concluído” em todo o sistema, relatórios inclusive. **Sem rótulo de fuso:** todas as horas são locais da sede (America/Bahia), sem escrever “Brasília”. | **Figma:** Relatórios e Atividade passam a mostrar “Concluído” como estado; o modal 113:1314 perde “(horário de Brasília)”. |
+
+### C.6 E-mails e notificações
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E19 | Os avisos do sindicato vão por e-mail para associados? | **Não.** O e-mail fica só para mensagens transacionais (conta e agendamentos). Avisos do sindicato aparecem nas Notificações do site e no canal do WhatsApp. | Sem consentimento de marketing nem descadastro. |
+| E20 | Como nascem os avisos do sindicato nas Notificações? | **São automáticos ao publicar.** Quando entra no ar um edital, acordo ou convenção, comunicado ou parceiro, o sistema gera a notificação para todos os associados com acesso. Notícias comuns não geram. Sem tela nova. | Tarefa no evento de publicação. As notificações ficam guardadas por 90 dias (R4). |
+| E21 | Quais avisos da equipe também vão por e-mail? | **Só segurança e falhas:** conta bloqueada por tentativas (para a pessoa e o ADM), duas etapas redefinidas (para a pessoa), senha alterada e publicação agendada que falhou (para quem agendou). O resto fica só nas notificações do painel. | Novos modelos de e-mail (ver o catálogo abaixo). |
+
+**Catálogo de e-mails (consolidado).** As linhas marcadas com “⚠ desenhar” precisam de modelo no Figma.
+
+| Destinatário | E-mail | Origem | Fase |
+|---|---|---|---|
+| Equipe | Convite (48 h) | RN46 | 1 |
+| Equipe | Redefinir senha (1 h) | RN48 | 1 |
+| Equipe | Senha alterada | RN48 | 1 |
+| Equipe | Conta bloqueada por tentativas (pessoa e ADM) ⚠ desenhar | RN05, E21 | 1 |
+| Equipe | Duas etapas redefinidas pelo ADM ⚠ desenhar | RN49, E21 | 1 |
+| Equipe | Publicação agendada falhou ⚠ desenhar | E21 | 1 |
+| Associado | Redefinir senha (1 h) ⚠ desenhar | E03 | 2 |
+| Associado | Senha alterada ⚠ desenhar | E03 | 2 |
+| Associado | Confirmar novo e-mail (24 h) e aviso ao e-mail antigo ⚠ desenhar | E06 | 2 |
+| Associado | Agendamento confirmado ⚠ desenhar | RF26 | 2 |
+| Associado | Lembrete de 1 dia e de 2 h antes ⚠ desenhar | RN29 | 2 |
+| Associado | Agendamento remarcado (pelo associado ou pela equipe) ⚠ desenhar | RN28 | 2 |
+| Associado | Agendamento cancelado (pela equipe, por bloqueio ou por filiação não ativa), com motivo ⚠ desenhar | RN28, RN32, RN35 | 2 |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `requisitos.md` (RF77) e `regras-de-negocio.md` (RN59).
+
+### C.7 Estados que faltam
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E22 | API do sindicato fora do ar? | **Usar a última consulta de até 24 h.** Com “Ativo” consultado nas últimas 24 h, o login e o agendamento seguem, marcados para reconferência. Sem consulta recente, ou no primeiro acesso, o sistema bloqueia com “Sistema do sindicato indisponível, tente mais tarde”. A verificação diária tenta de novo e **nunca cancela nada por falha da API**. | Substitui a premissa provisória de RN01 e RNF11. A cópia local guarda a data da última consulta. **Falta tela:** mensagem de indisponibilidade no login, no primeiro acesso e no balcão. |
+| E23 | Como tratar os estados não desenhados? | **Desenhar no Figma só os críticos:** 403, 500, sessão expirada, horário tomado na confirmação, conflito de versões do rascunho, excluir meu acesso e desativar acesso. O resto segue um **padrão único**: Alerta 2.0 nos formulários; vazio com ícone, frase e ação; Skeleton ao carregar; AlertDialog nas confirmações. Os textos ficam no spec. | Lista em `correcoes-figma.md` › Telas a desenhar. |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `regras-de-negocio.md` (RN01 e pontos a confirmar), `requisitos.md` (RNF11) e `correcoes-figma.md`.
+
+### C.8 LGPD, retenção e infraestrutura
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E24 | O que “Excluir meu acesso” apaga? | **Apaga:** e-mail, celular, senha, sessões e notificações. **Cancela:** os agendamentos futuros. **Guarda:** os atendimentos realizados e as faltas, ligados à matrícula (prestação de contas; base legal: obrigação e legítimo interesse). **Não muda:** a Atividade. A pessoa pode refazer o primeiro acesso depois. | RF22 é detalhado. Tela N9. O texto da política de privacidade precisa citar isso (D6). |
+| E25 | Por quanto tempo guardar os dados? | **Padrão provisório, em parâmetros, a validar com o advogado (D6):** atendimentos e faltas, 5 anos; Atividade, 5 anos; logs de acesso, 6 meses (mínimo do Marco Civil, art. 15); notificações, 90 dias; exportações de relatório **não ficam no servidor** (só o registro em Atividade); contas de associado sem login há 2 anos recebem aviso por e-mail e o acesso é excluído 30 dias depois (como no E24). | Tarefa automática de limpeza. Novo e-mail “seu acesso será excluído” ⚠ desenhar. Resolve o ponto RN38/LGPD. |
+| E26 | Hospedagem e Cloudflare (B3)? | **O Cloudflare fica na frente de um servidor.** Ele cuida de DNS, CDN, certificado e WAF; as imagens e os PDFs podem ir para o **Cloudflare R2** (compatível com S3). A aplicação e o Postgres rodam em Docker num servidor (VPS) atrás do Cloudflare. **A stack não muda.** | O servidor ainda precisa ser definido com o Leandro (D8). R2 é o candidato para D3. |
+| E27 | Backups (B4)? | **Banco:** cópia completa todo dia às 3h, criptografada, enviada ao servidor do sindicato. Guarda 7 diárias, 4 semanais e 12 mensais. **Arquivos (R2):** versionamento no bucket e cópia semanal para o mesmo servidor. **Teste de restauração a cada 3 meses**, registrado. Perda máxima: 1 dia. | Tarefa de backup no servidor. Acesso ao servidor de backup (D8). A chave de criptografia fica fora do servidor da aplicação. |
+| E28 | Ambientes e deploy? | **Homologação + produção**, no mesmo servidor e com bancos separados. A homologação (ex.: `homolog.sintravc.org.br`, protegida por senha, com a API simulada) recebe tudo que entra na branch principal. A produção recebe só versões marcadas (tags), com backup e migração automática antes. Tudo por GitHub Actions. | RNF14 é detalhado. |
+
+**Bloco fechado em 05/11/2026.** Atualizados: `requisitos.md` (RF22, RNF03, RNF14), `regras-de-negocio.md` (parâmetros e pontos a confirmar) e `dependencias-cliente.md`.
+
+### C.9 Complementos
+
+| # | Pergunta | Decisão | Impacto |
+|---|---|---|---|
+| E29 | Quem fica suspenso por faltas? | **Só a pessoa que faltou** (associado ou dependente), como no limite. O bloqueio aparece na etapa 1, ao escolher “Para quem”. | RN31 é detalhada. **Figma:** 245:42232 mostra o bloqueio para a pessoa selecionada. |
+| E30 | “Mais lidas da semana” (R10)? | **Contador anônimo:** o servidor soma +1 por visualização, por notícia e por dia, sem cookie e sem guardar IP ou pessoa. O bloco mostra as 3 mais vistas nos últimos 7 dias; com pouco dado, mostra as mais recentes. | Nova tabela de contagem diária. Sem mudança no aviso de cookies. |
+| E31 | Versões do conteúdo (R19)? | **Guardar e restaurar as versões publicadas.** Cada publicação ou edição de algo publicado gera uma versão (o salvamento automático do rascunho não gera). No editor, “Histórico” lista quem e quando, e permite restaurar uma versão como rascunho. | Nova tabela de versões. Nova tela N14: Histórico de versões (painel lateral). |
+| E32 | Ambiente de desenvolvimento sem D2 e D3? | **docker compose de desenvolvimento com Postgres, Mailpit (e-mail) e MinIO (S3).** A troca para o SMTP e o R2 reais é feita só por variáveis de ambiente, sem mudar código. | Os tickets de convite, recuperação e Mídia não esperam D2 e D3. |
+| E33 | Como nasce o primeiro Administrador geral? | **Por um comando** (ex.: `pnpm criar-admin --email`), que gera um link de convite. Nada de SQL manual. É o mesmo caminho em desenvolvimento, homologação e produção. | O convite segue o fluxo normal: senha e duas etapas. |
+
+**Entrevista encerrada em 05/11/2026.** Os padrões adotados sem pergunta estão em `spec.md` §10. Podem ser vetados.
