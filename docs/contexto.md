@@ -28,7 +28,9 @@ Links, pessoas, arquivos de apoio e histórico. As regras do sistema estão em `
 
 ## Onde estão os arquivos
 
-Fora do repositório, em `Documents\SINTRAVC\material\`:
+O repositório fica em `C:\Users\rafar\Documents\SINTRAVC\sistema\`, que **não** é sincronizado com o OneDrive. O código fica protegido pelo GitHub.
+
+O material de apoio fica fora do repositório, em `C:\Users\rafar\OneDrive\Documentos\SINTRAVC\material\`, que é sincronizado com o OneDrive:
 
 - `docs-v1.1\`: os 6 .docx originais (01 Visão geral … 06 Critérios de aceitação), v1.1 de 03/11/2026. As versões em .md, que valem daqui em diante, estão em `docs/`. O gerador original dos .docx se perdeu: para mudar algo, edite os .md.
 - `SINTRAVC - Recomendação de stack.docx`: origem de `stack.md`.
