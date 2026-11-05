@@ -53,8 +53,11 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Rádio Chofer | 157:8305 / 157:8607 | Programa (seg. a sex., 13h), player do YouTube, busca, filtro por tema e grade de episódios. | [FATO] |
 | Contato | 87:629 / 89:964 | Telefone, WhatsApp, e-mail, endereço, horário, mapa e redes. | [FATO] |
 | Menu mobile · visitante / conectado | 159:8305 · 159:8374 | Navegação mobile. A versão conectada mostra o associado, “Abrir minha área” e “Sair”. | [FATO] |
+| Menu mobile · visitante da Fase 1 (sem “Entrar”) | — / 295:58052 | “Filiar-se pelo WhatsApp” vira o botão principal (N13, E01). | [FATO] |
+| Cabeçalho e rodapé da Fase 1 (sem “Entrar”) | componentes: cabeçalho `Sessão=Visitante (Fase 1)` 295:51107 · rodapé `Fase=1 (sem Entrar)` 295:51171 / 295:51234 | Cabeçalho com “Filiar-se” no lugar de “Entrar”; rodapé sem o link “Entrar”. O cabeçalho mobile de visitante já não tinha “Entrar” (N13, E01). | [FATO] |
 | Menu da conta (desktop) | 159:8456 | Área do associado, “Agendar atendimento” com selo “Fase 2”, notificações e Sair. | [FATO] |
 | Erro 404 | 159:8590 / 159:8788 | Página não encontrada, com atalhos. | [FATO] |
+| Erro 500 · fora do ar ou em manutenção | 295:58454 / 295:58768 | “Tentar de novo” e “Falar no WhatsApp”, já com cabeçalho e rodapé da Fase 1 (N2). | [FATO] |
 | Política de privacidade | 159:8912 / 159:9121 | Texto-base, a ser validado pelo jurídico. | [FATO] |
 | Aviso de cookies (primeira visita) | 159:9245 / 159:9442 | Consentimento de cookies. | [FATO] |
 | Pendências de conteúdo | 246:19523 | Checklist interno do conteúdo real que falta. Não é tela do sistema. | [FATO] |
@@ -68,7 +71,7 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Login · acesso bloqueado | 155:8983 / 155:9078 | Alerta de filiação Pausada, com WhatsApp. | [FATO] |
 | Primeiro acesso | 65:147 / 65:398 | Passo 1: CPF e matrícula, depois “Filiação confirmada”. Passo 2: e-mail com confirmação, senha com confirmação e aceite dos termos (LGPD). | [FATO] |
 | Primeiro acesso · filiação inativa | 155:9154 / 155:9274 | Bloqueio com WhatsApp. | [FATO] |
-| Recuperar senha | 155:9386 / 155:9482 | CPF e envio do link. Mostra o e-mail mascarado e diz que o link vale 30 minutos. | [FATO] |
+| Recuperar senha | 155:9386 / 155:9482 | CPF e envio do link. Resposta genérica, sem mostrar o e-mail; o link vale 1 hora (E03). | [FATO] |
 | Nova senha do associado (link do e-mail) | — | **Não desenhada.** | [NÃO CONFIRMADO] |
 
 ### 1.3 Área do associado (Fase 2, acesso ASS)
@@ -86,6 +89,7 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Remarcar · nova data | 245:41512 / 245:41765 | Mesmo seletor, com “Antes / Nova data”. | [FATO] |
 | Remarcar · remarcado | 245:41953 | Confirmação. | [FATO] |
 | Notificações | 186:14259 / 187:15007 | Lista com filtros (Todas, Avisos do sindicato, Documentos), marcar como lidas e retenção de 90 dias. | [FATO] |
+| Sem permissão (403) | 295:61176 / 295:61525 | Associado conectado que abre um endereço da equipe: “Ir para a Área do associado” e “Voltar ao início” (N1). | [FATO] |
 | Meus dados | 186:14629 | Dados da filiação (somente leitura), e-mail e celular editáveis, Alterar senha, Baixar meus dados e Excluir meu acesso. | [FATO] |
 | Alterar senha / Excluir acesso (confirmação) / Baixar dados (resultado) | — | Botões existem, mas as telas **não estão desenhadas**. | [NÃO CONFIRMADO] |
 | Meus dados, Agendamentos (cancelar, remarcado), 1 e 3 no mobile | — | Só existem no desktop. | [INFERÊNCIA]: seguem o padrão mobile das outras telas |
@@ -103,8 +107,10 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Primeiro acesso · ativar duas etapas | 262:40216 | QR code, chave manual e primeiro código. | [FATO] |
 | Primeiro acesso · códigos de recuperação | 262:40453 | 8 códigos, Baixar e Copiar, e “Guardei os códigos”. | [FATO] |
 | Convite expirado ou já usado | 262:40589 | Link inválido. | [FATO] |
+| Sessão expirada | 293:43045 / 293:43121 | Alerta “Sua sessão expirou”, novo login e volta para a mesma página (N3, E05). | [FATO] |
 | E-mails: convite / redefinir senha / senha alterada | 265:40803 · 265:40830 · 265:40852 | Modelos de e-mail. | [FATO] |
-| Conta bloqueada após 5 tentativas | — | A regra está nos Fluxos, mas a tela ou mensagem **não está desenhada**. | [FATO] regra · [NÃO CONFIRMADO] tela |
+| E-mails: conta bloqueada (pessoa / ADM), duas etapas redefinidas, publicação agendada falhou | 295:43855 · 295:43874 · 295:43897 · 295:43916 | Modelos M04, M05 e M06 (N6, E21). | [FATO] |
+| Conta bloqueada após 5 tentativas | — | A regra está nos Fluxos e os e-mails existem (N6), mas a mensagem na tela de login **não está desenhada**. | [FATO] regra · [NÃO CONFIRMADO] tela |
 
 ### 1.5 Painel · conteúdo e site (Fase 1, acesso ADM e COM)
 
@@ -115,8 +121,10 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Conteúdos (lista) | 110:845 (M 120:3650) | Notícias, editais e acordos: abas por tipo, busca, filtros, seleção em lote (Ocultar, Arquivar) e paginação. | [FATO] |
 | Conteúdos · perfil Comunicação / menu Criar | 214:33364 · 214:33805 | Mesma lista vista pela Comunicação. O menu Criar não oferece edital nem acordo. | [FATO] (`memória do projeto`) · [INFERÊNCIA]: o conteúdo do menu não foi lido |
 | Conteúdos · edição rápida (painel lateral) | 115:2324 | Título, categoria, situação (publicar agora, agendar, oculto), data, “Fixar no topo de Notícias”, últimas ações e Arquivar. | [FATO] |
-| Conteúdos · calendário | 115:2992 | Mês com publicados, agendados e fim de vigência; arrastar para reagendar; rascunhos sem data. | [FATO] |
-| Editor · notícia | 112:1091 (M 120:3836) | Manchete (110), linha fina (200), lide, corpo rico, capa com texto alternativo e legenda, fontes, links e anexos, palavras-chave, assinatura, local, categoria, quando publicar e “Destacar na página inicial”. | [FATO] |
+| Conteúdos · calendário | 115:2992 | Mês com publicados, agendados e fim de vigência; arrastar para reagendar; rascunhos sem data. Comunicados aparecem só para consulta, em barras marinho do período (E17). | [FATO] |
+| Editor · notícia | 112:1091 (M 120:3836) | Manchete (110), linha fina (200), lide, corpo rico, capa com texto alternativo e legenda, fontes, links e anexos, palavras-chave, assinatura, local, categoria, quando publicar, “Fixar no topo de Notícias até <data>” e o link “Destacar na Home” (E13, E14). | [FATO] |
+| Editor · histórico de versões (painel lateral) | 294:43036 | Versões publicadas com quem e quando, “Ver esta versão” e “Restaurar como rascunho” (N14, E31). | [FATO] |
+| Editor · conflito de versões do rascunho (modal) | 293:43298 | Escolher entre a versão do aparelho e a do servidor (N4, E02). | [FATO] |
 | Editor · confirmar publicação (modal) | 113:1314 | Resumo: entra no ar, onde aparece, visibilidade e checagem. | [FATO] |
 | Editor · pré-visualização | 122:5800 | Prévia como no site. | [FATO] |
 | Editor · documento oficial | 114:1972 (ADM) | Título oficial, número, tipo de edital, data do documento, data do evento ou prazo, vigência (início e fim), resumo (400), PDF oficial e “texto pesquisável”. | [FATO] |
@@ -127,7 +135,7 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Rádio Chofer · adicionar episódio (modal) | 166:17629 | Link do YouTube com busca automática, número, título, resumo, tema, exibição e “Último programa”. | [FATO] |
 | Página inicial (destaques) | 166:16879 | Carrossel (até 5, com entrada e saída agendadas), 3 destaques (automático ou escolhido), “Último programa” automático, prévia e “Publicar alterações”. | [FATO] |
 | Benefícios (parceiros) | 167:17772 (ADM) | Tabela com categoria, desconto, validade e estado, e alerta de vencimento. | [FATO] |
-| Benefícios · novo parceiro (painel lateral) | 167:18087 | Logo, nome, categoria, desconto, como usar, quem pode usar, válido até e endereço ou site. | [FATO] |
+| Benefícios · novo parceiro (painel lateral) | 167:18087 | Logo, nome, categoria, desconto, como usar, quem pode usar, começa em (opcional), válido até e endereço ou site. | [FATO] |
 | Mídia | 116:2727 | Biblioteca com filtros, envio com progresso, erro de formato, detalhes, texto alternativo, legenda, “Usado em” e copiar link. | [FATO] |
 | Busca global (Ctrl K) | — | Está em RF33, mas **não está desenhada**. | [FATO] doc · [NÃO CONFIRMADO] tela |
 
@@ -140,10 +148,11 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Equipe e perfis | 168:18397 | Pessoas (perfil, duas etapas, último acesso, serviços, Pendente), “Quem cuida de cada serviço” e “Comunicação × Administrador geral”. | [FATO] |
 | Convidar pessoa / Editar acesso (modais) | 168:18823 · 202:31493 | Nome, e-mail, perfil e serviços sob responsabilidade. | [FATO] |
 | Ações da pessoa (menu) / Redefinir duas etapas (modal) | 264:40915 · 264:41460 | Editar, nova senha, redefinir duas etapas e desativar. | [FATO] |
-| Desativar acesso (confirmação) | — | **Não desenhada.** | [NÃO CONFIRMADO] |
+| Desativar acesso (confirmação) / bloqueio pela regra dos 2 ADMs | 294:43696 · 294:44216 | Confirmação com motivo e o bloqueio quando sobrariam menos de 2 administradores gerais (N5, RN50). | [FATO] |
 | Configurações · Site | 167:18333 | Contato, horários, redes, missão e história. | [FATO] |
-| Configurações · Categorias / nova categoria | 117:3030 · 117:3453 | Categorias com “Aparece em” e contagem, ordem por arrastar e cor da etiqueta. | [FATO] |
-| Configurações · Regras de segurança | — | A aba existe, mas não tem frame próprio. Aparece só um cartão-resumo na tela Categorias. | [FATO] aba · [NÃO CONFIRMADO] conteúdo |
+| Configurações · Categorias / nova categoria | 117:3030 · 117:3453 | Categorias com “Aparece em” (Notícias, Documentos ou Rádio Chofer) e contagem, ordem por arrastar e cor da etiqueta. | [FATO] |
+| Configurações · Regras de segurança | — | A aba existe, mas não tem frame próprio. Aparece só o cartão “Regras fixas do sistema”, só para leitura, na tela Categorias (C9). | [FATO] aba · [NÃO CONFIRMADO] conteúdo |
+| Sem permissão (403) / Erro no servidor (500) | 293:42423 (M 293:43168) · 293:42784 | Estado com ícone, frase e ação, no padrão do E23 (N1, N2). | [FATO] |
 
 ### 1.7 Painel · agendamentos (Fase 2, acesso ATD e ADM)
 

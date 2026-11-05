@@ -35,10 +35,10 @@ No frame “Componentes 2.0” (31:530), na página Home.
 | Componente | ID |
 |---|---|
 | Site/Barra superior | 54:818 |
-| Site/Cabeçalho desktop (Sessão=Visitante 54:860 / Conectado) | 155:11686 |
+| Site/Cabeçalho desktop (Sessão=Visitante 54:860 / Visitante (Fase 1) 295:51107 / Conectado) | 155:11686 |
 | Site/Cabeçalho mobile (Visitante 54:890) | 155:11704 |
 | Site/Filie-se desktop / mobile | 54:907 / 54:918 |
-| Site/Rodapé desktop / mobile | 54:963 / 54:998 |
+| Site/Rodapé desktop / mobile (conjuntos: `Fase=1 (sem Entrar)` 295:51171 / 295:51234 e `Fase=2 (com Entrar)` 54:963 / 54:998) | 295:51233 / 295:51292 |
 | Site/Faixa de comunicado desktop / mobile | 153:8927 / 153:8949 |
 | Site/Aviso de cookies desktop / mobile | 158:9425 / 158:9440 |
 | Alerta 2.0 (Erro, Aviso, Sucesso, Informação) | 153:9018 |
@@ -51,7 +51,7 @@ No frame “Componentes 2.0” (31:530), na página Home.
 | Etiqueta | 31:583 |
 | Ícones: youtube, whatsapp, usuario, megafone | 6:41, 6:32, 31:561, 54:748 |
 
-O cabeçalho Conectado tem o sino com contador e o item “Rádio Chofer” no menu. Status 2.0 tem os estados de agendamento Confirmado, Concluído, Cancelado e Faltou.
+Telas do site da Fase 1 usam o cabeçalho `Visitante (Fase 1)` (com “Filiar-se” no lugar de “Entrar”) e o rodapé `Fase=1`. O cabeçalho mobile de visitante não tem “Entrar” e serve às duas fases. O cabeçalho Conectado tem o sino com contador e o item “Rádio Chofer” no menu. Status 2.0 tem os estados de agendamento Confirmado, Concluído, Cancelado e Faltou.
 
 ## Componentes do painel
 
@@ -62,7 +62,7 @@ O cabeçalho Conectado tem o sino com contador e o item “Rádio Chofer” no m
 | Navegação inferior (mobile) | 169:19085 |
 | Barra do app (mobile) | 169:19114 |
 
-Seções do painel: Mapa, fluxos e estados 122:13130 (h 7102); Desktop claro 122:13131 (começa em y=7502, h 29568, largura 8080); Mobile claro 122:13132 (y=37470); Componentes 122:17429. A seção escura do desktop fica em x=8480. Ao reorganizar linhas: tolerância de agrupamento 600 e espaço de 200.
+Seções do painel: Mapa, fluxos e estados 122:13130 (h 7102); Desktop claro 122:13131 (começa em y=7502, h 29568, largura 8080); Mobile claro 122:13132 (y=37470, largura 6750); Componentes 122:17429. A seção escura do desktop fica em x=8480. Ao reorganizar linhas: tolerância de agrupamento 600 e espaço de 200.
 
 Nas telas do painel, a navegação esconde os itens que o perfil não pode ver. Ao marcar o item ativo (`navActive`), pule os rótulos de grupo.
 
