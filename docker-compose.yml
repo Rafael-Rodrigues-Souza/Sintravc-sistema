@@ -72,7 +72,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm dev --hostname 0.0.0.0"]
+    # O store do pnpm fica no volume do node_modules (disco do Linux), não na pasta do Windows.
+    command:
+      - sh
+      - -c
+      - pnpm install --frozen-lockfile --store-dir /app/node_modules/.pnpm-store && pnpm dev --hostname 0.0.0.0
     env_file:
       - path: .env.local
         required: false
