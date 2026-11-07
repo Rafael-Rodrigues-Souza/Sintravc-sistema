@@ -34,12 +34,14 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 
 | Entidade | Campos | Regras |
 |---|---|---|
-| **PessoaEquipe** | `id` PK; `nome`; `email` UQ; `perfil` (ADM, COM, ATD); `situacao` (pendente, ativa, desativada); `senha_hash?`; `totp_segredo?` enc; `totp_ativo`; `tentativas_erradas`; `bloqueada_ate?`; `ultimo_acesso?`; `filtro_agenda?` (JSON, RN21) | Um perfil só (E09). Sempre ≥ 2 ADMs ativos (RN50). Desativar encerra as sessões e mantém o histórico. |
+| **PessoaEquipe** | `id` PK; `nome`; `email` UQ; `perfil` (ADM, COM, ATD); `situacao` (pendente, ativa, desativada); `email_verificado`; `duas_etapas_ativas`; `tentativas_erradas`; `bloqueada_ate?`; `ultimo_acesso?`; `filtro_agenda?` (JSON, RN21) | Um perfil só (E09). Sempre ≥ 2 ADMs ativos (RN50). Desativar encerra as sessões e mantém o histórico. É a tabela de usuários do Better Auth (E35). A senha fica em **ContaLogin** e o segredo TOTP em **DuasEtapas** (E36). |
+| **ContaLogin** | gerida pelo Better Auth; `pessoa_id` FK; `provedor` (`credential`); `senha_hash` | Senha com hash forte (RNF02). |
+| **DuasEtapas** | gerida pelo Better Auth; `pessoa_id` FK; `segredo` enc; `codigos_recuperacao` enc | Segredo TOTP e códigos de recuperação, criptografados com `BETTER_AUTH_SECRET` (E36). |
 | **SenhaAnterior** | `pessoa_id` FK; `senha_hash`; `criada_em` | Guarda as 3 últimas (RN47). |
-| **CodigoRecuperacao** | `pessoa_id` FK; `codigo_hash`; `usado_em?` | 8 por ativação; uso único; redefinir as duas etapas invalida todos (RN49). |
+| **Códigos de recuperação** | ficam em **DuasEtapas** (E36), não numa tabela própria | 8 por ativação; uso único; redefinir as duas etapas invalida todos (RN49). |
 | **Convite** | `id`; `pessoa_id` FK; `token_hash` UQ; `expira_em` (+48 h); `usado_em?`; `criado_por?` FK | Reenviar invalida o anterior (RN46). `criado_por` fica vazio quando o convite nasce pelo `pnpm criar-admin` (E33, E35). |
 | **TokenSenha** | `id`; `sujeito` (equipe ou associado); `sujeito_id`; `token_hash` UQ; `expira_em` (+1 h); `usado_em?` | Uso único (RN48, RN52). |
-| **Sessao** | gerida pelo Better Auth; `sujeito`; `expira_em`; `ultimo_uso` | Equipe: 2 h sem uso ou 12 h (E05). Associado: RN51. |
+| **Sessao** | gerida pelo Better Auth; `pessoa_id`; `token`; `expira_em`; `ultimo_uso`; `criado_em` | Equipe: 2 h sem uso ou 12 h após o login (E05), conferidos a cada requisição com os valores do `Parametro` (E36). Associado: RN51. |
 | **ResponsavelServico** (Fase 2) | `pessoa_id` FK; `servico_id` FK; PK composta | Só para o perfil ATD (RN19). |
 
 ### 2.2 Conteúdo (Fase 1)

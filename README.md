@@ -52,6 +52,8 @@ docker compose exec app pnpm teste:arquivo
 | `pnpm dev` | Aplica as migrações e sobe o app em modo de desenvolvimento |
 | `pnpm lint` / `pnpm typecheck` / `pnpm test` | O mesmo que o CI roda em todo PR. `pnpm test` precisa do Postgres ligado |
 | `pnpm test:unidade` | Só os testes que não usam o banco |
+| `pnpm test:e2e` | Testes de ponta a ponta no navegador (Playwright; veja abaixo) |
+| `pnpm dev:pessoas-teste` | Só em desenvolvimento: cria um ADM e uma pessoa da Comunicação para entrar no painel (veja abaixo) |
 | `pnpm db:gerar` | Gera uma migração a partir de `src/lib/db/schema` |
 | `pnpm db:migrar` | Aplica as migrações pendentes |
 | `pnpm db:studio` | Abre o Drizzle Studio |
@@ -72,10 +74,36 @@ pnpm criar-admin --email ana@sintravc.org.br --nome "Ana Souza"
 - Se o e-mail for inválido ou já estiver cadastrado (sem diferenciar maiúsculas), o comando recusa e não cria nada. Se o envio do e-mail falhar, nada fica gravado e o comando pode ser rodado de novo.
 - O link usa `URL_SITE` (no `.env.local`). Com o app em container: `docker compose exec app pnpm criar-admin …`.
 
+## Entrar no painel em desenvolvimento
+
+Antes do aceite do convite (#5), use as pessoas de teste. O comando recusa rodar com `NODE_ENV=production`.
+
+```sh
+pnpm dev:pessoas-teste            # cria adm@sintravc.local (ADM) e com@sintravc.local (Comunicação)
+pnpm dev:pessoas-teste --recriar  # apaga as duas e cria de novo, com segredos novos
+```
+
+1. O comando imprime, para cada pessoa, o e-mail, a senha, o segredo das duas etapas, os códigos de recuperação e um QR code.
+2. No celular, abra um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy…), escolha adicionar conta e leia o QR code. Se o terminal não mostrar o QR direito, digite o segredo à mão (tipo "baseado em tempo").
+3. Abra http://localhost:3000/painel/entrar, informe o e-mail e a senha e, depois, o código de 6 números do aplicativo.
+
+Regras que valem também aqui: 5 tentativas erradas (senha ou código) bloqueiam a conta por 15 minutos, e a sessão acaba depois de 2 h sem uso ou 12 h após o login.
+
 ## Testes
 
 - `pnpm test` roda os testes de unidade e os de integração. Os de integração (`*.int.test.ts`) usam um banco próprio, `sintravc_teste`, que é apagado e recriado a cada rodada. O banco de desenvolvimento não é tocado: a Atividade não deixa apagar nada (RN18).
 - Por padrão, o banco de teste fica no mesmo Postgres de `DATABASE_URL`, com o sufixo `_teste`. Para usar outro, defina `DATABASE_URL_TESTE`.
+- `pnpm test:e2e` compila o app numa pasta própria (`.next-e2e`, sem atrapalhar o `pnpm dev`), sobe na porta 3100 com o banco `sintravc_e2e` (recriado a cada rodada) e testa no Chromium o login, o bloqueio, o menu por perfil, o 403 e a sessão expirada. Na primeira vez, instale o navegador: `pnpm exec playwright install chromium`.
+
+## Chave do acesso (`BETTER_AUTH_SECRET`)
+
+Assina os cookies e criptografa os segredos das duas etapas. Use uma chave diferente em cada ambiente, com 32 caracteres ou mais:
+
+```sh
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+**Em produção, guarde a chave fora do servidor, como a chave do backup (E27, E36).** Se ela se perder, toda a equipe precisa refazer as duas etapas.
 
 ## Homologação e produção: SMTP e R2 reais
 

@@ -25,7 +25,7 @@ export default async function PaginaEntrar({ searchParams }: Props) {
 
   return (
     <MolduraAcesso>
-      <Eyebrow>{expirou ? "Sessão expirada" : "Acesso da equipe"}</Eyebrow>
+      <Eyebrow className={expirou ? undefined : "hidden lg:flex"}>{expirou ? "Sessão expirada" : "Acesso da equipe"}</Eyebrow>
       <h1 className="texto-titulo-secao-mobile text-texto-primario lg:texto-titulo-secao">
         {expirou ? "Entre de novo" : "Entrar no painel"}
       </h1>

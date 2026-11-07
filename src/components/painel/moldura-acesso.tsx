@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { cn } from "@/lib/utils";
 
 /**
  * Moldura das telas de acesso da equipe (Figma 169:18816 desktop, 169:18946 mobile):
@@ -47,10 +48,22 @@ export function MolduraAcesso({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Eyebrow({ children, cor = "azul" }: { children: React.ReactNode; cor?: "azul" | "amarelo" }) {
+export function Eyebrow({
+  children,
+  cor = "azul",
+  className,
+}: {
+  children: React.ReactNode;
+  cor?: "azul" | "amarelo";
+  className?: string;
+}) {
   return (
     <p
-      className={`flex items-center gap-2.5 texto-eyebrow ${cor === "amarelo" ? "text-destaque-amarelo" : "text-destaque-azul"}`}
+      className={cn(
+        "flex items-center gap-2.5 texto-eyebrow",
+        cor === "amarelo" ? "text-destaque-amarelo" : "text-destaque-azul",
+        className,
+      )}
     >
       <span aria-hidden className="h-[3px] w-6 bg-destaque-amarelo" />
       {children}

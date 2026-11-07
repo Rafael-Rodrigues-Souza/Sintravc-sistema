@@ -31,6 +31,7 @@
 | RN50 | Equipe e perfis (168:18397) e telas derivadas | Só Mariana Souza tem o perfil Administrador geral. | Os dados de exemplo devem ter pelo menos 2 administradores gerais ativos. Feito: Roberto Andrade (roberto@sintravc.org.br) entrou como segundo administrador geral, e a tela N5 usa o nome dele. | RN50 | ☑ |
 | RNF09 | Botão 2.0 · Estilo=Perigo (31:601), modo Escuro | Rótulo e ícone em `texto/invertido` (#ffffff) sobre `destaque/vermelho` escuro (#ff3b45): contraste de 3,52:1, abaixo do AA (4,5:1) para texto de 15 px. | No modo Escuro, rótulo e ícone em `destaque/marinho-fixo` (#021f4b): 4,59:1. O modo Claro continua branco sobre #cc030e (5,85:1). Já aplicado no código (issue #1). | RNF09 | ☐ |
 | E13, E14 | Fundo de Editor · Confirmar publicação (113:1314) | O editor ao fundo ainda mostra a chave “Destacar na página inicial”. (A Pré-visualização, 122:5800, mostra só a prévia do site e não tinha o problema.) | Igual ao Editor · Notícia corrigido (112:1091): “Fixar no topo de Notícias até <data>” e o link “Destacar na Home”, com o rascunho completo, coerente com “Tudo certo” do modal. | RF46, RN58 | ☑ |
+| E05 | Login · Verificação em duas etapas (169:18895) | Caixa “Confiar neste computador por 30 dias”. | Sem a caixa: as duas etapas são pedidas a cada login, e a sessão termina em 2 h sem uso ou 12 h após o login. | E05, RNF02 | ☐ |
 
 ## Telas a desenhar (novas)
 
