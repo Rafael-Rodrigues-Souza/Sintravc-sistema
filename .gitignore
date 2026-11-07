@@ -2,4 +2,10 @@ node_modules/
 .env*
 !.env.example
 .next/
+out/
+build/
 .scratch/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+.pnpm-store/

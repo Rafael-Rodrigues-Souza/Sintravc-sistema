@@ -393,7 +393,7 @@ Pode vetar qualquer um. Os itens seguem convenções de mercado ou a direção j
 - **T4 · Parâmetros.** Guarde os valores das tabelas de parâmetros (`regras-de-negocio.md` §3) numa tabela `Parametro`, lida com cache. Só o ADM altera, e pelo banco; não há tela nesta versão.
 - **T5 · API simulada.** Implemente a interface `ApiSindicato` com duas versões, real e falsa. Os dados de exemplo são os do Figma (José Carlos, Marta, dependentes). A homologação usa a falsa até D1.
 - **T6 · Ordem sugerida da Fase 1:**
-  1. base: projeto, tokens, Docker (dev com Postgres, Mailpit e MinIO, E32), CI e auditoria; primeiro administrador por comando (E33);
+  1. base: projeto, tokens, Docker (dev com Postgres, Mailpit e MinIO, E32 e E34), CI e auditoria; primeiro administrador por comando (E33);
   2. acesso da equipe e permissões;
   3. Mídia;
   4. Conteúdos e editor;

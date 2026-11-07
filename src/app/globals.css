@@ -1,0 +1,374 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Tokens do Figma — coleção “SINTRAVC 2.0” (30:531), modos Claro (30:0) e Escuro (53:0).
+ * Nome da variável no Figma “grupo/nome” → variável CSS “--grupo-nome”.
+ * Para mudar uma cor, mude aqui e no Figma (a fonte é o Figma).
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+
+  /* fundo */
+  --fundo-pagina: #f6f7f9;
+  --fundo-superficie: #ffffff;
+  --fundo-superficie-alt: #edf1f6;
+  --fundo-cabecalho: #ffffff;
+  --fundo-marinho: #021f4b;
+  --fundo-marinho-profundo: #011633;
+  --fundo-sobreposicao: #0b14248f;
+
+  /* borda */
+  --borda-padrao: #e1e6ee;
+  --borda-forte: #c9d2df;
+
+  /* texto */
+  --texto-primario: #0b1424;
+  --texto-secundario: #4a5361;
+  --texto-terciario: #69727f;
+  --texto-invertido: #ffffff;
+  --texto-invertido-sec: #b9c6da;
+
+  /* destaque */
+  --destaque-amarelo: #ffcc00;
+  --destaque-amarelo-texto: #021f4b;
+  --destaque-azul: #02488d;
+  --destaque-azul-suave: #e3ecf7;
+  --destaque-vermelho: #cc030e;
+  --destaque-marinho-fixo: #021f4b;
+
+  /* etiqueta */
+  --etiqueta-geral-fundo: #e3ecf7;
+  --etiqueta-geral-texto: #02488d;
+  --etiqueta-esportes-fundo: #fde8e9;
+  --etiqueta-esportes-texto: #a1020a;
+  --etiqueta-radio-fundo: #fff3bf;
+  --etiqueta-radio-texto: #5c4a00;
+
+  /* sobre-escuro (iguais nos dois temas) */
+  --sobre-escuro-superficie: #ffffff14;
+  --sobre-escuro-chip: #ffffff24;
+  --sobre-escuro-divisor: #ffffff24;
+  --sobre-escuro-borda: #ffffff47;
+  --sobre-escuro-inativo: #ffffff52;
+  --sobre-escuro-ao-vivo: #33cc66;
+
+  /* status */
+  --status-sucesso-fundo: #e3f5ea;
+  --status-sucesso-texto: #146c3a;
+  --status-aviso-fundo: #fff3bf;
+  --status-aviso-texto: #5c4a00;
+  --status-perigo-fundo: #fde8e9;
+  --status-perigo-texto: #a1020a;
+  --status-neutro-fundo: #edf1f6;
+  --status-neutro-texto: #4a5361;
+
+  /* raios (Figma: botão 999, campo 14) */
+  --radius: 0.875rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --fundo-pagina: #070f1e;
+  --fundo-superficie: #0e1a2f;
+  --fundo-superficie-alt: #0a1426;
+  --fundo-cabecalho: #070f1e;
+  --fundo-marinho: #0b2550;
+  --fundo-marinho-profundo: #040b17;
+  --fundo-sobreposicao: #000000a8;
+
+  --borda-padrao: #1c2b45;
+  --borda-forte: #2a3b58;
+
+  --texto-primario: #f3f6fb;
+  --texto-secundario: #a9b4c6;
+  --texto-terciario: #7d8aa0;
+  --texto-invertido: #ffffff;
+  --texto-invertido-sec: #b9c6da;
+
+  --destaque-amarelo: #ffcc00;
+  --destaque-amarelo-texto: #021f4b;
+  --destaque-azul: #7fb0ea;
+  --destaque-azul-suave: #13294a;
+  --destaque-vermelho: #ff3b45;
+  --destaque-marinho-fixo: #021f4b;
+
+  --etiqueta-geral-fundo: #13294a;
+  --etiqueta-geral-texto: #9cc3f0;
+  --etiqueta-esportes-fundo: #3a0d12;
+  --etiqueta-esportes-texto: #ff8a90;
+  --etiqueta-radio-fundo: #3a3005;
+  --etiqueta-radio-texto: #ffd84d;
+
+  --status-sucesso-fundo: #0f2e1d;
+  --status-sucesso-texto: #6fd69a;
+  --status-aviso-fundo: #3a3005;
+  --status-aviso-texto: #ffd84d;
+  --status-perigo-fundo: #3a0d12;
+  --status-perigo-texto: #ff8a90;
+  --status-neutro-fundo: #1c2b45;
+  --status-neutro-texto: #a9b4c6;
+}
+
+/* Nomes semânticos do shadcn/ui apontando para os tokens do Figma */
+:root,
+.dark {
+  --background: var(--fundo-pagina);
+  --foreground: var(--texto-primario);
+  --card: var(--fundo-superficie);
+  --card-foreground: var(--texto-primario);
+  --popover: var(--fundo-superficie);
+  --popover-foreground: var(--texto-primario);
+  --primary: var(--destaque-amarelo);
+  --primary-foreground: var(--destaque-amarelo-texto);
+  --secondary: var(--fundo-superficie-alt);
+  --secondary-foreground: var(--texto-primario);
+  --muted: var(--fundo-superficie-alt);
+  --muted-foreground: var(--texto-secundario);
+  --accent: var(--destaque-azul-suave);
+  --accent-foreground: var(--destaque-azul);
+  --destructive: var(--destaque-vermelho);
+  --border: var(--borda-padrao);
+  --input: var(--borda-forte);
+  --ring: var(--destaque-azul);
+}
+
+@theme inline {
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-condensed: var(--font-barlow-condensed), var(--font-barlow), ui-sans-serif, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* shadcn */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Figma 2.0 */
+  --color-fundo-pagina: var(--fundo-pagina);
+  --color-fundo-superficie: var(--fundo-superficie);
+  --color-fundo-superficie-alt: var(--fundo-superficie-alt);
+  --color-fundo-cabecalho: var(--fundo-cabecalho);
+  --color-fundo-marinho: var(--fundo-marinho);
+  --color-fundo-marinho-profundo: var(--fundo-marinho-profundo);
+  --color-fundo-sobreposicao: var(--fundo-sobreposicao);
+  --color-borda-padrao: var(--borda-padrao);
+  --color-borda-forte: var(--borda-forte);
+  --color-texto-primario: var(--texto-primario);
+  --color-texto-secundario: var(--texto-secundario);
+  --color-texto-terciario: var(--texto-terciario);
+  --color-texto-invertido: var(--texto-invertido);
+  --color-texto-invertido-sec: var(--texto-invertido-sec);
+  --color-destaque-amarelo: var(--destaque-amarelo);
+  --color-destaque-amarelo-texto: var(--destaque-amarelo-texto);
+  --color-destaque-azul: var(--destaque-azul);
+  --color-destaque-azul-suave: var(--destaque-azul-suave);
+  --color-destaque-vermelho: var(--destaque-vermelho);
+  --color-destaque-marinho-fixo: var(--destaque-marinho-fixo);
+  --color-etiqueta-geral-fundo: var(--etiqueta-geral-fundo);
+  --color-etiqueta-geral-texto: var(--etiqueta-geral-texto);
+  --color-etiqueta-esportes-fundo: var(--etiqueta-esportes-fundo);
+  --color-etiqueta-esportes-texto: var(--etiqueta-esportes-texto);
+  --color-etiqueta-radio-fundo: var(--etiqueta-radio-fundo);
+  --color-etiqueta-radio-texto: var(--etiqueta-radio-texto);
+  --color-sobre-escuro-superficie: var(--sobre-escuro-superficie);
+  --color-sobre-escuro-chip: var(--sobre-escuro-chip);
+  --color-sobre-escuro-divisor: var(--sobre-escuro-divisor);
+  --color-sobre-escuro-borda: var(--sobre-escuro-borda);
+  --color-sobre-escuro-inativo: var(--sobre-escuro-inativo);
+  --color-sobre-escuro-ao-vivo: var(--sobre-escuro-ao-vivo);
+  --color-status-sucesso-fundo: var(--status-sucesso-fundo);
+  --color-status-sucesso-texto: var(--status-sucesso-texto);
+  --color-status-aviso-fundo: var(--status-aviso-fundo);
+  --color-status-aviso-texto: var(--status-aviso-texto);
+  --color-status-perigo-fundo: var(--status-perigo-fundo);
+  --color-status-perigo-texto: var(--status-perigo-texto);
+  --color-status-neutro-fundo: var(--status-neutro-fundo);
+  --color-status-neutro-texto: var(--status-neutro-texto);
+}
+
+/* Estilos de texto 2.0 do Figma */
+@utility texto-display {
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: 76px;
+  line-height: 0.94;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+}
+@utility texto-display-mobile {
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: 46px;
+  line-height: 0.96;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+}
+@utility texto-titulo-secao {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1.04;
+  letter-spacing: -0.005em;
+}
+@utility texto-titulo-secao-mobile {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.06;
+  letter-spacing: -0.003em;
+}
+@utility texto-manchete {
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: 60px;
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+}
+@utility texto-manchete-mobile {
+  font-family: var(--font-condensed);
+  font-weight: 800;
+  font-size: 38px;
+  line-height: 1.04;
+  letter-spacing: -0.005em;
+}
+@utility texto-titulo-card-grande {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.12;
+}
+@utility texto-titulo-destaque-mobile {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.15;
+}
+@utility texto-numero-destaque {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.1;
+}
+@utility texto-numero-destaque-mobile {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+}
+@utility texto-titulo-card {
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.32;
+}
+@utility texto-titulo-card-pequeno {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.36;
+}
+@utility texto-linha-fina {
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.45;
+}
+@utility texto-lide {
+  font-weight: 600;
+  font-size: 21px;
+  line-height: 1.6;
+}
+@utility texto-lide-mobile {
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.6;
+}
+@utility texto-corpo-materia {
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.75;
+}
+@utility texto-corpo-materia-mobile {
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.7;
+}
+@utility texto-corpo-grande {
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.56;
+}
+@utility texto-corpo-destaque {
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.4;
+}
+@utility texto-corpo {
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.56;
+}
+@utility texto-pequeno {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.42;
+}
+@utility texto-rotulo {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 20px;
+}
+@utility texto-navegacao {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.2;
+}
+@utility texto-botao {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+@utility texto-eyebrow {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+@utility texto-etiqueta {
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans texto-corpo antialiased;
+  }
+}
