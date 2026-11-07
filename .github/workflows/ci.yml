@@ -13,7 +13,7 @@ jobs:
   verificar:
     name: Lint, typecheck, migração e testes
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       postgres:
@@ -32,6 +32,9 @@ jobs:
 
     env:
       DATABASE_URL: postgres://sintravc:sintravc@localhost:5432/sintravc
+      URL_SITE: http://localhost:3000
+      # Só para o CI. Em homologação e produção, cada ambiente tem a sua (E36).
+      BETTER_AUTH_SECRET: chave-do-ci-apenas-para-testes-com-mais-de-32-caracteres
       NEXT_TELEMETRY_DISABLED: 1
 
     steps:
@@ -58,3 +61,17 @@ jobs:
 
       - name: Testes
         run: pnpm test
+
+      - name: Navegador dos testes de ponta a ponta
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Testes de ponta a ponta
+        run: pnpm test:e2e
+
+      - name: Relatório do Playwright (se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright
+          path: test-results/
+          retention-days: 7

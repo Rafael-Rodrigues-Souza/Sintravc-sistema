@@ -1,0 +1,47 @@
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * Testes de ponta a ponta do painel. Rodam contra o app compilado (next build + next start),
+ * na porta 3100, com um banco próprio (sintravc_e2e) recriado a cada rodada e pessoas de teste
+ * criadas pelas funções do Better Auth (e2e/preparar.ts). Precisam do Postgres do compose.
+ */
+const PORTA = 3100;
+const URL_BASE = `http://localhost:${PORTA}`;
+const BANCO_E2E =
+  process.env.DATABASE_URL_E2E ??
+  (() => {
+    const url = new URL(process.env.DATABASE_URL ?? "postgres://sintravc:sintravc@localhost:5432/sintravc");
+    url.pathname = `${url.pathname.replace(/^\//, "")}_e2e`;
+    return url.toString();
+  })();
+
+export const ambienteE2E = {
+  DATABASE_URL: BANCO_E2E,
+  URL_SITE: URL_BASE,
+  BETTER_AUTH_SECRET: "chave-dos-testes-de-ponta-a-ponta-com-mais-de-32-caracteres",
+  NEXT_DIST_DIR: ".next-e2e",
+};
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: false,
+  workers: 1,
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [["github"], ["list"]] : "list",
+  globalSetup: "./e2e/preparar.ts",
+  use: {
+    baseURL: URL_BASE,
+    locale: "pt-BR",
+    timezoneId: "America/Bahia",
+    trace: "retain-on-failure",
+  },
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  webServer: {
+    command: `pnpm build && pnpm start --port ${PORTA}`,
+    // A página inicial não usa o banco: o servidor pode subir antes de e2e/preparar.ts criar o sintravc_e2e.
+    url: `${URL_BASE}/`,
+    timeout: 240_000,
+    reuseExistingServer: false,
+    env: { ...ambienteE2E, NEXT_TELEMETRY_DISABLED: "1" },
+  },
+});

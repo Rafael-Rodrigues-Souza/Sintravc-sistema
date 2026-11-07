@@ -42,6 +42,15 @@ const esquemaSite = z.object({
   URL_SITE: z.url({ protocol: /^https?$/ }),
 });
 
+const esquemaAcesso = z.object({
+  /**
+   * Chave do Better Auth: assina os cookies e criptografa os segredos das duas etapas.
+   * Se ela se perder, toda a equipe precisa refazer as duas etapas (E36). Gere com: openssl rand -base64 32
+   */
+  BETTER_AUTH_SECRET: z.string().min(32, { error: "use pelo menos 32 caracteres" }),
+  URL_SITE: esquemaSite.shape.URL_SITE,
+});
+
 export type EnvBanco = z.infer<typeof esquemaBanco>;
 export type EnvEmail = z.infer<typeof esquemaEmail>;
 export type EnvArmazenamento = z.infer<typeof esquemaArmazenamento>;
@@ -62,5 +71,6 @@ function validar<T extends z.ZodType>(area: string, esquema: T, fonte: Fonte): z
 export const lerEnvBanco = (fonte: Fonte = process.env) => validar("banco", esquemaBanco, fonte);
 export const lerEnvEmail = (fonte: Fonte = process.env) => validar("e-mail", esquemaEmail, fonte);
 export const lerEnvSite = (fonte: Fonte = process.env) => validar("site", esquemaSite, fonte);
+export const lerEnvAcesso = (fonte: Fonte = process.env) => validar("acesso", esquemaAcesso, fonte);
 export const lerEnvArmazenamento = (fonte: Fonte = process.env) =>
   validar("armazenamento", esquemaArmazenamento, fonte);
