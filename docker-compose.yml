@@ -82,6 +82,7 @@ services:
         required: false
     environment:
       # Só os endereços mudam dentro da rede do compose; o resto vem do .env.local.
+      URL_SITE: http://localhost:3000
       DATABASE_URL: postgres://sintravc:sintravc@postgres:5432/sintravc
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"

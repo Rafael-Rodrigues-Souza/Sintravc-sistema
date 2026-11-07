@@ -37,7 +37,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 | **PessoaEquipe** | `id` PK; `nome`; `email` UQ; `perfil` (ADM, COM, ATD); `situacao` (pendente, ativa, desativada); `senha_hash?`; `totp_segredo?` enc; `totp_ativo`; `tentativas_erradas`; `bloqueada_ate?`; `ultimo_acesso?`; `filtro_agenda?` (JSON, RN21) | Um perfil só (E09). Sempre ≥ 2 ADMs ativos (RN50). Desativar encerra as sessões e mantém o histórico. |
 | **SenhaAnterior** | `pessoa_id` FK; `senha_hash`; `criada_em` | Guarda as 3 últimas (RN47). |
 | **CodigoRecuperacao** | `pessoa_id` FK; `codigo_hash`; `usado_em?` | 8 por ativação; uso único; redefinir as duas etapas invalida todos (RN49). |
-| **Convite** | `id`; `pessoa_id` FK; `token_hash` UQ; `expira_em` (+48 h); `usado_em?`; `criado_por` FK | Reenviar invalida o anterior (RN46). |
+| **Convite** | `id`; `pessoa_id` FK; `token_hash` UQ; `expira_em` (+48 h); `usado_em?`; `criado_por?` FK | Reenviar invalida o anterior (RN46). `criado_por` fica vazio quando o convite nasce pelo `pnpm criar-admin` (E33, E35). |
 | **TokenSenha** | `id`; `sujeito` (equipe ou associado); `sujeito_id`; `token_hash` UQ; `expira_em` (+1 h); `usado_em?` | Uso único (RN48, RN52). |
 | **Sessao** | gerida pelo Better Auth; `sujeito`; `expira_em`; `ultimo_uso` | Equipe: 2 h sem uso ou 12 h (E05). Associado: RN51. |
 | **ResponsavelServico** (Fase 2) | `pessoa_id` FK; `servico_id` FK; PK composta | Só para o perfil ATD (RN19). |
@@ -67,6 +67,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 | Entidade | Campos | Regras |
 |---|---|---|
 | **Atividade** | `id`; `quando`; `ator_tipo` (pessoa, sistema, associado); `ator_id?`; `acao`; `area`; `alvo_tipo`; `alvo_id`; `alvo_rotulo`; `detalhe` (JSON); `motivo?` | **Só inserção**: UPDATE e DELETE são bloqueados no banco (RNF04). Guardada por 5 anos (E25). Visível só para o ADM. |
+| **Parametro** | `chave` PK; `valor` (JSON); `descricao`; `regra` | Valores do `regras-de-negocio.md` §3, criados pela migração e lidos com cache de 60 s (T4, E35). Só o ADM altera, direto no banco. |
 | **NotificacaoEquipe** | `id`; `pessoa_id` FK; `tipo`; `texto`; `link?`; `lida_em?` | — |
 
 ### 2.4 Associado e agendamentos (Fase 2)

@@ -50,12 +50,32 @@ docker compose exec app pnpm teste:arquivo
 | Comando | O que faz |
 |---|---|
 | `pnpm dev` | Aplica as migrações e sobe o app em modo de desenvolvimento |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` | O mesmo que o CI roda em todo PR |
+| `pnpm lint` / `pnpm typecheck` / `pnpm test` | O mesmo que o CI roda em todo PR. `pnpm test` precisa do Postgres ligado |
+| `pnpm test:unidade` | Só os testes que não usam o banco |
 | `pnpm db:gerar` | Gera uma migração a partir de `src/lib/db/schema` |
 | `pnpm db:migrar` | Aplica as migrações pendentes |
 | `pnpm db:studio` | Abre o Drizzle Studio |
 | `pnpm teste:email --para x@y` | Envia um e-mail de teste (aparece no Mailpit) |
 | `pnpm teste:arquivo` | Envia um arquivo de teste e imprime a URL pública |
+| `pnpm criar-admin --email x@y --nome "Nome"` | Cria o convite de um Administrador geral, imprime o link e envia o e-mail (veja abaixo) |
+
+## Primeiro Administrador geral
+
+O primeiro ADM nasce por um comando, igual em desenvolvimento, homologação e produção (E33). Não use SQL manual.
+
+```sh
+pnpm criar-admin --email ana@sintravc.org.br --nome "Ana Souza"
+```
+
+- O comando cria a pessoa (Administrador geral, pendente) e um convite de 48 h, registra a ação na Atividade, imprime o link e o envia por e-mail. Em desenvolvimento, o e-mail aparece no Mailpit (http://localhost:8025).
+- `--sem-email`: faz tudo, menos enviar o e-mail; só imprime o link. Use quando o SMTP ainda não estiver pronto e entregue o link à pessoa por um canal seguro.
+- Se o e-mail for inválido ou já estiver cadastrado (sem diferenciar maiúsculas), o comando recusa e não cria nada. Se o envio do e-mail falhar, nada fica gravado e o comando pode ser rodado de novo.
+- O link usa `URL_SITE` (no `.env.local`). Com o app em container: `docker compose exec app pnpm criar-admin …`.
+
+## Testes
+
+- `pnpm test` roda os testes de unidade e os de integração. Os de integração (`*.int.test.ts`) usam um banco próprio, `sintravc_teste`, que é apagado e recriado a cada rodada. O banco de desenvolvimento não é tocado: a Atividade não deixa apagar nada (RN18).
+- Por padrão, o banco de teste fica no mesmo Postgres de `DATABASE_URL`, com o sufixo `_teste`. Para usar outro, defina `DATABASE_URL_TESTE`.
 
 ## Homologação e produção: SMTP e R2 reais
 
