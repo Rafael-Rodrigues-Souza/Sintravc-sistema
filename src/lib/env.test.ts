@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { opcoesSmtp } from "@/lib/email";
 import { configuracaoS3 } from "@/lib/armazenamento";
-import { lerEnvArmazenamento, lerEnvBanco, lerEnvEmail } from "@/lib/env";
+import { lerEnvArmazenamento, lerEnvBanco, lerEnvEmail, lerEnvSite } from "@/lib/env";
 
 // Valores do .env.example (desenvolvimento: Mailpit e MinIO).
 const desenvolvimento = {
@@ -87,5 +87,16 @@ describe("configuração por variáveis de ambiente (E32)", () => {
     expect(() => lerEnvArmazenamento({ ...desenvolvimento, S3_FORCAR_CAMINHO: "talvez" })).toThrow(
       /S3_FORCAR_CAMINHO/,
     );
+  });
+});
+
+describe("lerEnvSite", () => {
+  it("lê a URL do site, usada nos links dos e-mails (convite)", () => {
+    expect(lerEnvSite({ URL_SITE: "http://localhost:3000" }).URL_SITE).toBe("http://localhost:3000");
+    expect(lerEnvSite({ URL_SITE: "https://sintravc.org.br" }).URL_SITE).toBe("https://sintravc.org.br");
+  });
+
+  it("sem URL_SITE, para com erro que diz o nome da variável", () => {
+    expect(() => lerEnvSite({})).toThrow(/URL_SITE/);
   });
 });

@@ -8,6 +8,27 @@
       "when": 1793905629661,
       "tag": "0000_extensoes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794087677408,
+      "tag": "0001_tabelas_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794087730785,
+      "tag": "0002_atividade_so_insercao",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794089074361,
+      "tag": "0003_parametros_iniciais",
+      "breakpoints": true
     }
   ]
 }

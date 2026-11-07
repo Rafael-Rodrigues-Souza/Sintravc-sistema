@@ -37,6 +37,11 @@ const esquemaArmazenamento = z.object({
   S3_URL_PUBLICA: z.url(),
 });
 
+const esquemaSite = z.object({
+  /** Endereço público do site, sem barra no fim. Base dos links enviados por e-mail (convite). */
+  URL_SITE: z.url({ protocol: /^https?$/ }),
+});
+
 export type EnvBanco = z.infer<typeof esquemaBanco>;
 export type EnvEmail = z.infer<typeof esquemaEmail>;
 export type EnvArmazenamento = z.infer<typeof esquemaArmazenamento>;
@@ -56,5 +61,6 @@ function validar<T extends z.ZodType>(area: string, esquema: T, fonte: Fonte): z
 
 export const lerEnvBanco = (fonte: Fonte = process.env) => validar("banco", esquemaBanco, fonte);
 export const lerEnvEmail = (fonte: Fonte = process.env) => validar("e-mail", esquemaEmail, fonte);
+export const lerEnvSite = (fonte: Fonte = process.env) => validar("site", esquemaSite, fonte);
 export const lerEnvArmazenamento = (fonte: Fonte = process.env) =>
   validar("armazenamento", esquemaArmazenamento, fonte);
