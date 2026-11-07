@@ -7,8 +7,14 @@ const raiz = __dirname;
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Os testes de ponta a ponta compilam em outra pasta, para não atrapalhar o pnpm dev.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   outputFileTracingRoot: raiz,
   turbopack: { root: raiz },
+  experimental: {
+    // forbidden() e a tela 403 do painel (N1).
+    authInterrupts: true,
+  },
 };
 
 export default nextConfig;

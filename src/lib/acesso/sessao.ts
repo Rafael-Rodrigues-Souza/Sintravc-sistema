@@ -22,3 +22,21 @@ export function estadoDaSessao(dados: {
   if (agoraMs - ultimoUso.getTime() >= limites.semUsoHoras * HORA) return "expirada_sem_uso";
   return "valida";
 }
+
+/** Só aceita voltar para dentro do painel (sem redirecionamento aberto). */
+export function voltarSeguro(voltar: string | null | undefined): string {
+  if (!voltar || !voltar.startsWith("/painel") || voltar.startsWith("//") || voltar.includes("\\")) {
+    return "/painel";
+  }
+  if (voltar.startsWith("/painel/entrar")) return "/painel";
+  return voltar;
+}
+
+export function urlDoLogin({ voltar, expirou }: { voltar?: string; expirou?: boolean } = {}) {
+  const parametros = new URLSearchParams();
+  if (expirou) parametros.set("motivo", "expirada");
+  const destino = voltarSeguro(voltar);
+  if (destino !== "/painel") parametros.set("voltar", destino);
+  const texto = parametros.toString();
+  return texto ? `/painel/entrar?${texto}` : "/painel/entrar";
+}

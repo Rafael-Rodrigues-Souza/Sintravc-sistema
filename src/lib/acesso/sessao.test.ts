@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { estadoDaSessao } from "./sessao";
+import { estadoDaSessao, urlDoLogin, voltarSeguro } from "./sessao";
 
 // E05 / RNF02: a sessão da equipe termina depois de 2 h sem uso ou 12 h após o login,
 // o que vier primeiro. Os limites vêm do Parametro; aqui, os valores iniciais.
@@ -37,5 +37,32 @@ describe("estadoDaSessao", () => {
     const outros = { semUsoHoras: 1, maximaHoras: 4 };
     expect(estadoDaSessao({ criadaEm: login, ultimoUso: login, agora: h(1), limites: outros })).toBe("expirada_sem_uso");
     expect(estadoDaSessao({ criadaEm: login, ultimoUso: h(3, 30), agora: h(4), limites: outros })).toBe("expirada_maxima");
+  });
+});
+
+describe("voltarSeguro: depois do login, só volta para dentro do painel", () => {
+  it.each([
+    ["/painel/conteudos?pagina=2", "/painel/conteudos?pagina=2"],
+    ["/painel", "/painel"],
+    [null, "/painel"],
+    ["https://golpe.example/painel", "/painel"],
+    ["//golpe.example/painel", "/painel"],
+    ["/\golpe.example", "/painel"],
+    ["/noticias", "/painel"],
+    ["/painel/entrar", "/painel"],
+  ])("%j → %s", (voltar, esperado) => {
+    expect(voltarSeguro(voltar)).toBe(esperado);
+  });
+});
+
+describe("urlDoLogin", () => {
+  it("sessão expirada leva o motivo e a página de volta", () => {
+    expect(urlDoLogin({ voltar: "/painel/equipe", expirou: true })).toBe(
+      "/painel/entrar?motivo=expirada&voltar=%2Fpainel%2Fequipe",
+    );
+  });
+
+  it("sem sessão, vai para o login simples", () => {
+    expect(urlDoLogin({ voltar: "/painel" })).toBe("/painel/entrar");
   });
 });

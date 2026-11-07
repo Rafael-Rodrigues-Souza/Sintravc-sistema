@@ -1,5 +1,3 @@
-import { base32 } from "@better-auth/utils/base32";
-import { createOTP } from "@better-auth/utils/otp";
 import { eq } from "drizzle-orm";
 
 import { banco } from "@/lib/db";
@@ -7,6 +5,9 @@ import { pessoaEquipe, sessao } from "@/lib/db/schema";
 import type { Perfil } from "@/lib/permissoes";
 
 import { auth } from "./auth";
+import { codigoTotp } from "./totp";
+
+export { codigoTotp };
 
 /**
  * Pessoas da equipe para testes e para o desenvolvimento (pnpm dev:pessoas-teste).
@@ -88,11 +89,6 @@ export async function criarPessoaDeTeste(dados: {
     uriTotp: ativacao.totpURI,
     codigosRecuperacao: ativacao.backupCodes,
   };
-}
-
-/** O código de 6 números do momento, como o aplicativo autenticador mostraria. */
-export async function codigoTotp(segredoBase32: string): Promise<string> {
-  return createOTP(base32.decode(segredoBase32), { digits: 6, period: 30 }).totp();
 }
 
 /** Junta os Set-Cookie de uma resposta num cabeçalho Cookie para a próxima chamada. */
