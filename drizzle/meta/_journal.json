@@ -29,6 +29,13 @@
       "when": 1794089074361,
       "tag": "0003_parametros_iniciais",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794091321372,
+      "tag": "0004_acesso_equipe",
+      "breakpoints": true
     }
   ]
 }

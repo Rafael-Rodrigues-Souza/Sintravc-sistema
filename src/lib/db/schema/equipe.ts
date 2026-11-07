@@ -1,4 +1,4 @@
-import { customType, pgEnum, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, customType, integer, pgEnum, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 import { dataHora, datas, idUuid } from "./comum";
 
@@ -8,8 +8,8 @@ export const perfil = pgEnum("perfil", ["ADM", "COM", "ATD"]);
 export const situacaoPessoa = pgEnum("situacao_pessoa", ["pendente", "ativa", "desativada"]);
 
 /**
- * Pessoa da equipe (spec §2.1). Também será a tabela de usuários do Better Auth (E35):
- * as colunas de login entram no #4.
+ * Pessoa da equipe (spec §2.1). É a tabela de usuários do Better Auth (E35, E36):
+ * a senha fica em conta_login e o segredo das duas etapas em duas_etapas.
  */
 export const pessoaEquipe = pgTable("pessoa_equipe", {
   id: idUuid(),
@@ -17,6 +17,16 @@ export const pessoaEquipe = pgTable("pessoa_equipe", {
   email: citext().notNull().unique(),
   perfil: perfil().notNull(),
   situacao: situacaoPessoa().notNull().default("pendente"),
+  /** Exigida pelo Better Auth. O convite aceito (#5) confirma o e-mail. */
+  emailVerificado: boolean().notNull().default(false),
+  /** Exigida pelo Better Auth; não usada. */
+  imagem: text(),
+  /** twoFactorEnabled do Better Auth. Sem as duas etapas ativas, ninguém entra (RNF02). */
+  duasEtapasAtivas: boolean().notNull().default(false),
+  /** Bloqueio por tentativas (RN05): senha ou código errados, numa contagem só. */
+  tentativasErradas: integer().notNull().default(0),
+  bloqueadaAte: dataHora(),
+  ultimoAcesso: dataHora(),
   ...datas,
 });
 
