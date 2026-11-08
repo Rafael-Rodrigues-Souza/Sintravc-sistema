@@ -37,14 +37,15 @@ afterEach(async () => {
 });
 
 describe("gerarCodigosRecuperacao (RN49)", () => {
-  it("gera 8 códigos diferentes, no formato do plugin, que o plugin consegue ler", async () => {
+  it("gera 8 códigos diferentes, que o plugin consegue ler", async () => {
     const p = await novaPessoa();
 
     const codigos = await gerarCodigosRecuperacao(p.id);
 
     expect(codigos).toHaveLength(8);
     expect(new Set(codigos).size).toBe(8);
-    for (const codigo of codigos) expect(codigo).toMatch(/^[A-Za-z0-9]{5}-[A-Za-z0-9]{5}$/);
+    // Fácil de ler e digitar no celular: só maiúsculas e algarismos, sem 0/O, 1/I/L (Figma 262:40453).
+    for (const codigo of codigos) expect(codigo).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/);
     expect(await codigosQueOPluginLe(p.id)).toEqual(codigos);
   });
 

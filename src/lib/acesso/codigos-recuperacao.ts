@@ -1,4 +1,6 @@
-import { generateRandomString, symmetricEncrypt } from "better-auth/crypto";
+import { randomInt } from "node:crypto";
+
+import { symmetricEncrypt } from "better-auth/crypto";
 
 import { lerParametro } from "@/lib/parametros";
 
@@ -9,11 +11,21 @@ import { auth } from "./auth";
  *
  * O plugin twoFactor gera os códigos com uma quantidade fixa na configuração, e a função de
  * geração dele não pode ler o banco. Por isso geramos aqui, com a quantidade do Parametro
- * equipe.codigos_recuperacao, no mesmo formato e com a mesma criptografia do plugin (E36, E37).
+ * equipe.codigos_recuperacao, com a mesma criptografia do plugin (E36, E37).
  * O plugin continua conferindo os códigos no login (verifyBackupCode).
  *
  * Os códigos em claro só existem no retorno desta função: mostre uma vez e esqueça.
+ *
+ * Formato XXXXX-XXXXX, só com maiúsculas e algarismos que não se confundem (sem 0/O, 1/I/L):
+ * a pessoa vai ler no papel e digitar no celular. São 10 caracteres de 31 possíveis (~49 bits).
  */
+const ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function novoCodigo() {
+  const bruto = Array.from({ length: 10 }, () => ALFABETO[randomInt(ALFABETO.length)]).join("");
+  return `${bruto.slice(0, 5)}-${bruto.slice(5)}`;
+}
+
 export async function gerarCodigosRecuperacao(pessoaId: string): Promise<string[]> {
   const quantidade = await lerParametro("equipe.codigos_recuperacao");
   const contexto = await auth().$context;
@@ -25,10 +37,7 @@ export async function gerarCodigosRecuperacao(pessoaId: string): Promise<string[
   if (!registro) throw new Error("A pessoa ainda não configurou as duas etapas: não há onde guardar os códigos.");
 
   const codigos = new Set<string>();
-  while (codigos.size < quantidade) {
-    const bruto = generateRandomString(10, "a-z", "0-9", "A-Z");
-    codigos.add(`${bruto.slice(0, 5)}-${bruto.slice(5)}`);
-  }
+  while (codigos.size < quantidade) codigos.add(novoCodigo());
   const lista = [...codigos];
 
   await contexto.adapter.update({
