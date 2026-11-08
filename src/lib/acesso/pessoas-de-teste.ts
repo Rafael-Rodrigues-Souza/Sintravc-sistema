@@ -5,6 +5,7 @@ import { pessoaEquipe, sessao } from "@/lib/db/schema";
 import type { Perfil } from "@/lib/permissoes";
 
 import { auth } from "./auth";
+import { gerarCodigosRecuperacao } from "./codigos-recuperacao";
 import { codigoTotp } from "./totp";
 
 export { codigoTotp };
@@ -79,6 +80,9 @@ export async function criarPessoaDeTeste(dados: {
     headers: cabecalhos,
   });
 
+  // Os 8 códigos do Parametro (RN49), como no aceite do convite.
+  const codigosRecuperacao = await gerarCodigosRecuperacao(pessoa.id);
+
   // Encerra a sessão provisória: a pessoa entra pelo login normal.
   await banco().delete(sessao).where(eq(sessao.pessoaId, pessoa.id));
 
@@ -87,7 +91,7 @@ export async function criarPessoaDeTeste(dados: {
     ...dados,
     segredoTotp,
     uriTotp: ativacao.totpURI,
-    codigosRecuperacao: ativacao.backupCodes,
+    codigosRecuperacao,
   };
 }
 
