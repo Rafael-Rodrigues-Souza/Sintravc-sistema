@@ -102,7 +102,7 @@ test("CA-US19.2 · 5 senhas erradas bloqueiam; nem a senha certa entra", async (
 test("sessão expirada (2 h sem uso) volta para a mesma página depois de entrar de novo", async ({ page }) => {
   await entrar(page, pessoas.expira);
   await page.goto("/painel/equipe");
-  await expect(page.getByRole("heading", { name: "Esta área chega em breve" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Equipe e perfis" })).toBeVisible();
 
   // Simula 3 h sem uso.
   const banco = postgres(ambienteE2E.DATABASE_URL, { max: 1 });

@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Testes de ponta a ponta do painel. Rodam contra o app compilado (next build + next start),
  * na porta 3100, com um banco próprio (sintravc_e2e) recriado a cada rodada e pessoas de teste
- * criadas pelas funções do Better Auth (e2e/preparar.ts). Precisam do Postgres do compose.
+ * criadas pelas funções do Better Auth (e2e/preparar.ts). Precisam do Postgres e do Mailpit do compose.
  */
 const PORTA = 3100;
 const URL_BASE = `http://localhost:${PORTA}`;
@@ -20,7 +20,15 @@ export const ambienteE2E = {
   URL_SITE: URL_BASE,
   BETTER_AUTH_SECRET: "chave-dos-testes-de-ponta-a-ponta-com-mais-de-32-caracteres",
   NEXT_DIST_DIR: ".next-e2e",
+  // O convite sai pelo Mailpit do compose (E32); o teste lê o link pela API dele.
+  SMTP_HOST: "localhost",
+  SMTP_PORT: "1025",
+  SMTP_SECURE: "false",
+  EMAIL_REMETENTE: "SINTRAVC <nao-responda@sintravc.local>",
 };
+
+/** API do Mailpit, para ler os e-mails nos testes. */
+export const URL_MAILPIT = process.env.URL_MAILPIT ?? "http://localhost:8025";
 
 export default defineConfig({
   testDir: "./e2e",

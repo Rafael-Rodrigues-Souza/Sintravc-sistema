@@ -1,4 +1,4 @@
-import { matriz, type Quem, type Recurso, type TipoRecurso } from "./matriz";
+import { matriz, type Perfil, type Quem, type Recurso, type TipoRecurso } from "./matriz";
 
 export type { DoServico, Perfil, Quem, Recurso, TipoRecurso } from "./matriz";
 
@@ -41,6 +41,21 @@ export function exigir<R extends Recurso>(quem: Quem, acao: AcaoDe<R["tipo"]>, r
 
 /** A fase do sistema em produção (spec §1). Agenda, Serviços e Relatórios são da Fase 2. */
 export const FASE_ATUAL = 1;
+
+/** Nome de cada perfil, como aparece nas telas e nos e-mails. */
+export const NOME_DO_PERFIL: Record<Perfil, string> = {
+  ADM: "Administrador geral",
+  COM: "Comunicação",
+  ATD: "Atendimento",
+};
+
+/**
+ * Perfis que o Administrador geral pode dar no convite. O Atendimento só existe com a Fase 2
+ * (CA-US29.3). A server action do convite também confere: esconder a opção não basta.
+ */
+export function perfisConvidaveis(fase: number = FASE_ATUAL): Perfil[] {
+  return fase >= 2 ? ["ADM", "COM", "ATD"] : ["ADM", "COM"];
+}
 
 const AREAS = [
   { area: "visao_geral", fase: 1, mostra: (q: Quem) => pode(q, "ver", { tipo: "visao_geral" }) },

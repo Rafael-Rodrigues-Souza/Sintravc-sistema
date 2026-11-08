@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { areasDoPainel, exigir, pode, SemPermissao, type Quem } from ".";
+import { areasDoPainel, exigir, perfisConvidaveis, pode, SemPermissao, type Quem } from ".";
 
 // Expectativas copiadas à mão do spec §4 (✔ = S, — = N). Os casos ◐ estão mais abaixo.
 const adm: Quem = { tipo: "equipe", id: "adm-1", perfil: "ADM" };
@@ -203,5 +203,15 @@ describe("areasDoPainel(): o menu sai da mesma função", () => {
   it("Associado e visitante não têm menu de painel", () => {
     expect(areasDoPainel(ass)).toEqual([]);
     expect(areasDoPainel(vis)).toEqual([]);
+  });
+});
+
+describe("perfisConvidaveis(): perfis do modal Convidar pessoa", () => {
+  it("na Fase 1, só Administrador geral e Comunicação (CA-US29.3)", () => {
+    expect(perfisConvidaveis(1)).toEqual(["ADM", "COM"]);
+  });
+
+  it("na Fase 2, também Atendimento", () => {
+    expect(perfisConvidaveis(2)).toEqual(["ADM", "COM", "ATD"]);
   });
 });

@@ -73,10 +73,15 @@ pnpm criar-admin --email ana@sintravc.org.br --nome "Ana Souza"
 - `--sem-email`: faz tudo, menos enviar o e-mail; só imprime o link. Use quando o SMTP ainda não estiver pronto e entregue o link à pessoa por um canal seguro.
 - Se o e-mail for inválido ou já estiver cadastrado (sem diferenciar maiúsculas), o comando recusa e não cria nada. Se o envio do e-mail falhar, nada fica gravado e o comando pode ser rodado de novo.
 - O link usa `URL_SITE` (no `.env.local`). Com o app em container: `docker compose exec app pnpm criar-admin …`.
+- O link abre a tela de aceite (`/painel/convite/…`): a pessoa cria a senha, ativa as duas etapas pelo QR code e guarda os 8 códigos de recuperação. O link vale até o fim do aceite; reabrir antes disso recomeça do zero (E37).
+
+## Convidar pela tela
+
+Depois do primeiro ADM, os convites saem por **Equipe e perfis → Convidar pessoa** (só o Administrador geral). Na Fase 1, os perfis são Administrador geral e Comunicação. Em desenvolvimento, abra o e-mail no Mailpit (http://localhost:8025) e siga o botão “Criar minha senha”.
 
 ## Entrar no painel em desenvolvimento
 
-Antes do aceite do convite (#5), use as pessoas de teste. O comando recusa rodar com `NODE_ENV=production`.
+Para não precisar passar pelo convite, use as pessoas de teste. O comando recusa rodar com `NODE_ENV=production`.
 
 ```sh
 pnpm dev:pessoas-teste            # cria adm@sintravc.local (ADM) e com@sintravc.local (Comunicação)
@@ -93,7 +98,7 @@ Regras que valem também aqui: 5 tentativas erradas (senha ou código) bloqueiam
 
 - `pnpm test` roda os testes de unidade e os de integração. Os de integração (`*.int.test.ts`) usam um banco próprio, `sintravc_teste`, que é apagado e recriado a cada rodada. O banco de desenvolvimento não é tocado: a Atividade não deixa apagar nada (RN18).
 - Por padrão, o banco de teste fica no mesmo Postgres de `DATABASE_URL`, com o sufixo `_teste`. Para usar outro, defina `DATABASE_URL_TESTE`.
-- `pnpm test:e2e` compila o app numa pasta própria (`.next-e2e`, sem atrapalhar o `pnpm dev`), sobe na porta 3100 com o banco `sintravc_e2e` (recriado a cada rodada) e testa no Chromium o login, o bloqueio, o menu por perfil, o 403 e a sessão expirada. Na primeira vez, instale o navegador: `pnpm exec playwright install chromium`.
+- `pnpm test:e2e` compila o app numa pasta própria (`.next-e2e`, sem atrapalhar o `pnpm dev`), sobe na porta 3100 com o banco `sintravc_e2e` (recriado a cada rodada) e testa no Chromium o login, o bloqueio, o menu por perfil, o 403, a sessão expirada e o convite do e-mail ao painel. O convite chega pelo Mailpit: suba o compose antes (`docker compose up -d`). Na primeira vez, instale o navegador: `pnpm exec playwright install chromium`.
 
 ## Chave do acesso (`BETTER_AUTH_SECRET`)
 

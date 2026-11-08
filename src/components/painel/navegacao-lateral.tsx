@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { cn } from "@/lib/utils";
+import { NOME_DO_PERFIL, type Perfil } from "@/lib/permissoes";
 import type { GrupoDoMenu } from "@/lib/permissoes/menu";
 
 /** Ícones do Figma (107:715), por nome do item. */
@@ -26,8 +27,6 @@ const ICONES: Record<string, string> = {
   ChartColumn: "/painel/menu-documento.svg",
 };
 
-const PERFIS = { ADM: "Administrador geral", COM: "Comunicação", ATD: "Atendimento" } as const;
-
 function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/);
   return ((partes[0]?.[0] ?? "") + (partes.length > 1 ? (partes.at(-1)?.[0] ?? "") : "")).toUpperCase();
@@ -45,7 +44,7 @@ export function NavegacaoLateral({
 }: {
   grupos: GrupoDoMenu[];
   podeCriarConteudo: boolean;
-  pessoa: { nome: string; perfil: keyof typeof PERFIS };
+  pessoa: { nome: string; perfil: Perfil };
   sair: () => Promise<void>;
 }) {
   const caminho = usePathname();
@@ -157,7 +156,7 @@ export function NavegacaoLateral({
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <p className="truncate texto-titulo-card-pequeno text-texto-invertido">{pessoa.nome}</p>
-          <p className="truncate texto-pequeno text-texto-invertido-sec">{PERFIS[pessoa.perfil]}</p>
+          <p className="truncate texto-pequeno text-texto-invertido-sec">{NOME_DO_PERFIL[pessoa.perfil]}</p>
         </div>
         <form action={sair}>
           <button
