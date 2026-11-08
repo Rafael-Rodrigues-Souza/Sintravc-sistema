@@ -36,6 +36,13 @@
       "when": 1794091321372,
       "tag": "0004_acesso_equipe",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794144935558,
+      "tag": "0005_senha_anterior",
+      "breakpoints": true
     }
   ]
 }

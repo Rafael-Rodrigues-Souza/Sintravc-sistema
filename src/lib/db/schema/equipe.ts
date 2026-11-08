@@ -1,4 +1,4 @@
-import { boolean, customType, integer, pgEnum, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, customType, index, integer, pgEnum, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 import { dataHora, datas, idUuid } from "./comum";
 
@@ -43,3 +43,21 @@ export const convite = pgTable("convite", {
   criadoPor: uuid().references(() => pessoaEquipe.id),
   ...datas,
 });
+
+/**
+ * Senhas anteriores da equipe (RN47): a senha nova não pode repetir as últimas N
+ * (equipe.senhas_anteriores_bloqueadas). Guarda só o hash, inclusive o da senha atual,
+ * e só as N mais recentes de cada pessoa.
+ */
+export const senhaAnterior = pgTable(
+  "senha_anterior",
+  {
+    id: idUuid(),
+    pessoaId: uuid()
+      .notNull()
+      .references(() => pessoaEquipe.id, { onDelete: "cascade" }),
+    senhaHash: text().notNull(),
+    criadaEm: dataHora().notNull().defaultNow(),
+  },
+  (t) => [index().on(t.pessoaId, t.criadaEm)],
+);
