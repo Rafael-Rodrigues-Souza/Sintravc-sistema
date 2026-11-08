@@ -41,12 +41,12 @@ export default async function PaginaEquipe() {
             <span role="columnheader" className="w-[190px] texto-etiqueta text-texto-terciario">Duas etapas</span>
             <span role="columnheader" className="w-[170px] texto-etiqueta text-texto-terciario">Último acesso</span>
           </div>
-          {equipe.map((p) => {
-            const ehVoce = p.id === pessoa.id;
-            const selo = seloDuasEtapas(p);
+          {equipe.map((integrante) => {
+            const ehVoce = integrante.id === pessoa.id;
+            const selo = seloDuasEtapas(integrante);
             return (
               <div
-                key={p.id}
+                key={integrante.id}
                 role="row"
                 className="flex flex-col gap-3 border-b border-borda-padrao px-6 py-3.5 last:border-b-0 md:flex-row md:items-center md:gap-4"
               >
@@ -58,21 +58,21 @@ export default async function PaginaEquipe() {
                       ehVoce ? "bg-destaque-amarelo" : "bg-status-neutro-fundo",
                     )}
                   >
-                    {iniciais(p.nome)}
+                    {iniciais(integrante.nome)}
                   </span>
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <p className="truncate texto-titulo-card-pequeno text-texto-primario">{p.nome}</p>
-                    <p className="truncate texto-pequeno text-texto-secundario">{p.email}</p>
+                    <p className="truncate texto-titulo-card-pequeno text-texto-primario">{integrante.nome}</p>
+                    <p className="truncate texto-pequeno text-texto-secundario">{integrante.email}</p>
                   </div>
                 </div>
                 <div role="cell" className="md:w-[190px]">
-                  <SeloPerfil perfil={p.perfil} />
+                  <SeloPerfil perfil={integrante.perfil} />
                 </div>
                 <div role="cell" className="md:w-[190px]">
                   <SeloSituacao selo={selo} />
                 </div>
                 <p role="cell" className="texto-pequeno text-texto-secundario md:w-[170px]">
-                  {ultimoAcessoNaLista(p, { agora, ehVoce })}
+                  {ultimoAcessoNaLista(integrante, { agora, ehVoce })}
                 </p>
               </div>
             );
@@ -85,7 +85,7 @@ export default async function PaginaEquipe() {
 
 /** "Mariana Souza" → "MS". Ignora o que não começa com letra, como "(teste)". */
 function iniciais(nome: string) {
-  const partes = nome.split(/\s+/).filter((p) => /^\p{L}/u.test(p));
+  const partes = nome.split(/\s+/).filter((palavra) => /^\p{L}/u.test(palavra));
   return ((partes[0]?.[0] ?? "") + (partes.length > 1 ? (partes.at(-1)?.[0] ?? "") : "")).toUpperCase();
 }
 

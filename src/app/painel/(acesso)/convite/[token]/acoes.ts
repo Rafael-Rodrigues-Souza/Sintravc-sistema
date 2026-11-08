@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { DIGITOS_TOTP } from "@/lib/acesso/opcoes-totp";
 import type { RequisitoDaSenha } from "@/lib/acesso/senha";
 import { concluirConvite, confirmarDuasEtapas, criarSenhaDoConvite } from "@/lib/equipe/aceite";
 
@@ -36,7 +37,7 @@ export async function acaoConfirmarDuasEtapas(
 ): Promise<EstadoDuasEtapas> {
   const token = String(formulario.get("token") ?? "");
   const codigo = String(formulario.get("codigo") ?? "").replace(/\D/g, "");
-  if (codigo.length !== 6) return { erro: "Digite os 6 números que aparecem no aplicativo." };
+  if (codigo.length !== DIGITOS_TOTP) return { erro: `Digite os ${DIGITOS_TOTP} números que aparecem no aplicativo.` };
 
   const resultado = await confirmarDuasEtapas({ token, codigo }, { cabecalhos: await headers() });
   switch (resultado.tipo) {

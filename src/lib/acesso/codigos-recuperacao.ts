@@ -4,7 +4,7 @@ import { symmetricEncrypt } from "better-auth/crypto";
 
 import { lerParametro } from "@/lib/parametros";
 
-import { auth } from "./auth";
+import { registroDuasEtapas } from "./duas-etapas";
 
 /**
  * Gera os códigos de recuperação da pessoa (RN49) e troca os que ela tinha: os antigos deixam de valer.
@@ -28,12 +28,7 @@ function novoCodigo() {
 
 export async function gerarCodigosRecuperacao(pessoaId: string): Promise<string[]> {
   const quantidade = await lerParametro("equipe.codigos_recuperacao");
-  const contexto = await auth().$context;
-
-  const registro = await contexto.adapter.findOne<{ id: string }>({
-    model: "twoFactor",
-    where: [{ field: "userId", value: pessoaId }],
-  });
+  const { contexto, registro } = await registroDuasEtapas(pessoaId);
   if (!registro) throw new Error("A pessoa ainda não configurou as duas etapas: não há onde guardar os códigos.");
 
   const codigos = new Set<string>();

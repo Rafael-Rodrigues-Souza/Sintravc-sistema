@@ -7,6 +7,8 @@ import { banco } from "@/lib/db";
 import { contaLogin, duasEtapas, pessoaEquipe, sessao, verificacao } from "@/lib/db/schema";
 import { lerEnvAcesso } from "@/lib/env";
 
+import { OPCOES_TOTP } from "./opcoes-totp";
+
 /**
  * Better Auth da equipe (E35, E36). A pessoa_equipe é a tabela de usuários; as outras tabelas
  * têm nomes em português e o mapeamento está aqui.
@@ -104,6 +106,7 @@ function criarAuth() {
       // então as duas etapas valem a cada login (E05, RNF02).
       twoFactor({
         issuer: "SINTRAVC",
+        totpOptions: OPCOES_TOTP,
         // O bloqueio é o nosso (RN05), com uma contagem só para senha e código.
         accountLockout: { enabled: false },
         schema: {

@@ -90,12 +90,12 @@ export function ConvidarPessoa({ perfis, validadeHoras }: { perfis: Perfil[]; va
                 aria-invalid={estado.erros?.perfil ? true : undefined}
                 aria-describedby={estado.erros?.perfil ? "convite-perfil-erro" : undefined}
               >
-                {perfis.map((p) => {
-                  const marcado = (perfil || valores?.perfil) === p;
+                {perfis.map((opcao) => {
+                  const marcado = (perfil || valores?.perfil) === opcao;
                   return (
                     <Label
-                      key={p}
-                      htmlFor={`convite-perfil-${p}`}
+                      key={opcao}
+                      htmlFor={`convite-perfil-${opcao}`}
                       className={cn(
                         "cursor-pointer items-start gap-3 rounded-[12px] border px-3.5 py-3 transition-colors",
                         marcado
@@ -103,10 +103,10 @@ export function ConvidarPessoa({ perfis, validadeHoras }: { perfis: Perfil[]; va
                           : "border-borda-padrao hover:bg-fundo-superficie-alt",
                       )}
                     >
-                      <RadioGroupItem id={`convite-perfil-${p}`} value={p} className="mt-0.5" />
+                      <RadioGroupItem id={`convite-perfil-${opcao}`} value={opcao} className="mt-0.5" />
                       <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className="texto-titulo-card-pequeno text-texto-primario">{NOME_DO_PERFIL[p]}</span>
-                        <span className="texto-pequeno font-medium text-texto-secundario">{DESCRICAO_DO_PERFIL[p]}</span>
+                        <span className="texto-titulo-card-pequeno text-texto-primario">{NOME_DO_PERFIL[opcao]}</span>
+                        <span className="texto-pequeno font-medium text-texto-secundario">{DESCRICAO_DO_PERFIL[opcao]}</span>
                       </span>
                     </Label>
                   );
