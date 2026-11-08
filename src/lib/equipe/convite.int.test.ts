@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { banco } from "@/lib/db";
 import { atividade, convite, pessoaEquipe } from "@/lib/db/schema";
 import type { Mensagem } from "@/lib/email";
-import { dataHoraDoEmail } from "@/lib/email/modelos";
+import { dataHoraNaBahia } from "@/lib/datas";
 
 import { convidarPessoa, criarConviteAdmin, ErroCriarAdmin } from "./convite";
 
@@ -70,7 +70,7 @@ describe("criarConviteAdmin", () => {
     expect(mensagem.para).toBe("ana@sintravc.local");
     expect(mensagem.texto).toContain(resultado.link);
     // M01: a data e a hora do fim do link, no horário da Bahia (48 h depois).
-    expect(mensagem.texto).toContain(`O link vale até ${dataHoraDoEmail(registro!.expiraEm)}`);
+    expect(mensagem.texto).toContain(`O link vale até ${dataHoraNaBahia(registro!.expiraEm)}`);
     expect(mensagem.texto).toContain("Administrador geral");
     expect(resultado.emailEnviado).toBe(true);
   });

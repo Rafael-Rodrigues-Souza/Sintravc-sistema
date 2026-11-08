@@ -7,7 +7,8 @@ import { registrarAtividade, type Ator } from "@/lib/atividade";
 import { banco, type Transacao } from "@/lib/db";
 import { convite, pessoaEquipe } from "@/lib/db/schema";
 import { enviarEmail, type Mensagem } from "@/lib/email";
-import { dataHoraDoEmail, mensagemConviteEquipe } from "@/lib/email/modelos";
+import { mensagemConviteEquipe } from "@/lib/email/modelos";
+import { dataHoraNaBahia } from "@/lib/datas";
 import { lerParametro } from "@/lib/parametros";
 import { FASE_ATUAL, NOME_DO_PERFIL, perfisConvidaveis, type Perfil } from "@/lib/permissoes";
 
@@ -94,7 +95,7 @@ async function gravarEEnviarConvite({ tx, pessoa, quem, urlSite, enviar, acao, d
         convidadoPor: quem?.nome,
         perfil: NOME_DO_PERFIL[pessoa.perfil],
         link,
-        valeAte: dataHoraDoEmail(expiraEm),
+        valeAte: dataHoraNaBahia(expiraEm),
         urlSite,
       }),
     );

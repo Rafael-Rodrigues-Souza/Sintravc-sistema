@@ -1,4 +1,5 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { auth } from "@/lib/acesso/auth";
 import { cookiesDe } from "@/lib/acesso/cookies";
@@ -27,7 +28,18 @@ import { hashDoToken } from "./convite";
  */
 
 export type PessoaConvidada = { id: string; nome: string; email: string; perfil: Perfil };
-export type ConviteAberto = { tipo: "valido"; conviteId: string; pessoa: PessoaConvidada } | { tipo: "invalido" };
+export type ConviteAberto =
+  | {
+      tipo: "valido";
+      conviteId: string;
+      pessoa: PessoaConvidada;
+      expiraEm: Date;
+      /** Nome de quem convidou; vazio quando veio do pnpm criar-admin. */
+      convidadoPor?: string;
+    }
+  | { tipo: "invalido" };
+
+const quemConvidou = alias(pessoaEquipe, "quem_convidou");
 
 /** Vencido, usado, inexistente ou de quem não está mais pendente: a mesma resposta (CA-US40.4). */
 export async function abrirConvite(token: string, agora = new Date()): Promise<ConviteAberto> {
@@ -40,14 +52,17 @@ export async function abrirConvite(token: string, agora = new Date()): Promise<C
       email: pessoaEquipe.email,
       perfil: pessoaEquipe.perfil,
       situacao: pessoaEquipe.situacao,
+      expiraEm: convite.expiraEm,
+      convidadoPor: quemConvidou.nome,
     })
     .from(convite)
     .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, convite.pessoaId))
+    .leftJoin(quemConvidou, eq(quemConvidou.id, convite.criadoPor))
     .where(and(eq(convite.tokenHash, hashDoToken(token)), isNull(convite.usadoEm), gt(convite.expiraEm, agora)));
   if (!linha || linha.situacao !== "pendente") return { tipo: "invalido" };
 
-  const { conviteId, id, nome, email, perfil } = linha;
-  return { tipo: "valido", conviteId, pessoa: { id, nome, email, perfil } };
+  const { conviteId, id, nome, email, perfil, expiraEm, convidadoPor } = linha;
+  return { tipo: "valido", conviteId, pessoa: { id, nome, email, perfil }, expiraEm, convidadoPor: convidadoPor ?? undefined };
 }
 
 /** De quem é a sessão destes cabeçalhos (a provisória do aceite, ou nenhuma). */
@@ -58,8 +73,8 @@ async function pessoaDaSessao(cabecalhos: Headers): Promise<string | undefined> 
 
 export type EtapaDoConvite =
   | { tipo: "invalido" }
-  | { tipo: "criar_senha"; pessoa: PessoaConvidada }
-  | { tipo: "duas_etapas"; pessoa: PessoaConvidada; uri: string; chave: string };
+  | { tipo: "criar_senha"; convite: Extract<ConviteAberto, { tipo: "valido" }> }
+  | { tipo: "duas_etapas"; convite: Extract<ConviteAberto, { tipo: "valido" }>; uri: string; chave: string };
 
 /**
  * Em que passo a tela do link deve abrir. Só segue para as duas etapas quem tem a sessão
@@ -70,10 +85,10 @@ export async function etapaDoConvite(token: string, cabecalhos: Headers): Promis
   if (aberto.tipo === "invalido") return aberto;
   const { pessoa } = aberto;
 
-  if ((await pessoaDaSessao(cabecalhos)) !== pessoa.id) return { tipo: "criar_senha", pessoa };
+  if ((await pessoaDaSessao(cabecalhos)) !== pessoa.id) return { tipo: "criar_senha", convite: aberto };
   const qr = await dadosDoQr(pessoa.id, pessoa.email);
-  if (!qr) return { tipo: "criar_senha", pessoa };
-  return { tipo: "duas_etapas", pessoa, ...qr };
+  if (!qr) return { tipo: "criar_senha", convite: aberto };
+  return { tipo: "duas_etapas", convite: aberto, ...qr };
 }
 
 export type ResultadoCriarSenha =

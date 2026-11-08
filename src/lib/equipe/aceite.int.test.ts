@@ -10,7 +10,7 @@ import { confirmarCodigo, entrar } from "@/lib/acesso/entrar";
 import { codigoTotp } from "@/lib/acesso/totp";
 
 import { abrirConvite, concluirConvite, confirmarDuasEtapas, criarSenhaDoConvite, etapaDoConvite } from "./aceite";
-import { criarConviteAdmin, hashDoToken, reenviarConvite } from "./convite";
+import { convidarPessoa, criarConviteAdmin, hashDoToken, reenviarConvite } from "./convite";
 
 const URL_SITE = "http://localhost:3000";
 let contador = 0;
@@ -30,6 +30,20 @@ describe("abrirConvite (CA-US40.1, CA-US40.4)", () => {
       tipo: "valido",
       pessoa: { id: c.pessoaId, nome: "Paula Reis", email: c.email, perfil: "ADM" },
     });
+  });
+
+  it("o convite feito pela tela diz quem convidou e até quando vale", async () => {
+    const [adm] = await banco()
+      .insert(pessoaEquipe)
+      .values({ nome: "Mariana Souza", email: `mariana-aceite-${Date.now()}@sintravc.local`, perfil: "ADM", situacao: "ativa" })
+      .returning({ id: pessoaEquipe.id, nome: pessoaEquipe.nome });
+    const textos: string[] = [];
+    const { expiraEm } = await convidarPessoa(
+      { nome: "Paulo Lima", email: `paulo-aceite-${Date.now()}@sintravc.local`, perfil: "COM" },
+      { quem: adm!, urlSite: URL_SITE, enviar: async (m) => (textos.push(m.texto), { idMensagem: "" }) },
+    );
+    const token = textos[0]!.match(/\/painel\/convite\/([\w-]+)/)![1]!;
+    expect(await abrirConvite(token)).toMatchObject({ tipo: "valido", convidadoPor: "Mariana Souza", expiraEm });
   });
 
   it("o convite que passou de 48 h não vale", async () => {
@@ -97,7 +111,7 @@ describe("criarSenhaDoConvite e etapaDoConvite (CA-US40.1, CA-US40.2)", () => {
     const cabecalhos = await criarSenha(c);
 
     const etapa = await etapaDoConvite(c.token, cabecalhos);
-    expect(etapa).toMatchObject({ tipo: "duas_etapas", pessoa: { id: c.pessoaId } });
+    expect(etapa).toMatchObject({ tipo: "duas_etapas", convite: { pessoa: { id: c.pessoaId } } });
     if (etapa.tipo !== "duas_etapas") return;
     const uri = new URL(etapa.uri);
     expect(uri.protocol).toBe("otpauth:");
