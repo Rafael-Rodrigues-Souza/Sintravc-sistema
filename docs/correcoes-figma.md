@@ -34,6 +34,7 @@
 | E05 | Login · Verificação em duas etapas (169:18895) | Caixa “Confiar neste computador por 30 dias”. | Sem a caixa: as duas etapas são pedidas a cada login, e a sessão termina em 2 h sem uso ou 12 h após o login. | E05, RNF02 | ☐ |
 | E37 | Primeiro acesso · Ativar duas etapas (262:40216) | A chave para digitar tem 16 caracteres (“JBSW Y3DP EHPK 3PXP”). | A chave tem 52 caracteres, em grupos de 4 (é o segredo que o Better Auth gera). A coluna da chave precisa aceitar 3 linhas. | E36, E37 | ☐ |
 | E37 | Primeiro acesso · Códigos de recuperação (262:40453) | Códigos no formato `7F3K-92QD` (4 + 4). | Formato `W32Y3-K8AZU` (5 + 5), só maiúsculas e algarismos sem 0/O, 1/I/L. | RN49, E37 | ☐ |
+| E37 | Primeiro acesso · Códigos de recuperação (262:40453) | O alerta “Eles não aparecem de novo” só fala do celular perdido. | O alerta também diz: “Se você recarregar esta página antes de confirmar, serão gerados códigos novos e os anteriores deixam de valer.” | RN49, CA-US40.3, E37 | ☐ |
 | M01 | E-mail · Convite para a equipe (265:40803) | Só o botão “Criar minha senha” leva ao link. Exemplo com perfil Atendimento e serviços. | Abaixo do botão, uma linha com o endereço para copiar, caso o botão não abra no programa de e-mail. Na Fase 1, sem a linha “Serviços”. | RN46, CA-US29.3 | ☐ |
 
 ## Telas a desenhar (novas)

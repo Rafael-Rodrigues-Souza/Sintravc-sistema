@@ -134,6 +134,7 @@ test.describe.serial("convite de uma pessoa da Comunicação, do e-mail ao paine
     await page.getByRole("button", { name: "Ativar e continuar" }).click();
     await expect(page.getByRole("heading", { name: "Guarde seus códigos" })).toBeVisible();
     await expect(page.getByRole("list", { name: "Códigos de recuperação" }).getByRole("listitem")).toHaveCount(8);
+    await expect(page.getByText(/Se você recarregar esta página antes de confirmar, serão gerados códigos novos/)).toBeVisible();
 
     const entrarNoPainel = page.getByRole("button", { name: "Entrar no painel" });
     await expect(entrarNoPainel).toBeDisabled();

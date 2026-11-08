@@ -7,6 +7,7 @@ import type { Perfil } from "@/lib/permissoes";
 import { auth } from "./auth";
 import { gerarCodigosRecuperacao } from "./codigos-recuperacao";
 import { cookiesDe } from "./cookies";
+import { gravarSenha } from "./senha-anterior";
 import { codigoTotp } from "./totp";
 
 export { codigoTotp, cookiesDe };
@@ -54,12 +55,9 @@ export async function criarPessoaDeTeste(dados: {
     .returning({ id: pessoaEquipe.id });
   if (!pessoa) throw new Error("O banco não devolveu a pessoa criada.");
 
-  await contexto.internalAdapter.linkAccount({
-    userId: pessoa.id,
-    providerId: "credential",
-    accountId: pessoa.id,
-    password: await contexto.password.hash(dados.senha),
-  });
+  // A senha e o histórico, pelo mesmo caminho do aceite do convite (RN47).
+  const senhaHash = await contexto.password.hash(dados.senha);
+  await banco().transaction((tx) => gravarSenha(tx, pessoa.id, senhaHash));
 
   // Uma sessão provisória, só para ativar as duas etapas (como no aceite do convite).
   const login = await auth().api.signInEmail({

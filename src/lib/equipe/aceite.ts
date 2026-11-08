@@ -6,10 +6,10 @@ import { cookiesDe } from "@/lib/acesso/cookies";
 import { gerarCodigosRecuperacao } from "@/lib/acesso/codigos-recuperacao";
 import { ativarDuasEtapas, conferirCodigoDoApp, dadosDoQr } from "@/lib/acesso/duas-etapas";
 import { validarSenhaDaEquipe, type RequisitoDaSenha } from "@/lib/acesso/senha";
-import { apagarSenhasAnteriores, registrarSenha } from "@/lib/acesso/senha-anterior";
+import { apagarSenhasAnteriores, gravarSenha } from "@/lib/acesso/senha-anterior";
 import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
-import { convite, pessoaEquipe } from "@/lib/db/schema";
+import { convite, duasEtapas, pessoaEquipe, sessao } from "@/lib/db/schema";
 import { lerParametro } from "@/lib/parametros";
 import type { Perfil } from "@/lib/permissoes";
 
@@ -118,22 +118,14 @@ export async function criarSenhaDoConvite(
   if (faltando.length > 0) return { tipo: "senha_fraca", faltando };
   if (dados.senha !== dados.confirmacao) return { tipo: "confirmacao_diferente" };
 
-  const contexto = await auth().$context;
-  await contexto.internalAdapter.deleteUserSessions(pessoa.id);
-  await contexto.internalAdapter.deleteAccounts(pessoa.id);
-  await contexto.adapter.deleteMany({ model: "twoFactor", where: [{ field: "userId", value: pessoa.id }] });
-  await contexto.internalAdapter.updateUser(pessoa.id, { twoFactorEnabled: false });
-
-  const senhaHash = await contexto.password.hash(dados.senha);
-  await contexto.internalAdapter.linkAccount({
-    userId: pessoa.id,
-    providerId: "credential",
-    accountId: pessoa.id,
-    password: senhaHash,
-  });
+  // Recomeço e senha nova numa transação só: se algo falhar, a pessoa fica como estava.
+  const senhaHash = await (await auth().$context).password.hash(dados.senha);
   await banco().transaction(async (tx) => {
+    await tx.delete(sessao).where(eq(sessao.pessoaId, pessoa.id));
+    await tx.delete(duasEtapas).where(eq(duasEtapas.pessoaId, pessoa.id));
+    await tx.update(pessoaEquipe).set({ duasEtapasAtivas: false }).where(eq(pessoaEquipe.id, pessoa.id));
     await apagarSenhasAnteriores(tx, pessoa.id);
-    await registrarSenha(tx, pessoa.id, senhaHash);
+    await gravarSenha(tx, pessoa.id, senhaHash);
   });
 
   // Sessão provisória: a pessoa ainda não tem as duas etapas, então o Better Auth cria a sessão
