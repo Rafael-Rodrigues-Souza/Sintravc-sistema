@@ -6,9 +6,10 @@ import type { Perfil } from "@/lib/permissoes";
 
 import { auth } from "./auth";
 import { gerarCodigosRecuperacao } from "./codigos-recuperacao";
+import { cookiesDe } from "./cookies";
 import { codigoTotp } from "./totp";
 
-export { codigoTotp };
+export { codigoTotp, cookiesDe };
 
 /**
  * Pessoas da equipe para testes e para o desenvolvimento (pnpm dev:pessoas-teste).
@@ -93,13 +94,4 @@ export async function criarPessoaDeTeste(dados: {
     uriTotp: ativacao.totpURI,
     codigosRecuperacao,
   };
-}
-
-/** Junta os Set-Cookie de uma resposta num cabeçalho Cookie para a próxima chamada. */
-export function cookiesDe(cabecalhos: Headers): string {
-  return cabecalhos
-    .getSetCookie()
-    .map((linha) => linha.split(";")[0])
-    .filter((par): par is string => Boolean(par) && !par!.endsWith("="))
-    .join("; ");
 }
