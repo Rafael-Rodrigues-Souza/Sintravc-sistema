@@ -41,6 +41,11 @@ function criarAuth() {
       "/two-factor/verify-backup-code",
       "/two-factor/send-otp",
       "/two-factor/verify-otp",
+      // Nova senha só pelo nosso fluxo (nova-senha.ts), que aplica a RN47 (E38).
+      "/request-password-reset",
+      "/reset-password",
+      "/reset-password/:token",
+      "/change-password",
       "/update-user",
       "/change-email",
       "/delete-user",

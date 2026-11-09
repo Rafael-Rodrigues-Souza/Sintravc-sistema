@@ -40,7 +40,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 | **SenhaAnterior** | `pessoa_id` FK; `senha_hash`; `criada_em` | Guarda o hash de cada senha nova, inclusive a atual, e só as N últimas (`equipe.senhas_anteriores_bloqueadas`, 3). A senha nova não pode ser igual a nenhuma delas (RN47, E37). Gravada na mesma transação da senha do login (`gravarSenha()`). |
 | **Códigos de recuperação** | ficam em **DuasEtapas** (E36), não numa tabela própria | 8 por ativação (`equipe.codigos_recuperacao`), gerados pelo sistema no formato `XXXXX-XXXXX`, só maiúsculas e algarismos sem 0/O, 1/I/L; uso único, conferidos pelo plugin; redefinir as duas etapas invalida todos (RN49, E37). |
 | **Convite** | `id`; `pessoa_id` FK; `token_hash` UQ; `expira_em` (+48 h); `usado_em?`; `criado_por?` FK | Reenviar invalida o anterior (`expira_em` = agora) (RN46). O convite só é gasto (`usado_em`) quando a pessoa conclui o aceite; até lá, reabrir o link recomeça do zero (E37). `criado_por` fica vazio quando o convite nasce pelo `pnpm criar-admin` (E33, E35). |
-| **TokenSenha** | `id`; `sujeito` (equipe ou associado); `sujeito_id`; `token_hash` UQ; `expira_em` (+1 h); `usado_em?` | Uso único (RN48, RN52). |
+| **TokenSenha** | `id`; `sujeito` (equipe ou associado); `sujeito_id`; `token_hash` UQ; `expira_em` (+1 h); `usado_em?` | Uso único (RN48, RN52). Só o link mais novo vale, com um pedido por minuto (`equipe.link_senha_intervalo_segundos`). Não usa o reset do Better Auth (E38). |
 | **Sessao** | gerida pelo Better Auth; `pessoa_id`; `token`; `expira_em`; `ultimo_uso`; `criado_em` | Equipe: 2 h sem uso ou 12 h após o login (E05), conferidos a cada requisição com os valores do `Parametro` (E36). Associado: RN51. |
 | **ResponsavelServico** (Fase 2) | `pessoa_id` FK; `servico_id` FK; PK composta | Só para o perfil ATD (RN19). |
 
@@ -112,7 +112,7 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
 - **Equipe.**
   - Entra por convite de 48 h: cria a senha (RN47), ativa as duas etapas pelo QR e recebe 8 códigos de recuperação (RN46, RN49).
   - Login com e-mail, senha e TOTP ou código de recuperação. 5 erros bloqueiam por 15 min e avisam o ADM por e-mail (RN05, E21).
-  - Recupera a senha sozinha: link de 1 h, resposta genérica, encerra as outras sessões e envia e-mail de senha alterada (RN48).
+  - Recupera a senha sozinha: link de 1 h, resposta genérica, encerra as outras sessões e envia e-mail de senha alterada (RN48). A troca pelo link libera a conta bloqueada (E38).
   - Sessão: 2 h sem uso ou 12 h (E05).
   - Sempre ≥ 2 ADMs ativos (RN50).
   - As três regras de segurança são fixas (C9).

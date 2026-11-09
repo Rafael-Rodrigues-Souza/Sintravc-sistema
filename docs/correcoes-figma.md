@@ -36,6 +36,11 @@
 | E37 | Primeiro acesso · Códigos de recuperação (262:40453) | Códigos no formato `7F3K-92QD` (4 + 4). | Formato `W32Y3-K8AZU` (5 + 5), só maiúsculas e algarismos sem 0/O, 1/I/L. | RN49, E37 | ☐ |
 | E37 | Primeiro acesso · Códigos de recuperação (262:40453) | O alerta “Eles não aparecem de novo” só fala do celular perdido. | O alerta também diz: “Se você recarregar esta página antes de confirmar, serão gerados códigos novos e os anteriores deixam de valer.” | RN49, CA-US40.3, E37 | ☐ |
 | M01 | E-mail · Convite para a equipe (265:40803) | Só o botão “Criar minha senha” leva ao link. Exemplo com perfil Atendimento e serviços. | Abaixo do botão, uma linha com o endereço para copiar, caso o botão não abra no programa de e-mail. Na Fase 1, sem a linha “Serviços”. | RN46, CA-US29.3 | ☐ |
+| E38 | Redefinir senha · Nova senha (262:40849) | Requisitos sem “Diferente do e-mail e do nome”; “Diferente das 3 últimas senhas” aparece marcado como atendido enquanto a pessoa digita. | Acrescentar “Diferente do e-mail e do nome” (RN47). “Diferente das 3 últimas senhas” fica neutro: só o servidor confere, ao salvar, e responde com um alerta de erro. | RN47, E38 | ☐ |
+| E38 | Esqueci minha senha (262:40675 / 265:40937) | Ícone de cadeado no campo “E-mail de trabalho”. | Ícone de e-mail, como no login da equipe. | — | ☐ |
+| M02 | E-mail · Redefinir senha (265:40830) | Só o botão “Criar nova senha” leva ao link. | Abaixo do botão, uma linha com o endereço para copiar, como no M01. | RN48 | ☐ |
+| E38 | E-mails · Senha alterada (265:40852) e Conta bloqueada (295:43855 / 295:43874) | “Onde: Navegador Chrome · Vitória da Conquista – BA (aprox.)”. | Só o navegador e o sistema (ex.: “Navegador Chrome · Windows”). A cidade exigiria um serviço de localização por IP. | E38 | ☐ |
+| E36 | E-mails · Conta bloqueada (295:43855 / 295:43874) | “5 tentativas de entrar com a senha errada” / “5 tentativas de senha errada”. | “5 tentativas erradas (senha ou código)”: senha e código contam juntos. | RN05, E36 | ☐ |
 
 ## Telas a desenhar (novas)
 

@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
+import type { Mensagem } from "@/lib/email";
 import { atividade, pessoaEquipe, sessao } from "@/lib/db/schema";
 
 import { confirmarCodigo, entrar } from "./entrar";
@@ -21,10 +22,22 @@ async function novaPessoa(perfil: "ADM" | "COM" = "COM"): Promise<PessoaDeTeste>
   });
 }
 
-async function errarSenha(p: PessoaDeTeste, vezes: number, agora = new Date()) {
+async function errarSenha(p: PessoaDeTeste, vezes: number, agora = new Date(), enviar?: Enviar) {
   let ultimo;
-  for (let i = 0; i < vezes; i++) ultimo = await entrar({ email: p.email, senha: "senha-errada-1" }, { agora });
+  for (let i = 0; i < vezes; i++) ultimo = await entrar({ email: p.email, senha: "senha-errada-1" }, { agora, enviar });
   return ultimo;
+}
+
+type Enviar = (mensagem: Mensagem) => Promise<{ idMensagem: string }>;
+
+/** Guarda os e-mails em vez de enviar. */
+function caixaDeSaida() {
+  const enviados: Mensagem[] = [];
+  const enviar: Enviar = async (mensagem) => {
+    enviados.push(mensagem);
+    return { idMensagem: String(enviados.length) };
+  };
+  return { enviados, enviar };
 }
 
 /** Senha e código certos. Devolve o resultado final. */
@@ -173,3 +186,102 @@ describe("quem não entra", () => {
     expect(await banco().select().from(sessao).where(eq(sessao.pessoaId, p.id))).toHaveLength(0);
   });
 });
+
+/** Senha certa e, no lugar do código do aplicativo, um código de recuperação (US42). */
+async function entrarComRecuperacao(p: PessoaDeTeste, codigo: string, agora = new Date()) {
+  const primeira = await entrar({ email: p.email, senha: p.senha }, { agora });
+  if (primeira.tipo !== "precisa_codigo") return primeira;
+  return confirmarCodigo(
+    { codigo, tipo: "recuperacao" },
+    { cabecalhos: new Headers({ cookie: cookiesDe(primeira.cabecalhos) }), agora },
+  );
+}
+
+describe("código de recuperação (US42, RN49)", () => {
+  it("um código válido entra, cria a sessão e fica registrado na Atividade (CA-US42.1)", async () => {
+    const p = await novaPessoa();
+
+    const r = await entrarComRecuperacao(p, p.codigosRecuperacao[0]!);
+
+    expect(r.tipo).toBe("entrou");
+    expect(await banco().select().from(sessao).where(eq(sessao.pessoaId, p.id))).toHaveLength(1);
+    const [registro] = await banco()
+      .select({ acao: atividade.acao, detalhe: atividade.detalhe })
+      .from(atividade)
+      .where(and(eq(atividade.alvoId, p.id), eq(atividade.area, "acesso")));
+    expect(registro?.acao).toBe("acesso.entrar");
+    expect(registro?.detalhe).toMatchObject({ metodo: "codigo_recuperacao", codigosRestantes: 7 });
+  });
+
+  it("um código já usado não vale mais e não entra (CA-US42.2)", async () => {
+    const p = await novaPessoa();
+    const codigo = p.codigosRecuperacao[0]!;
+    await entrarComRecuperacao(p, codigo);
+
+    expect(await entrarComRecuperacao(p, codigo)).toEqual({ tipo: "invalido" });
+  });
+
+  it("códigos de recuperação errados contam com as senhas erradas e bloqueiam na 5ª (RN05)", async () => {
+    const p = await novaPessoa();
+    await errarSenha(p, 3);
+    expect(await entrarComRecuperacao(p, "AAAAA-BBBBB")).toEqual({ tipo: "invalido" });
+
+    const r = await entrarComRecuperacao(p, "AAAAA-CCCCC");
+
+    expect(r.tipo).toBe("bloqueada");
+    expect(await acoesNaAtividade(p.id)).toEqual(["acesso.bloquear"]);
+  });
+});
+
+describe("e-mail de conta bloqueada (CA-US19.4, RN59, M04)", () => {
+  it("4 tentativas erradas não mandam e-mail", async () => {
+    const p = await novaPessoa();
+    const { enviados, enviar } = caixaDeSaida();
+
+    await errarSenha(p, 4, new Date(), enviar);
+
+    expect(enviados).toEqual([]);
+  });
+
+  it("no bloqueio, avisa a pessoa e cada administrador geral ativo", async () => {
+    const adm = await novaPessoa("ADM");
+    const admDesativado = await novaPessoa("ADM");
+    await banco().update(pessoaEquipe).set({ situacao: "desativada" }).where(eq(pessoaEquipe.id, admDesativado.id));
+    const p = await novaPessoa();
+    const { enviados, enviar } = caixaDeSaida();
+
+    await errarSenha(p, 5, new Date(), enviar);
+
+    const paraPessoa = enviados.filter((m) => m.para === p.email);
+    expect(paraPessoa).toHaveLength(1);
+    expect(paraPessoa[0]!.assunto).toBe("Seu acesso ao painel foi bloqueado por 15 minutos");
+    const paraAdm = enviados.filter((m) => m.para === adm.email);
+    expect(paraAdm).toHaveLength(1);
+    expect(paraAdm[0]!.assunto).toBe(`A conta de ${p.nome} foi bloqueada por tentativas`);
+    expect(enviados.some((m) => m.para === admDesativado.email)).toBe(false);
+  });
+
+  it("se quem foi bloqueado é administrador geral, recebe só o aviso da própria conta", async () => {
+    const adm = await novaPessoa("ADM");
+    const { enviados, enviar } = caixaDeSaida();
+
+    await errarSenha(adm, 5, new Date(), enviar);
+
+    expect(enviados.filter((m) => m.para === adm.email).map((m) => m.assunto)).toEqual([
+      "Seu acesso ao painel foi bloqueado por 15 minutos",
+    ]);
+  });
+
+  it("se o e-mail falhar, a conta continua bloqueada", async () => {
+    const p = await novaPessoa();
+    const enviar: Enviar = async () => {
+      throw new Error("SMTP fora do ar");
+    };
+
+    const r = await errarSenha(p, 5, new Date(), enviar);
+
+    expect(r?.tipo).toBe("bloqueada");
+    expect((await lerPessoa(p.id)).bloqueadaAte).not.toBeNull();
+  });
+});
+

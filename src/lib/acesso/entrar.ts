@@ -4,16 +4,20 @@ import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { pessoaEquipe, verificacao } from "@/lib/db/schema";
+import { enviarEmail } from "@/lib/email";
 import { lerParametro } from "@/lib/parametros";
 
 import { auth } from "./auth";
+import { avisarContaBloqueada, type Enviar } from "./avisos";
+import { quantosCodigosRestam } from "./codigos-recuperacao";
 
 /**
  * Login da equipe (RN04, RN05; CA-US19.1 e 19.2). É o único caminho de entrada: as rotas HTTP
  * de login do Better Auth estão desligadas (auth.ts).
  *
  * 1. entrar(): e-mail e senha. Se estiverem certos, o Better Auth abre o desafio das duas etapas.
- * 2. confirmarCodigo(): o código do aplicativo autenticador. Se estiver certo, cria a sessão.
+ * 2. confirmarCodigo(): o código do aplicativo autenticador ou um código de recuperação (RN49).
+ *    Se estiver certo, cria a sessão.
  *
  * Senha errada e código errado contam juntos. Na 5ª tentativa errada, a conta fica bloqueada
  * por 15 minutos (valores do Parametro). Entrar, bloquear e desbloquear ficam na Atividade.
@@ -32,13 +36,15 @@ type Opcoes = {
   cabecalhos?: Headers;
   /** Relógio das regras de bloqueio. Só os testes mudam. */
   agora?: Date;
+  /** Envio do e-mail de conta bloqueada (M04). Só os testes mudam. */
+  enviar?: Enviar;
 };
 
 type Pessoa = typeof pessoaEquipe.$inferSelect;
 
 export async function entrar(
   dados: { email: string; senha: string },
-  { cabecalhos = new Headers(), agora = new Date() }: Opcoes = {},
+  { cabecalhos = new Headers(), agora = new Date(), enviar = enviarEmail }: Opcoes = {},
 ): Promise<Resultado> {
   const email = dados.email.trim();
   const [encontrada] = await banco().select().from(pessoaEquipe).where(eq(pessoaEquipe.email, email));
@@ -61,14 +67,22 @@ export async function entrar(
     }
     return { tipo: "precisa_codigo", cabecalhos: resposta.headers };
   } catch (erro) {
-    if (codigoDoErro(erro) === "INVALID_EMAIL_OR_PASSWORD") return registrarErro(pessoa.id, agora);
+    if (codigoDoErro(erro) === "INVALID_EMAIL_OR_PASSWORD") return registrarErro(pessoa.id, { agora, cabecalhos, enviar });
     throw erro;
   }
 }
 
 export async function confirmarCodigo(
-  dados: { codigo: string },
-  { cabecalhos = new Headers(), agora = new Date() }: Opcoes = {},
+  dados: {
+    codigo: string;
+    /**
+     * "app": os 6 números do aplicativo autenticador (padrão).
+     * "recuperacao": um código de recuperação de uso único, já no formato XXXXX-XXXXX
+     * (normalizarCodigoRecuperacao). Conta na mesma contagem de tentativas (RN05, E36).
+     */
+    tipo?: "app" | "recuperacao";
+  },
+  { cabecalhos = new Headers(), agora = new Date(), enviar = enviarEmail }: Opcoes = {},
 ): Promise<Resultado> {
   const pessoaId = await pessoaDoDesafio(cabecalhos);
   if (!pessoaId) return { tipo: "desafio_vencido" };
@@ -79,22 +93,35 @@ export async function confirmarCodigo(
   if (pessoa.bloqueadaAte && pessoa.bloqueadaAte > agora) return { tipo: "bloqueada", ate: pessoa.bloqueadaAte };
   if (pessoa.situacao !== "ativa") return { tipo: "invalido" };
 
+  const recuperacao = dados.tipo === "recuperacao";
   let resposta;
   try {
-    resposta = await auth().api.verifyTOTP({
-      body: { code: dados.codigo.replace(/\D/g, "") },
-      headers: cabecalhos,
-      returnHeaders: true,
-    });
+    resposta = recuperacao
+      ? await auth().api.verifyBackupCode({
+          body: { code: dados.codigo },
+          headers: cabecalhos,
+          returnHeaders: true,
+        })
+      : await auth().api.verifyTOTP({
+          body: { code: dados.codigo.replace(/\D/g, "") },
+          headers: cabecalhos,
+          returnHeaders: true,
+        });
   } catch (erro) {
     const codigo = codigoDoErro(erro);
-    if (codigo === "INVALID_CODE") return registrarErro(pessoa.id, agora);
+    if (codigo === "INVALID_CODE" || codigo === "INVALID_BACKUP_CODE") {
+      return registrarErro(pessoa.id, { agora, cabecalhos, enviar });
+    }
     if (codigo === "INVALID_TWO_FACTOR_COOKIE" || codigo === "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE") {
       return { tipo: "desafio_vencido" };
     }
     throw erro;
   }
 
+  // O uso de código de recuperação fica na Atividade, com quantos ainda restam (US42).
+  const metodo = recuperacao
+    ? { metodo: "codigo_recuperacao", codigosRestantes: await quantosCodigosRestam(pessoa.id) }
+    : { metodo: "aplicativo" };
   await banco().transaction(async (tx) => {
     await tx
       .update(pessoaEquipe)
@@ -105,19 +132,25 @@ export async function confirmarCodigo(
       acao: "acesso.entrar",
       area: "acesso",
       alvo: { tipo: "pessoa_equipe", id: pessoa.id, rotulo: pessoa.nome },
-      detalhe: { navegador: cabecalhos.get("user-agent") ?? undefined },
+      detalhe: { ...metodo, navegador: cabecalhos.get("user-agent") ?? undefined },
     });
   });
 
   return { tipo: "entrou", pessoaId: pessoa.id, cabecalhos: resposta.headers };
 }
 
-/** Uma tentativa errada a mais. Na última permitida, bloqueia (RN05). */
-async function registrarErro(pessoaId: string, agora: Date): Promise<Resultado> {
+/**
+ * Uma tentativa errada a mais. Na última permitida, bloqueia (RN05) e, depois de gravar, avisa por
+ * e-mail a pessoa e os administradores gerais (M04, CA-US19.4).
+ */
+async function registrarErro(
+  pessoaId: string,
+  { agora, cabecalhos, enviar }: Required<Opcoes>,
+): Promise<Resultado> {
   const limite = await lerParametro("equipe.tentativas_login");
   const minutos = await lerParametro("equipe.bloqueio_minutos");
 
-  return banco().transaction(async (tx) => {
+  const resultado = await banco().transaction(async (tx) => {
     const [pessoa] = await tx
       .update(pessoaEquipe)
       .set({ tentativasErradas: sql`${pessoaEquipe.tentativasErradas} + 1` })
@@ -134,8 +167,19 @@ async function registrarErro(pessoaId: string, agora: Date): Promise<Resultado> 
       alvo: { tipo: "pessoa_equipe", id: pessoa.id, rotulo: pessoa.nome },
       detalhe: { tentativas: pessoa.tentativasErradas, ate: ate.toISOString() },
     });
-    return { tipo: "bloqueada", ate } as const;
+    return { tipo: "bloqueada", ate, pessoa } as const;
   });
+  if (resultado.tipo !== "bloqueada") return resultado;
+
+  // Fora da transação: o bloqueio já vale, mesmo que o e-mail falhe.
+  await avisarContaBloqueada(resultado.pessoa, {
+    tentativas: resultado.pessoa.tentativasErradas,
+    minutos,
+    agora,
+    navegador: cabecalhos.get("user-agent"),
+    enviar,
+  });
+  return { tipo: "bloqueada", ate: resultado.ate };
 }
 
 /** Se o bloqueio já venceu, libera a conta, zera a contagem e registra o desbloqueio. */

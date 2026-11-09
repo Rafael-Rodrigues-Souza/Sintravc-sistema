@@ -21,6 +21,7 @@ export const CATALOGO = {
   "equipe.bloqueio_minutos": inteiro,
   "convite.validade_horas": inteiro,
   "equipe.link_senha_horas": inteiro,
+  "equipe.link_senha_intervalo_segundos": inteiro,
   "equipe.senha_minimo_caracteres": inteiro,
   "equipe.senhas_anteriores_bloqueadas": inteiro,
   "equipe.codigos_recuperacao": inteiro,

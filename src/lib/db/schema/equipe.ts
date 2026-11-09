@@ -61,3 +61,24 @@ export const senhaAnterior = pgTable(
   },
   (t) => [index().on(t.pessoaId, t.criadaEm)],
 );
+
+export const sujeitoToken = pgEnum("sujeito_token", ["equipe", "associado"]);
+
+/**
+ * Link de nova senha (spec §2.1; RN48, RN52): vale 1 h (Parametro) e uma vez só. Só o hash do token
+ * vai para o banco. `sujeito_id` aponta para pessoa_equipe ou para o associado (Fase 2), sem FK.
+ * Não usamos o reset de senha do Better Auth: ele não passa pela RN47 (E38).
+ */
+export const tokenSenha = pgTable(
+  "token_senha",
+  {
+    id: idUuid(),
+    sujeito: sujeitoToken().notNull(),
+    sujeitoId: uuid().notNull(),
+    tokenHash: text().notNull().unique(),
+    expiraEm: dataHora().notNull(),
+    usadoEm: dataHora(),
+    ...datas,
+  },
+  (t) => [index().on(t.sujeito, t.sujeitoId)],
+);

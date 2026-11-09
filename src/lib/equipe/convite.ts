@@ -1,8 +1,7 @@
-import { createHash, randomBytes } from "node:crypto";
-
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+import { hashDoToken, novoToken } from "@/lib/acesso/token";
 import { registrarAtividade, type Ator } from "@/lib/atividade";
 import { banco, type Transacao } from "@/lib/db";
 import { convite, pessoaEquipe } from "@/lib/db/schema";
@@ -33,10 +32,7 @@ export class ErroConvite extends Error {
 
 const email = z.string().trim().pipe(z.email({ error: "e-mail inválido" }));
 
-/** O token puro só aparece no link; no banco fica o hash (E35). */
-export function hashDoToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
+export { hashDoToken };
 
 /** Endereço da tela de aceite do convite. */
 export function linkDoConvite(urlSite: string, token: string) {
@@ -65,7 +61,7 @@ type NovoConvite = {
  */
 async function gravarEEnviarConvite({ tx, pessoa, quem, urlSite, enviar, acao, detalhe }: NovoConvite) {
   const validadeHoras = await lerParametro("convite.validade_horas");
-  const token = randomBytes(32).toString("base64url");
+  const token = novoToken();
   const link = linkDoConvite(urlSite, token);
   const expiraEm = new Date(Date.now() + validadeHoras * 60 * 60 * 1000);
 

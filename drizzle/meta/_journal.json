@@ -43,6 +43,13 @@
       "when": 1794144935558,
       "tag": "0005_senha_anterior",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794195481958,
+      "tag": "0006_token_senha",
+      "breakpoints": true
     }
   ]
 }
