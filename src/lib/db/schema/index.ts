@@ -3,3 +3,4 @@ export * from "./acesso";
 export * from "./atividade";
 export * from "./equipe";
 export * from "./parametro";
+export * from "./midia";

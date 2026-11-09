@@ -59,7 +59,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 | **Episodio** | `id`; `numero` UQ; `youtube_id` UQ; `titulo`; `resumo?`; `tema_categoria_id?` FK (escopo radio); `exibicao_em`; `duracao_seg?`; `capa_url`; `ultimo_programa` (UQ parcial: só um true); `estado` | Nenhum vídeo é guardado (RN17). Tema vem da Categoria (E15). |
 | **DestaqueHome** | `id`; `versao` (rascunho ou publicado); `area` (carrossel, lista); `posicao`; `modo` (auto, escolhido); `item_tipo` (noticia, episodio, programa); `item_id?`; `entra_em?`; `sai_em?`; `escolhido_por?` | Carrossel com até 5 itens; lista com 3 posições. Só esta área controla a Home (E13). “Publicar alterações” copia o rascunho para o publicado. |
 | **Parceiro** | `id`; `nome`; `logo_midia_id` FK; `categoria_id` FK; `desconto_pct` (0–100); `como_usar?`; `publico` (associado, associado e dependentes); `comeca_em?`; `valido_ate?`; `endereco_ou_site?`; `estado` | Só o ADM. Agendado quando `comeca_em` é futuro; vai para Arquivado ao vencer (RN57). |
-| **Midia** | `id`; `chave_r2`; `nome_arquivo`; `tipo` (imagem, pdf, documento); `mime`; `largura?`; `altura?`; `bytes`; `paginas?`; `alt?`; `legenda?`; `enviado_por` FK | HEIC é convertido para JPG ou WebP (RN15). Até 10 MB; logo de parceiro até 2 MB (R7). |
+| **Midia** | `id`; `chave_r2`; `nome_arquivo`; `tipo` (imagem, pdf, documento); `mime`; `largura?`; `altura?`; `bytes`; `paginas?`; `alt?`; `legenda?` (“Legenda e crédito”); `enviado_por` FK | Aceita JPG, PNG, WebP, HEIC, PDF, DOCX, XLSX, ODT e ODS, detectados pelos bytes; HEIC vira JPG; imagens acima de 2400 px são reduzidas e perdem os metadados (RN15, E39). Até 10 MB; logo de parceiro até 2 MB (R7). |
 | **MidiaUso** | `midia_id` FK; `dono_tipo`; `dono_id` | Mantida pelo servidor. Só pode excluir mídia sem uso (RN16). |
 | **ConfigSite** | registro único (JSON validado por Zod): contato, horários, redes, missão, história, programa ao vivo (canal, dias, horário), contadores manuais | Fonte única do site (RN43). Atualiza em até 1 min. Criada com dados de exemplo junto com a estrutura do site; a tela de edição vem depois. |
 | **RedirecionamentoUrl** | `origem` UQ; `destino`; `codigo` (301) | Preserva as URLs antigas (B2, D7). |
@@ -140,7 +140,7 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
 - **Home:** só a área Página inicial controla os destaques, com rascunho e “Publicar alterações” (E13).
 - **Notícia fixada:** uma por vez no topo da página Notícias (RN58).
 - **Parceiro:** período com “Começa em” e “Válido até”; ao vencer, é arquivado sozinho (RN57).
-- **Imagens:** JPG, PNG, WebP e HEIC (convertido); o texto alternativo é obrigatório para publicar (RN15). Só pode excluir mídia sem uso (RN16).
+- **Imagens:** JPG, PNG, WebP e HEIC (convertido); o texto alternativo é obrigatório para publicar (RN15). Só pode excluir mídia sem uso (RN16). A Mídia também aceita PDF, DOCX, XLSX, ODT e ODS; SVG, GIF e Office com macro ficam de fora (E39).
 - **Sem internet:** só o rascunho do editor fica guardado no navegador (E02).
 
 ### 3.3 Agendamentos (Fase 2)
@@ -294,7 +294,7 @@ Todas as tarefas são idempotentes, com nova tentativa e registro de falha (RNF1
 | T05 | Notícia fixada | Em `fixada_ate` | Desafixa. | 1 |
 | T06 | Parceiros | Diário 00h05 + no horário | Agendado → publicado; vencido → arquivado. | 1 |
 | T07 | Tarefas da Visão geral | Diário 07h00 | Notificações: vigência em 2 dias, rascunhos parados há mais de 7 dias, imagens sem texto alternativo, parceiro vencendo (P5). | 1 |
-| T08 | Conversão de mídia | No envio | HEIC → JPG ou WebP; redução de tamanho; extrai o texto do PDF (P3). | 1 |
+| T08 | Conversão de mídia | No envio, sem fila (E39) | HEIC → JPG; redução de tamanho e remoção dos metadados. A extração do texto do PDF (P3) é feita no envio do documento oficial (#12). | 1 |
 | T09 | Backup | Diário 03h00 | Dump criptografado → servidor do sindicato; rotação 7/4/12 (E27). | 1 |
 | T10 | Limpeza | Diário 04h00 | Logs com mais de 6 meses, notificações com mais de 90 dias, tokens vencidos (E25). | 1 |
 | T11 | Lembretes | 1 dia antes e 2 h antes | E-mail e notificação (RN29). | 2 |
@@ -359,7 +359,7 @@ Valem os RNF01–RNF15 de `requisitos.md`, com os ajustes de E05, E22, E26 e E28
 | X3 | **Conteúdo real** e **textos jurídicos** pendentes (D5, D6, D9). | Publicação. | O layout já aceita os textos; checklist 246:19523. | Cliente / advogado |
 | X4 | **Lista de URLs antigas** (D7). | SEO na troca de site. | Tabela de redirecionamentos carregada antes da virada. | Cliente |
 | X5 | **Entrega de e-mail** (SPF, DKIM, DMARC) (D2). | Convites e senhas da equipe na Fase 1. | Configurar o domínio cedo; testar com mail-tester. | Cliente + dev |
-| X6 | **HEIC** depende de libvips com libheif na imagem Docker. | Envio de fotos do iPhone. | Imagem Docker própria, com teste automático de conversão. | Dev |
+| X6 | **HEIC**: o `sharp` que vem pronto não lê HEIC. | Envio de fotos do iPhone. | Decodificação em WebAssembly (`heic-decode`), igual em todo ambiente, com teste automático que converte um HEIC de exemplo (E39). | Dev |
 | X7 | **Corrida em agendamento** com capacidade maior que 1. | Dois associados no mesmo horário. | Lock por (serviço, início) + recontagem na transação; teste de concorrência (RNF05). | Dev |
 | X8 | **Volume de avisos** para todos os associados (E20). | Crescimento da tabela. | Aviso gravado uma vez, com leitura por associado (T3). | Dev |
 | X9 | **Prazos de guarda** provisórios (E25). | LGPD. | Prazos em parâmetros; validação do advogado (D9). | Advogado |

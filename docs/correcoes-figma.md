@@ -41,6 +41,8 @@
 | M02 | E-mail · Redefinir senha (265:40830) | Só o botão “Criar nova senha” leva ao link. | Abaixo do botão, uma linha com o endereço para copiar, como no M01. | RN48 | ☐ |
 | E38 | E-mails · Senha alterada (265:40852) e Conta bloqueada (295:43855 / 295:43874) | “Onde: Navegador Chrome · Vitória da Conquista – BA (aprox.)”. | Só o navegador e o sistema (ex.: “Navegador Chrome · Windows”). A cidade exigiria um serviço de localização por IP. | E38 | ☐ |
 | E36 | E-mails · Conta bloqueada (295:43855 / 295:43874) | “5 tentativas de entrar com a senha errada” / “5 tentativas de senha errada”. | “5 tentativas erradas (senha ou código)”: senha e código contam juntos. | RN05, E36 | ☐ |
+| E39 | Mídia (116:2727) | Erro de formato: “Formato não aceito. Envie em JPG, PNG, WebP ou HEIC (até 10 MB).” | A Mídia também aceita PDF e documentos: “Formato não aceito. Envie imagem (JPG, PNG, WebP ou HEIC), PDF ou documento (Word, Excel, LibreOffice) até 10 MB.” | RF48, E39 | ☐ |
+| E39 | Mídia (116:2727) | Ao lado do botão Excluir não há estado para arquivo sem uso; só aparece “Não é possível excluir…”. | Arquivo sem uso mostra o link “Excluir arquivo” (lixeira, `status/perigo-texto`), que abre a confirmação 118:3626. PDF e documento não têm “Texto alternativo” nos detalhes; mostram “Páginas” (PDF). | RN16, E39 | ☐ |
 
 ## Telas a desenhar (novas)
 

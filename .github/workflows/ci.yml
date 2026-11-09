@@ -71,6 +71,19 @@ jobs:
       - name: Navegador dos testes de ponta a ponta
         run: pnpm exec playwright install --with-deps chromium
 
+      # A Mídia grava no MinIO (E32). Não vai em `services` porque precisa do comando `server /data`.
+      # A mesma imagem do docker-compose.yml; o bucket dos testes é criado em e2e/preparar.ts.
+      - name: MinIO para a Mídia
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=sintravc -e MINIO_ROOT_PASSWORD=sintravc-segredo \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:9000/minio/health/live && exit 0
+            sleep 1
+          done
+          echo "O MinIO não respondeu." && docker logs minio && exit 1
+
       - name: Testes de ponta a ponta
         run: pnpm test:e2e
 

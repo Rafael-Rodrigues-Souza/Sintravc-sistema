@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
 
 import { lerEnvArmazenamento, type EnvArmazenamento } from "@/lib/env";
 
@@ -36,11 +36,33 @@ function obterCliente(env: EnvArmazenamento) {
 export type Arquivo = {
   chave: string;
   conteudo: Uint8Array | string;
+  /** Content-Type gravado no objeto. Na Mídia, sempre o formato detectado pelos bytes (E39). */
   tipo: string;
+  /** Com `attachment`, o navegador baixa o arquivo com este nome em vez de abri-lo no site (E39). */
+  disposicao?: { tipo: "attachment"; nome: string };
 };
 
+/** O que a Mídia precisa do armazenamento. A versão real é `armazenamentoS3`; os testes usam uma em memória. */
+export type Armazenamento = {
+  enviar(arquivo: Arquivo): Promise<{ chave: string; url: string }>;
+  apagar(chave: string): Promise<void>;
+};
+
+/**
+ * Content-Disposition com o nome em UTF-8 (RFC 6266/5987) e uma versão só ASCII para navegadores antigos.
+ */
+export function contentDisposition({ tipo, nome }: NonNullable<Arquivo["disposicao"]>): string {
+  const ascii = nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/["\\]/g, "_");
+  const utf8 = encodeURIComponent(nome).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `${tipo}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
+
 /** Envia um arquivo para o bucket configurado e devolve a URL pública. */
-export async function enviarArquivo({ chave, conteudo, tipo }: Arquivo) {
+export async function enviarArquivo({ chave, conteudo, tipo, disposicao }: Arquivo) {
   const env = lerEnvArmazenamento();
   await obterCliente(env).send(
     new PutObjectCommand({
@@ -48,7 +70,16 @@ export async function enviarArquivo({ chave, conteudo, tipo }: Arquivo) {
       Key: chave,
       Body: conteudo,
       ContentType: tipo,
+      ContentDisposition: disposicao ? contentDisposition(disposicao) : undefined,
     }),
   );
   return { chave, url: urlPublica(chave, env) };
 }
+
+/** Apaga um arquivo do bucket. Com o versionamento do bucket (D3), a versão anterior continua recuperável. */
+export async function apagarArquivo(chave: string) {
+  const env = lerEnvArmazenamento();
+  await obterCliente(env).send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: chave }));
+}
+
+export const armazenamentoS3: Armazenamento = { enviar: enviarArquivo, apagar: apagarArquivo };
