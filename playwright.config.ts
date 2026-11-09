@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Testes de ponta a ponta do painel. Rodam contra o app compilado (next build + next start),
  * na porta 3100, com um banco próprio (sintravc_e2e) recriado a cada rodada e pessoas de teste
- * criadas pelas funções do Better Auth (e2e/preparar.ts). Precisam do Postgres e do Mailpit do compose.
+ * criadas pelas funções do Better Auth (e2e/preparar.ts). Precisam do Postgres, do Mailpit e do MinIO do compose.
  */
 const PORTA = 3100;
 const URL_BASE = `http://localhost:${PORTA}`;
@@ -25,6 +25,14 @@ export const ambienteE2E = {
   SMTP_PORT: "1025",
   SMTP_SECURE: "false",
   EMAIL_REMETENTE: "SINTRAVC <nao-responda@sintravc.local>",
+  // A Mídia grava no MinIO do compose (E32), num bucket só dos testes (criado em e2e/preparar.ts).
+  S3_ENDPOINT: process.env.S3_ENDPOINT_E2E ?? "http://localhost:9000",
+  S3_REGIAO: "us-east-1",
+  S3_BUCKET: "sintravc-e2e",
+  S3_CHAVE_ACESSO: process.env.S3_CHAVE_ACESSO_E2E ?? "sintravc",
+  S3_CHAVE_SECRETA: process.env.S3_CHAVE_SECRETA_E2E ?? "sintravc-segredo",
+  S3_FORCAR_CAMINHO: "true",
+  S3_URL_PUBLICA: `${process.env.S3_ENDPOINT_E2E ?? "http://localhost:9000"}/sintravc-e2e`,
 };
 
 /** API do Mailpit, para ler os e-mails nos testes. */

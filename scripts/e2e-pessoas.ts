@@ -15,6 +15,8 @@ async function main() {
     esqueceu: await criarPessoaDeTeste({ nome: "Sandra Esqueceu", email: "sandra@sintravc.local", perfil: "COM", senha }),
     semCelular: await criarPessoaDeTeste({ nome: "Paulo Sem Celular", email: "paulo@sintravc.local", perfil: "COM", senha }),
     bloqueioAviso: await criarPessoaDeTeste({ nome: "Rita Aviso", email: "rita@sintravc.local", perfil: "COM", senha }),
+    // Mídia (issue #7): o Atendimento não entra na Mídia.
+    atd: await criarPessoaDeTeste({ nome: "Ana Atendimento", email: "ana@sintravc.local", perfil: "ATD", senha }),
   };
   mkdirSync("e2e/.dados", { recursive: true });
   writeFileSync("e2e/.dados/pessoas.json", JSON.stringify(pessoas, null, 2));

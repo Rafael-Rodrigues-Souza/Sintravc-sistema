@@ -57,7 +57,7 @@ O pg-boss cuida de tudo o que acontece sozinho, em horário marcado:
 3. **Auditoria realmente não editável.** Crie a tabela de Atividade só de inserção e bloqueie UPDATE e DELETE com uma regra no próprio banco.
 4. **Agendamento sem conflito.** Use uma restrição única no banco para “horário ativo” e confira o limite do mês dentro da mesma transação. Assim dois associados não pegam o mesmo horário ao mesmo tempo.
 5. **Fuso horário.** Guarde as datas em UTC e mostre em America/Bahia. Os prazos de “até 2h antes” e “23h59” dependem disso.
-6. **Fotos HEIC do iPhone.** O sharp que vem pronto não lê HEIC. Use uma imagem Docker com libvips + libheif ou a biblioteca heic-convert antes do sharp.
+6. **Fotos HEIC do iPhone.** O sharp que vem pronto não lê HEIC. Adotado (E39): o `heic-decode` (libheif em WebAssembly) decodifica e o sharp reduz e grava; funciona igual no Windows, no CI e no Docker, sem libvips próprio.
 7. **Rádio Chofer.** O oEmbed do YouTube devolve título e capa, mas não a duração. Para preencher a duração automaticamente, é preciso uma chave da YouTube Data API.
 8. **LGPD.** Criptografe o CPF no banco e guarde um hash dele para busca. Registre o aceite dos termos e as exportações de relatórios. Defina com o advogado do sindicato por quanto tempo os dados de presença ficam guardados.
 9. **Fases.** Modele o banco já pensando na fase 2 (associado, dependente, serviço, agendamento), mas ative na fase 1 só o site, o painel da Comunicação e o do Administrador geral. Isso evita retrabalho.

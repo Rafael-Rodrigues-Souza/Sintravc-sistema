@@ -45,6 +45,9 @@ export const CATALOGO = {
   "site.atualizacao_config_segundos": inteiro,
   "alerta.vigencia_documento_dias": inteiro,
   "alerta.rascunho_parado_dias": inteiro,
+  "midia.tamanho_maximo_bytes": inteiro,
+  "midia.imagem_lado_maximo_px": inteiro,
+  "midia.jpg_qualidade": z.number().int().min(1).max(100),
 } satisfies Record<string, z.ZodType>;
 
 export type ChaveParametro = keyof typeof CATALOGO;

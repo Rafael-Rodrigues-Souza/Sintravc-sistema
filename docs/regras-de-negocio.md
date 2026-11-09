@@ -52,7 +52,7 @@ Regras de negócio descrevem decisões do sindicato que valem em qualquer tela o
 | RN10 | **Ciclo de vida do conteúdo** | Estados: Rascunho (não aparece; salvo automaticamente), Agendado (entra no ar sozinho na data e hora), Publicado (visível; edições valem ao salvar), Oculto (fora do site, pode voltar), Arquivado (fora do site e das listas, com histórico e anexos; pode ser restaurado como rascunho). Encerrado vale só para comunicados. |
 | RN11 | **Ocultar exige motivo** | Ao ocultar um conteúdo publicado, o motivo é obrigatório e fica registrado. |
 | RN12 | **Documento oficial** | Editais e acordos são publicados só em PDF e exigem confirmação de que o arquivo é a versão oficial e assinada. |
-| RN15 | **Imagens** | Aceita JPG, PNG, WebP e HEIC. HEIC é convertido no servidor para JPG ou WebP e o tamanho é reduzido. Vale para Mídia, capas de notícia e logos de parceiros. Texto alternativo é obrigatório para publicar. |
+| RN15 | **Imagens** | Aceita JPG, PNG, WebP e HEIC. HEIC é convertido no servidor para JPG e o tamanho é reduzido (E39). Vale para Mídia, capas de notícia e logos de parceiros. Texto alternativo é obrigatório para publicar. |
 | RN16 | **Exclusão de mídia** | Só pode ser excluído arquivo que não esteja em uso. A exclusão é definitiva e pede confirmação. |
 | RN18 | **Auditoria imutável** | Toda ação relevante (publicar, ocultar, arquivar, excluir, encerrar, alterar permissões, cancelar, remarcar, exceção, exportar) gera registro em Atividade com pessoa, data, hora e motivo. Registros não podem ser alterados nem excluídos. |
 | RN42 | **Mensagens do sistema** | Avisos rápidos aparecem no canto inferior direito e somem em 6 segundos; erros ficam até serem fechados. Sem internet, aparece um aviso; só o editor de notícia e de documento guarda o rascunho no navegador e o salva quando a conexão voltar (E02). |
@@ -145,6 +145,9 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Atualização do site após Configurações | até 1 minuto | RN43 |
 | Alerta de vigência de documento | 2 dias antes | RN44 |
 | Alerta de rascunho parado | mais de 7 dias | RN44 |
+| Tamanho máximo de arquivo na Mídia | 10 MB | R7 |
+| Imagens reduzidas acima de | 2400 px no lado maior | RN15, E39 |
+| Qualidade do JPG e do WebP gravados | 82 | RN15, E39 |
 
 ## 4. Estados
 

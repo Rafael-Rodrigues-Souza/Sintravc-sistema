@@ -8,7 +8,7 @@
 
 | # | Tela no Figma | Está assim | Vale | Fonte | Feito |
 |---|---|---|---|---|---|
-| C1 | Mídia (116:2727) | `foto-assembleia.heic` aparece recusado: “Formato não aceito. Envie em JPG, PNG ou WebP (até 10 MB)”. | HEIC é aceito e convertido no servidor para JPG ou WebP. Trocar o exemplo de erro por um formato realmente não aceito (ex.: `.gif` ou `.pdf` acima do tamanho). | RN15 | ☑ |
+| C1 | Mídia (116:2727) | `foto-assembleia.heic` aparece recusado: “Formato não aceito. Envie em JPG, PNG ou WebP (até 10 MB)”. | HEIC é aceito e convertido no servidor para JPG (E39). Trocar o exemplo de erro por um formato realmente não aceito (ex.: `.gif` ou `.pdf` acima do tamanho). | RN15 | ☑ |
 | C1 | Visão geral · Notificações (113:2228) | O título diz “Falha no envio de imagem” e o texto diz que a foto “foi convertida para JPG automaticamente”. | Título de sucesso, ex.: “Imagem convertida”. | RN15 | ☑ |
 | C2 | Editor · Documento oficial (114:1972) | “Ao terminar, o estado muda para ‘Encerrado’ e você recebe um aviso.” | O estado de publicação não muda no fim da vigência. “Vigente” e “Encerrado” são um **selo calculado** pelas datas de vigência. O aviso continua (RN44). | RN10, RN44 | ☑ |
 | C2 | Documentos · Acordos coletivos (75:1438) e Editais (73:629) | Os selos “VIGENTE”, “ENCERRADO” e “Prazo” se parecem com estados. | Mantêm o mesmo visual, mas são documentados como selo de vigência, separado do estado de publicação. | RN10 | ☑ |
@@ -41,6 +41,8 @@
 | M02 | E-mail · Redefinir senha (265:40830) | Só o botão “Criar nova senha” leva ao link. | Abaixo do botão, uma linha com o endereço para copiar, como no M01. | RN48 | ☐ |
 | E38 | E-mails · Senha alterada (265:40852) e Conta bloqueada (295:43855 / 295:43874) | “Onde: Navegador Chrome · Vitória da Conquista – BA (aprox.)”. | Só o navegador e o sistema (ex.: “Navegador Chrome · Windows”). A cidade exigiria um serviço de localização por IP. | E38 | ☐ |
 | E36 | E-mails · Conta bloqueada (295:43855 / 295:43874) | “5 tentativas de entrar com a senha errada” / “5 tentativas de senha errada”. | “5 tentativas erradas (senha ou código)”: senha e código contam juntos. | RN05, E36 | ☐ |
+| E39 | Mídia (116:2727) | Erro de formato: “Formato não aceito. Envie em JPG, PNG, WebP ou HEIC (até 10 MB).” | A Mídia também aceita PDF e documentos: “Formato não aceito. Envie imagem (JPG, PNG, WebP ou HEIC), PDF ou documento (Word, Excel, LibreOffice) até 10 MB.” | RF48, E39 | ☐ |
+| E39 | Mídia (116:2727) | Ao lado do botão Excluir não há estado para arquivo sem uso; só aparece “Não é possível excluir…”. | Arquivo sem uso mostra o link “Excluir arquivo” (lixeira, `status/perigo-texto`), que abre a confirmação 118:3626. PDF e documento não têm “Texto alternativo” nos detalhes; mostram “Páginas” (PDF). | RN16, E39 | ☐ |
 
 ## Telas a desenhar (novas)
 
@@ -63,6 +65,7 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | N13 | Variante do cabeçalho, do menu mobile e do rodapé da Fase 1, sem “Entrar” | E01 | 1 | ☑ |
 | N14 | Editor · Histórico de versões (painel lateral, com restaurar como rascunho) | E31 | 1 | ☑ |
 | N15 | E-mail “Seu acesso será excluído” (conta inativa há 2 anos) | E25 | 2 | ☐ |
+| N16 | Mídia (116:2727) · arrastando arquivos: camada sobre a área de conteúdo, com borda tracejada e “Solte os arquivos para enviar”. O código já tem a camada (borda `destaque/azul`, ícone de enviar); falta o desenho, no claro e no escuro. | US27, RF48 | 1 | ☐ |
 
 ## Ignorados (dados de exemplo)
 
