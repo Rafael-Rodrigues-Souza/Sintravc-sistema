@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** O que o seletor de arquivos sugere. Quem decide é o servidor, pelos bytes (E39). */
 const ACEITOS = [
@@ -30,7 +31,12 @@ const ACEITOS = [
 
 type Envio = { chave: string; nome: string; estado: "enviando" | "erro"; progresso: number; erro?: string };
 
-type Contexto = { escolher: () => void; envios: Envio[]; descartar: (chave: string) => void };
+type Contexto = {
+  escolher: () => void;
+  adicionar: (arquivos: File[]) => void;
+  envios: Envio[];
+  descartar: (chave: string) => void;
+};
 
 const ContextoEnvios = React.createContext<Contexto | null>(null);
 
@@ -112,8 +118,8 @@ export function ProvedorDeEnvios({
   );
 
   const contexto = React.useMemo<Contexto>(
-    () => ({ escolher: () => entrada.current?.click(), envios, descartar }),
-    [envios, descartar],
+    () => ({ escolher: () => entrada.current?.click(), adicionar, envios, descartar }),
+    [adicionar, envios, descartar],
   );
 
   return (
@@ -144,6 +150,69 @@ export function BotaoEnviarArquivos() {
       <IconeFigma src="/painel/icone-enviar.svg" tamanho={18} />
       Enviar arquivos
     </Button>
+  );
+}
+
+/** O que está sendo arrastado tem arquivo? Texto e link não contam. */
+function temArquivo(evento: React.DragEvent) {
+  return Array.from(evento.dataTransfer.types).includes("Files");
+}
+
+/**
+ * Arrastar e soltar: a área de conteúdo inteira recebe os arquivos, que entram na mesma fila do botão
+ * "Enviar arquivos". Só é montada para quem pode enviar; o botão continua sendo o caminho pelo teclado
+ * e no celular. Sem desenho no Figma: ver `correcoes-figma.md` (N16).
+ */
+export function AreaDeSoltar({ className, children }: { className?: string; children: React.ReactNode }) {
+  const { adicionar } = useEnvios();
+  // dragenter e dragleave disparam a cada elemento filho; o contador diz quando o arquivo saiu de vez.
+  const entradas = React.useRef(0);
+  const [arrastando, setArrastando] = React.useState(false);
+
+  return (
+    <div
+      data-testid="area-de-soltar"
+      className={cn("relative", className)}
+      onDragEnter={(evento) => {
+        if (!temArquivo(evento)) return;
+        evento.preventDefault();
+        entradas.current += 1;
+        setArrastando(true);
+      }}
+      onDragOver={(evento) => {
+        if (!temArquivo(evento)) return;
+        evento.preventDefault();
+        evento.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={(evento) => {
+        if (!temArquivo(evento)) return;
+        entradas.current = Math.max(0, entradas.current - 1);
+        if (entradas.current === 0) setArrastando(false);
+      }}
+      onDrop={(evento) => {
+        if (!temArquivo(evento)) return;
+        evento.preventDefault();
+        entradas.current = 0;
+        setArrastando(false);
+        adicionar(Array.from(evento.dataTransfer.files));
+      }}
+    >
+      {children}
+      {arrastando ? (
+        <div
+          aria-hidden
+          data-testid="camada-soltar"
+          className="pointer-events-none absolute inset-2 z-20 rounded-[20px] border-2 border-dashed border-destaque-azul bg-fundo-pagina/85 backdrop-blur-[2px]"
+        >
+          <div className="sticky top-0 flex h-[calc(100dvh-1rem)] max-h-full flex-col items-center justify-center gap-3 px-6 text-center">
+            <span className="flex size-14 items-center justify-center rounded-full bg-destaque-azul-suave text-destaque-azul">
+              <IconeFigma src="/painel/icone-enviar.svg" tamanho={24} />
+            </span>
+            <p className="texto-titulo-card text-texto-primario">Solte os arquivos para enviar</p>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

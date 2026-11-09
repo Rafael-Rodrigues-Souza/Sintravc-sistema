@@ -23,7 +23,7 @@ import { pode } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
 import { DetalhesArquivo, MiniaturaDeArquivo, type ArquivoDetalhado } from "./detalhes-arquivo";
-import { BotaoEnviarArquivos, ListaDeEnvios, ProvedorDeEnvios } from "./envios";
+import { AreaDeSoltar, BotaoEnviarArquivos, ListaDeEnvios, ProvedorDeEnvios } from "./envios";
 
 export const metadata: Metadata = { title: "Mídia" };
 
@@ -95,12 +95,15 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
     { valor: "documentos", rotulo: "Documentos", total: contagem.documentos },
   ];
 
+  // Arrastar e soltar só para quem pode enviar; para os outros, a área é um bloco comum.
+  const Conteudo = podeEnviar ? AreaDeSoltar : "div";
+
   return (
     <ProvedorDeEnvios
       tamanhoMaximoBytes={limites.tamanhoMaximoBytes}
       mensagemDeTamanho={erroDeTamanho(limites.tamanhoMaximoBytes).message}
     >
-      <div className="flex flex-col gap-6 px-5 pt-8 pb-12 lg:px-10">
+      <Conteudo className="flex flex-1 flex-col gap-6 px-5 pt-8 pb-12 lg:px-10">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-col gap-1.5">
             <h1 className="texto-titulo-card-grande text-texto-primario">Mídia</h1>
@@ -214,7 +217,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
             />
           ) : null}
         </div>
-      </div>
+      </Conteudo>
     </ProvedorDeEnvios>
   );
 }

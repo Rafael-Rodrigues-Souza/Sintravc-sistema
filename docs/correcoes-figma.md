@@ -65,6 +65,7 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | N13 | Variante do cabeçalho, do menu mobile e do rodapé da Fase 1, sem “Entrar” | E01 | 1 | ☑ |
 | N14 | Editor · Histórico de versões (painel lateral, com restaurar como rascunho) | E31 | 1 | ☑ |
 | N15 | E-mail “Seu acesso será excluído” (conta inativa há 2 anos) | E25 | 2 | ☐ |
+| N16 | Mídia (116:2727) · arrastando arquivos: camada sobre a área de conteúdo, com borda tracejada e “Solte os arquivos para enviar”. O código já tem a camada (borda `destaque/azul`, ícone de enviar); falta o desenho, no claro e no escuro. | US27, RF48 | 1 | ☐ |
 
 ## Ignorados (dados de exemplo)
 

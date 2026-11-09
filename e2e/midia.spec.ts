@@ -35,6 +35,32 @@ async function enviar(page: Page, nome: string, buffer: Buffer, mimeType: string
   await page.getByTestId("entrada-arquivos").setInputFiles({ name: nome, mimeType, buffer });
 }
 
+/** Cria no navegador um DataTransfer com um arquivo (ou só texto), como o sistema faz ao arrastar. */
+async function arrastado(page: Page, conteudo: { nome: string; tipo: string; buffer: Buffer } | { texto: string }) {
+  return page.evaluateHandle((c) => {
+    const dados = new DataTransfer();
+    if ("texto" in c) {
+      dados.setData("text/plain", c.texto);
+      dados.setData("text/uri-list", c.texto);
+    } else {
+      const bytes = Uint8Array.from(atob(c.base64), (letra) => letra.charCodeAt(0));
+      dados.items.add(new File([bytes], c.nome, { type: c.tipo }));
+    }
+    return dados;
+  }, "texto" in conteudo ? conteudo : { nome: conteudo.nome, tipo: conteudo.tipo, base64: conteudo.buffer.toString("base64") });
+}
+
+async function soltar(page: Page, nome: string, buffer: Buffer, tipo: string) {
+  const area = page.getByTestId("area-de-soltar");
+  const dados = await arrastado(page, { nome, tipo, buffer });
+  // Entra pela lista de filtros (um filho qualquer), como o mouse faria.
+  await page.getByRole("navigation", { name: "Filtros da Mídia" }).dispatchEvent("dragenter", { dataTransfer: dados });
+  await expect(page.getByText("Solte os arquivos para enviar")).toBeVisible();
+  await area.dispatchEvent("dragover", { dataTransfer: dados });
+  await area.dispatchEvent("drop", { dataTransfer: dados });
+  await expect(page.getByText("Solte os arquivos para enviar")).toBeHidden();
+}
+
 function cartao(page: Page, nome: string) {
   return page.getByRole("list", { name: "Arquivos" }).getByRole("link").filter({ hasText: nome });
 }
@@ -122,6 +148,37 @@ test("CA-US27.2 · arquivo em uso não pode ser excluído e mostra onde é usado
   await expect(detalhes).toContainText("Notícia");
   await expect(detalhes).toContainText("Não é possível excluir: o arquivo está em uso em 1 conteúdo.");
   await expect(detalhes.getByRole("button", { name: "Excluir arquivo" })).toHaveCount(0);
+});
+
+test("Arrastar e soltar arquivos na Mídia usa a mesma fila do botão", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  await expect(page.getByRole("heading", { name: "Mídia", level: 1 })).toBeVisible();
+  const area = page.getByTestId("area-de-soltar");
+  const camada = page.getByText("Solte os arquivos para enviar");
+
+  // Texto ou link arrastado não mostra a camada.
+  const link = await arrastado(page, { texto: "https://sintravc.org.br" });
+  await area.dispatchEvent("dragenter", { dataTransfer: link });
+  await expect(camada).toBeHidden();
+
+  // Arquivo sobre a tela mostra a camada; ao sair, ela some.
+  const jpg = await sharp({ create: { width: 800, height: 600, channels: 3, background: "#f2b705" } }).jpeg().toBuffer();
+  const sobre = await arrastado(page, { nome: "passeata-rodoviarios.jpg", tipo: "image/jpeg", buffer: jpg });
+  await area.dispatchEvent("dragenter", { dataTransfer: sobre });
+  await expect(camada).toBeVisible();
+  await area.dispatchEvent("dragleave", { dataTransfer: sobre });
+  await expect(camada).toBeHidden();
+
+  // JPG solto entra na grade.
+  await soltar(page, "passeata-rodoviarios.jpg", jpg, "image/jpeg");
+  await expect(page.getByText("passeata-rodoviarios.jpg está na Mídia.")).toBeVisible();
+  await expect(cartao(page, "passeata-rodoviarios.jpg")).toContainText("JPG · 800 × 600");
+
+  // GIF solto é recusado com a mesma mensagem de formato.
+  await soltar(page, "convite-festa.gif", await imagem("gif"), "image/gif");
+  const erro = page.getByRole("alert").filter({ hasText: "convite-festa.gif" });
+  await expect(erro).toContainText("Formato não aceito.");
+  await expect(erro.getByRole("button", { name: "Tentar outro arquivo" })).toBeVisible();
 });
 
 test("O Atendimento não entra na Mídia, nem pelo endereço direto (403)", async ({ page }) => {
