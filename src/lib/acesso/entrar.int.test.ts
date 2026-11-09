@@ -60,11 +60,13 @@ async function lerPessoa(id: string) {
   return linha!;
 }
 
+/** As ações de acesso da pessoa, na ordem em que foram gravadas (o id é uuidv7). */
 async function acoesNaAtividade(id: string) {
   const linhas = await banco()
     .select({ acao: atividade.acao })
     .from(atividade)
-    .where(and(eq(atividade.alvoId, id), eq(atividade.area, "acesso")));
+    .where(and(eq(atividade.alvoId, id), eq(atividade.area, "acesso")))
+    .orderBy(atividade.id);
   return linhas.map((l) => l.acao);
 }
 

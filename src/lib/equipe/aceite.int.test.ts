@@ -85,7 +85,11 @@ describe("reenviarConvite (RN46)", () => {
     const novoToken = mensagens[0]!.match(/\/painel\/convite\/([\w-]+)/)![1]!;
     expect(await abrirConvite(novoToken)).toMatchObject({ tipo: "valido", pessoa: { id: c.pessoaId } });
 
-    const acoes = await banco().select({ acao: atividade.acao }).from(atividade).where(eq(atividade.alvoId, c.pessoaId));
+    const acoes = await banco()
+      .select({ acao: atividade.acao })
+      .from(atividade)
+      .where(eq(atividade.alvoId, c.pessoaId))
+      .orderBy(atividade.id);
     expect(acoes.map((a) => a.acao)).toEqual(["convite.enviar", "convite.reenviar"]);
   });
 
