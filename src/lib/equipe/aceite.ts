@@ -7,13 +7,12 @@ import { gerarCodigosRecuperacao } from "@/lib/acesso/codigos-recuperacao";
 import { ativarDuasEtapas, conferirCodigoDoApp, dadosDoQr } from "@/lib/acesso/duas-etapas";
 import { validarSenhaDaEquipe, type RequisitoDaSenha } from "@/lib/acesso/senha";
 import { apagarSenhasAnteriores, gravarSenha } from "@/lib/acesso/senha-anterior";
+import { hashDoToken } from "@/lib/acesso/token";
 import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { convite, duasEtapas, pessoaEquipe, sessao } from "@/lib/db/schema";
 import { lerParametro } from "@/lib/parametros";
 import type { Perfil } from "@/lib/permissoes";
-
-import { hashDoToken } from "./convite";
 
 /**
  * Aceite do convite da equipe (RN46, RF72; US40). O token do link é a credencial do fluxo

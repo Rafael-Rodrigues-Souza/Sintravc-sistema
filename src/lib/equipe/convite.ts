@@ -32,8 +32,6 @@ export class ErroConvite extends Error {
 
 const email = z.string().trim().pipe(z.email({ error: "e-mail inválido" }));
 
-export { hashDoToken };
-
 /** Endereço da tela de aceite do convite. */
 export function linkDoConvite(urlSite: string, token: string) {
   return `${urlSite.replace(/\/+$/, "")}/painel/convite/${token}`;

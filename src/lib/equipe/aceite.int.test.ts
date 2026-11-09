@@ -7,10 +7,11 @@ import { atividade, convite, pessoaEquipe } from "@/lib/db/schema";
 import { auth } from "@/lib/acesso/auth";
 import { cookiesDe } from "@/lib/acesso/cookies";
 import { confirmarCodigo, entrar } from "@/lib/acesso/entrar";
+import { hashDoToken } from "@/lib/acesso/token";
 import { codigoTotp } from "@/lib/acesso/totp";
 
 import { abrirConvite, concluirConvite, confirmarDuasEtapas, criarSenhaDoConvite, etapaDoConvite } from "./aceite";
-import { convidarPessoa, criarConviteAdmin, hashDoToken, reenviarConvite } from "./convite";
+import { convidarPessoa, criarConviteAdmin, reenviarConvite } from "./convite";
 
 const URL_SITE = "http://localhost:3000";
 let contador = 0;
