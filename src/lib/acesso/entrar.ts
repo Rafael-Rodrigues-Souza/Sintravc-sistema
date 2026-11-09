@@ -10,6 +10,7 @@ import { lerParametro } from "@/lib/parametros";
 import { auth } from "./auth";
 import { avisarContaBloqueada } from "./avisos";
 import { quantosCodigosRestam } from "./codigos-recuperacao";
+import { COOKIES_DO_DESAFIO } from "./cookies";
 
 /**
  * Login da equipe (RN04, RN05; CA-US19.1 e 19.2). É o único caminho de entrada: as rotas HTTP
@@ -234,7 +235,7 @@ async function contarCodigosSemFalhar(pessoaId: string): Promise<number | null> 
  * quando ele responde "código inválido", o que exige um cookie válido.
  */
 async function pessoaDoDesafio(cabecalhos: Headers): Promise<string | undefined> {
-  const cookie = lerCookie(cabecalhos, "sintravc.two_factor") ?? lerCookie(cabecalhos, "__Secure-sintravc.two_factor");
+  const cookie = COOKIES_DO_DESAFIO.map((nome) => lerCookie(cabecalhos, nome)).find(Boolean);
   if (!cookie) return undefined;
   const ponto = cookie.lastIndexOf(".");
   const identificador = ponto > 0 ? cookie.slice(0, ponto) : cookie;

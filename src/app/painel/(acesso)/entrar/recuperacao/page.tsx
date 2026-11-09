@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { Eyebrow, MolduraAcesso } from "@/components/painel/moldura-acesso";
+import { COOKIES_DO_DESAFIO } from "@/lib/acesso/cookies";
 import { voltarSeguro } from "@/lib/acesso/sessao";
 
 import { FormularioRecuperacao } from "./formulario-recuperacao";
@@ -19,7 +20,7 @@ export default async function PaginaRecuperacao({ searchParams }: Props) {
   const { voltar } = await searchParams;
   const loja = await cookies();
   // Sem o desafio aberto pela senha, não há o que confirmar.
-  if (!loja.has("sintravc.two_factor") && !loja.has("__Secure-sintravc.two_factor")) {
+  if (!COOKIES_DO_DESAFIO.some((nome) => loja.has(nome))) {
     redirect("/painel/entrar");
   }
 
