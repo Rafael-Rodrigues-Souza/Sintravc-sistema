@@ -3,24 +3,24 @@
 import { revalidatePath } from "next/cache";
 
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
-import { convidarPessoa, ErroConvite } from "@/lib/equipe/convite";
+import { convidarPessoa, ErroConvite, type CampoDoConvite, type PedidoDeConvite } from "@/lib/equipe/convite";
 import { lerEnvSite } from "@/lib/env";
 import { pode } from "@/lib/permissoes";
 
 export type EstadoConvidar = {
   /** Mensagem por campo do formulário. */
-  erros?: Partial<Record<"nome" | "email" | "perfil", string>>;
+  erros?: Partial<Record<CampoDoConvite, string>>;
   /** Falha que não é de um campo (sem permissão, e-mail que não saiu). */
   erro?: string;
   /** Convite enviado: o modal fecha e mostra o aviso. */
   enviadoPara?: string;
   /** O que a pessoa digitou, para não perder num erro. */
-  valores?: { nome: string; email: string; perfil: string };
+  valores?: PedidoDeConvite;
 };
 
 /** Convidar pessoa (RF51, RN46). A permissão é conferida aqui, no servidor (RNF01). */
 export async function acaoConvidar(_anterior: EstadoConvidar, formulario: FormData): Promise<EstadoConvidar> {
-  const valores = {
+  const valores: PedidoDeConvite = {
     nome: String(formulario.get("nome") ?? ""),
     email: String(formulario.get("email") ?? ""),
     perfil: String(formulario.get("perfil") ?? ""),

@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/acesso/auth";
 import { confirmarCodigo, entrar } from "@/lib/acesso/entrar";
+import { DIGITOS_TOTP } from "@/lib/acesso/opcoes-totp";
 import { voltarSeguro } from "@/lib/acesso/sessao";
+import { FUSO } from "@/lib/datas";
 
 export type EstadoDoFormulario = {
   erro?: string;
@@ -18,7 +20,7 @@ const ERRO_LOGIN = "E-mail ou senha incorretos. Confira e tente de novo.";
 const ERRO_CODIGO = "Código incorreto. Confira o código no aplicativo autenticador e tente de novo.";
 
 function horaDaBahia(data: Date) {
-  return data.toLocaleTimeString("pt-BR", { timeZone: "America/Bahia", hour: "2-digit", minute: "2-digit" });
+  return data.toLocaleTimeString("pt-BR", { timeZone: FUSO, hour: "2-digit", minute: "2-digit" });
 }
 
 function comVoltar(caminho: string, voltar: string) {
@@ -49,7 +51,7 @@ export async function acaoConfirmarCodigo(
 ): Promise<EstadoDoFormulario> {
   const codigo = String(formulario.get("codigo") ?? "").replace(/\D/g, "");
   const voltar = String(formulario.get("voltar") ?? "");
-  if (codigo.length !== 6) return { erro: "Digite os 6 números do aplicativo autenticador." };
+  if (codigo.length !== DIGITOS_TOTP) return { erro: `Digite os ${DIGITOS_TOTP} números do aplicativo autenticador.` };
 
   const resultado = await confirmarCodigo({ codigo }, { cabecalhos: await headers() });
   switch (resultado.tipo) {

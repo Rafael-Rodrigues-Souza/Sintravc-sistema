@@ -141,7 +141,9 @@ function GuardarCodigos({ token, codigos }: { token: string; codigos: string[] }
       </div>
 
       <Alerta tipo="aviso" titulo="Eles não aparecem de novo">
-        Sem o celular e sem os códigos, só o administrador geral pode redefinir sua verificação.
+        Sem o celular e sem os códigos, só o administrador geral pode redefinir sua verificação.{" "}
+        {/* E37: confirmar de novo gera outros códigos (correcoes-figma.md). */}
+        Se você recarregar esta página antes de confirmar, serão gerados códigos novos e os anteriores deixam de valer.
       </Alerta>
 
       <form action={enviar} className="flex flex-col gap-[18px]">

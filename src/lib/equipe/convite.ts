@@ -23,7 +23,7 @@ export class ErroCriarAdmin extends Error {
 /** Erro esperado do convite pela tela. `campo` diz onde mostrar a mensagem no formulário. */
 export class ErroConvite extends Error {
   constructor(
-    readonly campo: "nome" | "email" | "perfil" | "geral",
+    readonly campo: CampoDoConvite | "geral",
     mensagem: string,
   ) {
     super(mensagem);
@@ -127,19 +127,24 @@ const esquemaConvite = z.object({
   perfil: z.enum(["ADM", "COM", "ATD"], { error: "Escolha o perfil." }),
 });
 
+/** Os campos do formulário Convidar pessoa. */
+export type CampoDoConvite = keyof typeof esquemaConvite.shape;
+/** O que veio do formulário, ainda sem validar. */
+export type PedidoDeConvite = Record<CampoDoConvite, string>;
+
 /**
  * O Administrador geral convida uma pessoa (RF51, RN46). A permissão (equipe.convidar) é conferida
  * na server action, antes de chamar esta função. O perfil Atendimento só existe na Fase 2 (CA-US29.3).
  */
 export async function convidarPessoa(
-  pedido: { nome: string; email: string; perfil: string },
+  pedido: PedidoDeConvite,
   deps: { quem: QuemConvida; urlSite: string; enviar?: Enviar; fase?: number },
 ): Promise<{ pessoaId: string; expiraEm: Date }> {
   const validado = esquemaConvite.safeParse(pedido);
   if (!validado.success) {
     const problema = validado.error.issues[0]!;
-    const campo = problema.path[0] as "nome" | "email" | "perfil";
-    throw new ErroConvite(campo, problema.message);
+    const campo = esquemaConvite.keyof().safeParse(problema.path[0]);
+    throw new ErroConvite(campo.success ? campo.data : "geral", problema.message);
   }
   const dados = validado.data;
   if (!perfisConvidaveis(deps.fase ?? FASE_ATUAL).includes(dados.perfil)) {
