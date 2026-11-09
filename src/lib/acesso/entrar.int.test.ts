@@ -1,12 +1,19 @@
 import { and, eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { banco } from "@/lib/db";
 import type { Mensagem } from "@/lib/email";
 import { atividade, pessoaEquipe, sessao } from "@/lib/db/schema";
 
+import * as codigosRecuperacao from "./codigos-recuperacao";
 import { confirmarCodigo, entrar } from "./entrar";
 import { codigoTotp, cookiesDe, criarPessoaDeTeste, type PessoaDeTeste } from "./pessoas-de-teste";
+
+// Deixa um teste simular a falha da contagem de códigos; nos outros, a função é a original.
+vi.mock("./codigos-recuperacao", async (original) => {
+  const modulo = await original<typeof import("./codigos-recuperacao")>();
+  return { ...modulo, quantosCodigosRestam: vi.fn(modulo.quantosCodigosRestam) };
+});
 
 // RN05 / CA-US19.2: 5 tentativas erradas bloqueiam por 15 minutos (valores iniciais do Parametro).
 const MINUTO = 60_000;
@@ -219,6 +226,23 @@ describe("código de recuperação (US42, RN49)", () => {
     await entrarComRecuperacao(p, codigo);
 
     expect(await entrarComRecuperacao(p, codigo)).toEqual({ tipo: "invalido" });
+  });
+
+  it("se a contagem dos códigos restantes falhar, entra mesmo assim e registra sem o número", async () => {
+    const p = await novaPessoa();
+    vi.mocked(codigosRecuperacao.quantosCodigosRestam).mockRejectedValueOnce(new Error("decifragem falhou"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const r = await entrarComRecuperacao(p, p.codigosRecuperacao[0]!);
+
+    expect(r.tipo).toBe("entrou");
+    const [registro] = await banco()
+      .select({ detalhe: atividade.detalhe })
+      .from(atividade)
+      .where(and(eq(atividade.alvoId, p.id), eq(atividade.acao, "acesso.entrar")));
+    expect(registro?.detalhe).toMatchObject({ metodo: "codigo_recuperacao", codigosRestantes: null });
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
   });
 
   it("códigos de recuperação errados contam com as senhas erradas e bloqueiam na 5ª (RN05)", async () => {

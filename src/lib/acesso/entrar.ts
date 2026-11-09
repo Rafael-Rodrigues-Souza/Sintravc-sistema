@@ -120,7 +120,7 @@ export async function confirmarCodigo(
 
   // O uso de código de recuperação fica na Atividade, com quantos ainda restam (US42).
   const metodo = recuperacao
-    ? { metodo: "codigo_recuperacao", codigosRestantes: await quantosCodigosRestam(pessoa.id) }
+    ? { metodo: "codigo_recuperacao", codigosRestantes: await contarCodigosSemFalhar(pessoa.id) }
     : { metodo: "aplicativo" };
   await banco().transaction(async (tx) => {
     await tx
@@ -210,6 +210,20 @@ async function liberarSeOBloqueioVenceu(pessoa: Pessoa, agora: Date): Promise<Pe
     });
     return liberada;
   });
+}
+
+/**
+ * Quantos códigos de recuperação restam, só para a Atividade. O código já foi gasto e o login
+ * já foi aceito: se a contagem falhar, a pessoa entra mesmo assim, a Atividade fica com null e
+ * o erro vai para o log.
+ */
+async function contarCodigosSemFalhar(pessoaId: string): Promise<number | null> {
+  try {
+    return await quantosCodigosRestam(pessoaId);
+  } catch (erro) {
+    console.error("Não consegui contar os códigos de recuperação restantes:", erro);
+    return null;
+  }
 }
 
 /**
