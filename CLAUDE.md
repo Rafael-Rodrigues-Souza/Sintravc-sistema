@@ -47,8 +47,11 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
 
 ## Ao terminar
 
-- Antes de encerrar a tarefa, pare os servidores (`pnpm dev`, `next start`) e os processos que você iniciou em segundo plano.
-- Nos diagramas Mermaid das descrições de PR, não use ponto e vírgula dentro dos textos: o Mermaid entende `;` como fim de comando. Use vírgula.
+- Antes de encerrar, pare todos os servidores que você iniciou (`pnpm dev`, `next start`, e2e) e confira se as portas 3000 e 3100 estão livres. No Windows, o processo filho do `next` pode ficar preso: use `taskkill /PID`.
+- Diagramas Mermaid no PR: nada de ponto e vírgula nos textos (ele encerra o comando). Use vírgula.
+- Testes que leem várias linhas do banco e conferem a ordem sempre usam `ORDER BY` (na Atividade, por `id`, que é uuidv7). Sem isso o CI pode falhar por sorte.
+- Antes de criar um arquivo novo, confira se ele já existe para não sobrescrever.
+- Só diga que terminou com o CI verde (`gh pr checks --watch`).
 
 ## Agent skills
 
