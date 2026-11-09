@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { FaixaSemInternet } from "@/components/painel/faixa-sem-internet";
 import { NavegacaoLateral } from "@/components/painel/navegacao-lateral";
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
 import { pode } from "@/lib/permissoes";
@@ -21,10 +22,14 @@ export default async function LayoutPainel({ children }: { children: React.React
       <NavegacaoLateral
         grupos={itensDoMenu(pessoa.quem)}
         podeCriarConteudo={pode(pessoa.quem, "criar", { tipo: "noticia" })}
-        pessoa={{ nome: pessoa.nome, perfil: pessoa.perfil }}
+        podeCriarDocumento={pode(pessoa.quem, "criar", { tipo: "documento" })}
+        pessoa={{ id: pessoa.id, nome: pessoa.nome, perfil: pessoa.perfil }}
         sair={acaoSair}
       />
-      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <FaixaSemInternet />
+        {children}
+      </main>
     </div>
   );
 }

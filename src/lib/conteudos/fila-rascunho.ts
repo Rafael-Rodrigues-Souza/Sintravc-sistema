@@ -53,6 +53,8 @@ export function criarFilaDoRascunho(opcoes: {
   pessoaId: string;
   id: string | null;
   revisao: number;
+  /** Quando a versão aberta foi salva no servidor (para o "Salvo às" logo ao abrir). */
+  salvoEm?: string | null;
   intervaloMs: number;
   enviar: (pedido: PedidoEnvio) => Promise<RespostaEnvio>;
   online: () => boolean;
@@ -61,7 +63,7 @@ export function criarFilaDoRascunho(opcoes: {
   versaoServidor?: VersaoServidor;
 }) {
   const { pessoaId, armazem } = opcoes;
-  let estado: EstadoDaFila = { situacao: "sincronizado", id: opcoes.id, revisao: opcoes.revisao, salvoEm: null };
+  let estado: EstadoDaFila = { situacao: "sincronizado", id: opcoes.id, revisao: opcoes.revisao, salvoEm: opcoes.salvoEm ?? null };
   let dados: DadosNoticia | null = null;
   let mudanca = 0;
   let mudancaNoServidor = 0;
@@ -212,6 +214,12 @@ export function criarFilaDoRascunho(opcoes: {
         revisao: resposta.revisao,
         salvoEm: resposta.salvoEm,
       });
+    },
+
+    /** Alguém salvou de novo enquanto a pessoa escolhia: o modal passa a comparar com a versão mais nova. */
+    conflitoAtualizado(servidor: VersaoServidor) {
+      if (!dados) return;
+      mudar({ situacao: "conflito", conflito: { minha: estado.conflito?.minha ?? dados, servidor } });
     },
 
     /** "Descartar alterações": apaga a cópia e esquece o que não foi salvo. */

@@ -6,6 +6,7 @@ import { conteudo, conteudoLink, noticia, pessoaEquipe } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import type { DadosNoticia, DocCorpo } from "./dados";
+import type { VersaoServidor } from "./fila-rascunho";
 
 export type NoticiaAberta = {
   id: string;
@@ -68,5 +69,15 @@ export async function lerNoticia(tx: Transacao | ReturnType<typeof banco>, id: s
       palavrasChave: n.palavrasChave,
       links: links.map((l) => ({ tipo: l.tipo, titulo: l.titulo, url: l.url, midiaId: l.midiaId, visivel: l.visivel })),
     },
+  };
+}
+
+/** A versão do servidor no formato que vai para a tela (datas em texto ISO). */
+export function versaoDoServidor(noticia: NoticiaAberta): VersaoServidor {
+  return {
+    revisao: noticia.revisao,
+    dados: noticia.dados,
+    salvoPorNome: noticia.salvoPorNome,
+    salvoEm: noticia.atualizadoEm.toISOString(),
   };
 }

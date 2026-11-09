@@ -205,6 +205,20 @@ describe("conflito de versões (E02, N4)", () => {
     expect(servidor.recebidos.at(-1)).toMatchObject({ id: "noticia-1", revisaoBase: 5 });
   });
 
+  it("se o servidor mudou de novo enquanto a pessoa escolhia, o conflito passa a mostrar a versão mais nova", async () => {
+    const { servidor, fila } = montar({ id: "noticia-1", revisao: 0 });
+    servidor.salvarPorFora();
+    fila.alterar(dados("Minha"));
+    await vi.advanceTimersByTimeAsync(INTERVALO);
+
+    fila.conflitoAtualizado({ revisao: 7, dados: dados("Mais nova"), salvoPorNome: "Bia", salvoEm: "w" });
+
+    expect(fila.estado()).toMatchObject({
+      situacao: "conflito",
+      conflito: { minha: { titulo: "Minha" }, servidor: { revisao: 7, salvoPorNome: "Bia" } },
+    });
+  });
+
   it("ao abrir, uma cópia guardada sobre uma revisão antiga vira conflito; sobre a atual, é retomada", () => {
     const armazem = armazemEmMemoria();
     const servidor = servidorFalso();

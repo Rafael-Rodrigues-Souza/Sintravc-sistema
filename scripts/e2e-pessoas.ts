@@ -17,6 +17,8 @@ async function main() {
     bloqueioAviso: await criarPessoaDeTeste({ nome: "Rita Aviso", email: "rita@sintravc.local", perfil: "COM", senha }),
     // Mídia (issue #7): o Atendimento não entra na Mídia.
     atd: await criarPessoaDeTeste({ nome: "Ana Atendimento", email: "ana@sintravc.local", perfil: "ATD", senha }),
+    // Conteúdos (issue #8): outra pessoa da Comunicação edita a notícia do Carlos (RN55).
+    com2: await criarPessoaDeTeste({ nome: "Joana Lima", email: "joana@sintravc.local", perfil: "COM", senha }),
   };
   mkdirSync("e2e/.dados", { recursive: true });
   writeFileSync("e2e/.dados/pessoas.json", JSON.stringify(pessoas, null, 2));
