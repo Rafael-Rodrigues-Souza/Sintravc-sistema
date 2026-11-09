@@ -5,7 +5,7 @@ import { hashDoToken, novoToken } from "@/lib/acesso/token";
 import { registrarAtividade, type Ator } from "@/lib/atividade";
 import { banco, type Transacao } from "@/lib/db";
 import { convite, pessoaEquipe } from "@/lib/db/schema";
-import { enviarEmail, type Mensagem } from "@/lib/email";
+import { enviarEmail, type Enviar } from "@/lib/email";
 import { mensagemConviteEquipe } from "@/lib/email/modelos";
 import { dataHoraNaBahia } from "@/lib/datas";
 import { lerParametro } from "@/lib/parametros";
@@ -38,8 +38,6 @@ export { hashDoToken };
 export function linkDoConvite(urlSite: string, token: string) {
   return `${urlSite.replace(/\/+$/, "")}/painel/convite/${token}`;
 }
-
-type Enviar = (mensagem: Mensagem) => Promise<{ idMensagem: string }>;
 
 /** Quem convida pela tela: o ADM logado. */
 type QuemConvida = { id: string; nome: string };

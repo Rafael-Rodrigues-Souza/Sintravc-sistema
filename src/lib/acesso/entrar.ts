@@ -4,11 +4,11 @@ import { and, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { pessoaEquipe, verificacao } from "@/lib/db/schema";
-import { enviarEmail } from "@/lib/email";
+import { enviarEmail, type Enviar } from "@/lib/email";
 import { lerParametro } from "@/lib/parametros";
 
 import { auth } from "./auth";
-import { avisarContaBloqueada, type Enviar } from "./avisos";
+import { avisarContaBloqueada } from "./avisos";
 import { quantosCodigosRestam } from "./codigos-recuperacao";
 
 /**

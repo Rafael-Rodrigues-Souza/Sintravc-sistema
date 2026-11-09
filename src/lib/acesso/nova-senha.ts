@@ -4,13 +4,13 @@ import { registrarAtividade } from "@/lib/atividade";
 import { quandoNaBahia } from "@/lib/datas";
 import { banco } from "@/lib/db";
 import { pessoaEquipe, sessao, tokenSenha } from "@/lib/db/schema";
-import { enviarEmail } from "@/lib/email";
+import { enviarEmail, type Enviar } from "@/lib/email";
 import { mensagemRedefinirSenha, mensagemSenhaAlterada } from "@/lib/email/modelos";
 import { lerEnvAcesso } from "@/lib/env";
 import { lerParametro } from "@/lib/parametros";
 
 import { auth } from "./auth";
-import { enviarSemFalhar, type Enviar } from "./avisos";
+import { enviarSemFalhar } from "./avisos";
 import { navegadorDe } from "./navegador";
 import { validarSenhaDaEquipe, type RequisitoDaSenha } from "./senha";
 import { gravarSenha, senhaJaUsada } from "./senha-anterior";

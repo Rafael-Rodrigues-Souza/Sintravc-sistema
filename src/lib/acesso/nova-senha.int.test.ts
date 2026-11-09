@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
 import { atividade, pessoaEquipe, sessao } from "@/lib/db/schema";
-import type { Mensagem } from "@/lib/email";
+import type { Enviar, Mensagem } from "@/lib/email";
 
-import type { Enviar } from "./avisos";
 import { entrar } from "./entrar";
 import { abrirLinkDeSenha, pedirNovaSenha, trocarSenhaPeloLink } from "./nova-senha";
 import { criarPessoaDeTeste, type PessoaDeTeste } from "./pessoas-de-teste";

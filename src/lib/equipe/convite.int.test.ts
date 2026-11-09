@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { banco } from "@/lib/db";
 import { atividade, convite, pessoaEquipe } from "@/lib/db/schema";
-import type { Mensagem } from "@/lib/email";
+import type { Enviar } from "@/lib/email";
 import { dataHoraNaBahia } from "@/lib/datas";
 
 import { convidarPessoa, criarConviteAdmin, ErroCriarAdmin } from "./convite";
@@ -14,7 +14,7 @@ const URL_SITE = "http://localhost:3000";
 const HORA = 60 * 60 * 1000;
 
 function enviarFalso() {
-  return vi.fn<(mensagem: Mensagem) => Promise<{ idMensagem: string }>>(async () => ({ idMensagem: "teste" }));
+  return vi.fn<Enviar>(async () => ({ idMensagem: "teste" }));
 }
 
 async function contarLinhas() {

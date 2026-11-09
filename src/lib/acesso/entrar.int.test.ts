@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 
 import { banco } from "@/lib/db";
-import type { Mensagem } from "@/lib/email";
+import type { Enviar, Mensagem } from "@/lib/email";
 import { atividade, pessoaEquipe, sessao } from "@/lib/db/schema";
 
 import * as codigosRecuperacao from "./codigos-recuperacao";
@@ -34,8 +34,6 @@ async function errarSenha(p: PessoaDeTeste, vezes: number, agora = new Date(), e
   for (let i = 0; i < vezes; i++) ultimo = await entrar({ email: p.email, senha: "senha-errada-1" }, { agora, enviar });
   return ultimo;
 }
-
-type Enviar = (mensagem: Mensagem) => Promise<{ idMensagem: string }>;
 
 /** Guarda os e-mails em vez de enviar. */
 function caixaDeSaida() {

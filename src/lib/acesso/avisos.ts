@@ -3,7 +3,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { banco } from "@/lib/db";
 import { pessoaEquipe } from "@/lib/db/schema";
 import { quandoNaBahia } from "@/lib/datas";
-import type { Mensagem } from "@/lib/email";
+import type { Enviar, Mensagem } from "@/lib/email";
 import { mensagemContaBloqueadaAdm, mensagemContaBloqueadaPessoa } from "@/lib/email/modelos";
 import { lerEnvAcesso } from "@/lib/env";
 import { NOME_DO_PERFIL, type Perfil } from "@/lib/permissoes";
@@ -14,8 +14,6 @@ import { navegadorDe } from "./navegador";
  * E-mails de segurança da equipe (E21, RN59). São enviados depois que a ação foi gravada:
  * se o SMTP falhar, a ação continua valendo e o erro vai para o log do servidor (E38).
  */
-export type Enviar = (mensagem: Mensagem) => Promise<{ idMensagem: string }>;
-
 /** Envia cada mensagem; a falha de uma não impede as outras. */
 export async function enviarSemFalhar(enviar: Enviar, mensagens: Mensagem[], motivo: string): Promise<void> {
   const resultados = await Promise.allSettled(mensagens.map((m) => enviar(m)));
