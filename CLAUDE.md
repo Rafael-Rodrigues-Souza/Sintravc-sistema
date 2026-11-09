@@ -45,6 +45,11 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
 - Divergência de tela vai para `docs/correcoes-figma.md`.
 - Algo que depende do sindicato vai para `docs/dependencias-cliente.md`.
 
+## Ao terminar
+
+- Antes de encerrar a tarefa, pare os servidores (`pnpm dev`, `next start`) e os processos que você iniciou em segundo plano.
+- Nos diagramas Mermaid das descrições de PR, não use ponto e vírgula dentro dos textos: o Mermaid entende `;` como fim de comando. Use vírgula.
+
 ## Agent skills
 
 ### Issue tracker
