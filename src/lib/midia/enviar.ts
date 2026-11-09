@@ -5,11 +5,9 @@ import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { midia } from "@/lib/db/schema";
 import { lerParametro } from "@/lib/parametros";
-import { exigir, type Quem } from "@/lib/permissoes";
+import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { prepararArquivo, type ArquivoPreparado, type Limites } from "./preparar";
-
-export type QuemEnvia = Extract<Quem, { tipo: "equipe" }>;
 
 /** Limites da Mídia, do Parametro (R7, RN15, E39). */
 export async function limitesDaMidia(): Promise<Limites> {
@@ -30,7 +28,7 @@ export async function limitesDaMidia(): Promise<Limites> {
  */
 export async function enviarMidia(
   entrada: { bytes: Uint8Array; nome: string },
-  deps: { quem: QuemEnvia; armazenamento?: Armazenamento },
+  deps: { quem: QuemDaEquipe; armazenamento?: Armazenamento },
 ): Promise<{ id: string }> {
   exigir(deps.quem, "enviar", { tipo: "midia" });
   const armazenamento = deps.armazenamento ?? armazenamentoS3;

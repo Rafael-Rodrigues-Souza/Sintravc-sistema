@@ -1,6 +1,6 @@
 import { matriz, type Perfil, type Quem, type Recurso, type TipoRecurso } from "./matriz";
 
-export type { DoServico, Perfil, Quem, Recurso, TipoRecurso } from "./matriz";
+export type { DoServico, Perfil, Quem, QuemDaEquipe, Recurso, TipoRecurso } from "./matriz";
 
 type RegraSolta = (quem: Quem, recurso: Recurso) => boolean;
 

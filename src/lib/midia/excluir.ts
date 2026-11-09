@@ -4,9 +4,8 @@ import { armazenamentoS3, type Armazenamento } from "@/lib/armazenamento";
 import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { midia } from "@/lib/db/schema";
-import { pode, SemPermissao } from "@/lib/permissoes";
+import { pode, SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
 
-import type { QuemEnvia } from "./enviar";
 import { ErroMidia } from "./erros";
 import { usosDasMidias } from "./usos";
 
@@ -20,7 +19,7 @@ import { usosDasMidias } from "./usos";
  */
 export async function excluirMidia(
   id: string,
-  deps: { quem: QuemEnvia; armazenamento?: Armazenamento },
+  deps: { quem: QuemDaEquipe; armazenamento?: Armazenamento },
 ): Promise<void> {
   const armazenamento = deps.armazenamento ?? armazenamentoS3;
 
@@ -33,7 +32,7 @@ export async function excluirMidia(
     const usos = (await usosDasMidias([id], tx)).get(id) ?? [];
     if (!pode(deps.quem, "excluir", { tipo: "midia", emUso: usos.length > 0 })) {
       const conteudos = usos.length === 1 ? "1 conteúdo" : `${usos.length} conteúdos`;
-      throw new ErroMidia("em_uso", `Não é possível excluir: o arquivo está em uso em ${conteudos}.`, usos);
+      throw new ErroMidia("em_uso", `Não é possível excluir: o arquivo está em uso em ${conteudos}. Tire o arquivo desses conteúdos e tente de novo.`, usos);
     }
 
     await tx.delete(midia).where(eq(midia.id, id));

@@ -10,7 +10,15 @@ import { lerEnvArmazenamento } from "@/lib/env";
 import { linhaDoCartao, siglaDoFormato, tamanhoLegivel, tipoLegivel } from "@/lib/midia/apresentacao";
 import { limitesDaMidia } from "@/lib/midia/enviar";
 import { erroDeTamanho } from "@/lib/midia/erros";
-import { contarMidia, detalharMidia, FILTROS, listarMidia, type FiltroMidia, type ItemMidia } from "@/lib/midia/listar";
+import {
+  contarMidia,
+  detalharMidia,
+  FILTROS,
+  listarMidia,
+  POR_PAGINA,
+  type FiltroMidia,
+  type ItemMidia,
+} from "@/lib/midia/listar";
 import { pode } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
@@ -18,8 +26,6 @@ import { DetalhesArquivo, MiniaturaDeArquivo, type ArquivoDetalhado } from "./de
 import { BotaoEnviarArquivos, ListaDeEnvios, ProvedorDeEnvios } from "./envios";
 
 export const metadata: Metadata = { title: "Mídia" };
-
-const POR_PAGINA = 48;
 
 type Busca = { filtro?: string; busca?: string; arquivo?: string; pagina?: string };
 

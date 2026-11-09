@@ -459,7 +459,7 @@ Como Comunicação, quero enviar fotos direto do celular, para publicar sem prec
 
 **Quando** o envio termina
 
-**Então** a imagem é convertida para JPG ou WebP, reduzida e fica disponível na Mídia
+**Então** a imagem é convertida para JPG, reduzida e fica disponível na Mídia (E39)
 
 **CA-US27.2 · Excluir em uso**
 

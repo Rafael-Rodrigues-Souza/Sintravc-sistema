@@ -5,14 +5,14 @@ import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
 import { midia, pessoaEquipe } from "@/lib/db/schema";
-import { SemPermissao, type Perfil } from "@/lib/permissoes";
+import { SemPermissao, type Perfil, type QuemDaEquipe } from "@/lib/permissoes";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { imagem } from "@/testes/arquivos/gerar";
 
 import { salvarDetalhesMidia } from "./detalhes";
-import { enviarMidia, type QuemEnvia } from "./enviar";
+import { enviarMidia } from "./enviar";
 
-async function pessoa(perfil: Perfil = "COM"): Promise<QuemEnvia> {
+async function pessoa(perfil: Perfil = "COM"): Promise<QuemDaEquipe> {
   const [linha] = await banco()
     .insert(pessoaEquipe)
     .values({ nome: "Detalhes", email: `${randomUUID()}@sintravc.local`, perfil, situacao: "ativa" })
@@ -20,7 +20,7 @@ async function pessoa(perfil: Perfil = "COM"): Promise<QuemEnvia> {
   return { tipo: "equipe", id: linha!.id, perfil };
 }
 
-async function arquivo(quem: QuemEnvia) {
+async function arquivo(quem: QuemDaEquipe) {
   const { armazenamento } = armazenamentoEmMemoria();
   return (await enviarMidia({ bytes: await imagem("png"), nome: "assembleia.png" }, { quem, armazenamento })).id;
 }

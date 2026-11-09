@@ -6,7 +6,7 @@ import { cache } from "react";
 import { banco } from "@/lib/db";
 import { pessoaEquipe, sessao } from "@/lib/db/schema";
 import { lerParametro } from "@/lib/parametros";
-import { areasDoPainel, type AreaDoPainel, type Perfil, type Quem } from "@/lib/permissoes";
+import { areasDoPainel, type AreaDoPainel, type Perfil, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { auth } from "./auth";
 import { estadoDaSessao, urlDoLogin } from "./sessao";
@@ -23,7 +23,7 @@ export type PessoaLogada = {
   email: string;
   perfil: Perfil;
   /** Para pode(), exigir() e o menu. Sempre uma pessoa da equipe. */
-  quem: Extract<Quem, { tipo: "equipe" }>;
+  quem: QuemDaEquipe;
 };
 
 export type SessaoRecusada = { motivo: "sem_sessao" | "expirou" | "inativa"; tinhaCookie: boolean };

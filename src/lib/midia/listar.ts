@@ -4,6 +4,7 @@ import { banco } from "@/lib/db";
 import { midia, midiaUso, pessoaEquipe } from "@/lib/db/schema";
 
 import type { UsoDaMidia } from "./erros";
+import type { TipoMidia } from "./preparar";
 import { usosDasMidias } from "./usos";
 
 export const FILTROS = ["todos", "imagens", "pdfs", "documentos", "sem_alt"] as const;
@@ -13,7 +14,7 @@ export type ItemMidia = {
   id: string;
   chaveR2: string;
   nomeArquivo: string;
-  tipo: "imagem" | "pdf" | "documento";
+  tipo: TipoMidia;
   mime: string;
   largura: number | null;
   altura: number | null;
@@ -46,11 +47,30 @@ function condicaoDaBusca(busca: string | undefined): SQL | undefined {
   return sql`${campo} ilike unaccent(${padrao})`;
 }
 
+/** Colunas da grade e dos detalhes (com o nome de quem enviou, via join em pessoa_equipe). */
+const COLUNAS = {
+  id: midia.id,
+  chaveR2: midia.chaveR2,
+  nomeArquivo: midia.nomeArquivo,
+  tipo: midia.tipo,
+  mime: midia.mime,
+  largura: midia.largura,
+  altura: midia.altura,
+  bytes: midia.bytes,
+  paginas: midia.paginas,
+  alt: midia.alt,
+  legenda: midia.legenda,
+  criadoEm: midia.criadoEm,
+  enviadoPor: pessoaEquipe.nome,
+};
+
+export const POR_PAGINA = 48;
+
 /** A grade da Mídia: do mais novo para o mais antigo, com filtro, busca e páginas. */
 export async function listarMidia(
   opcoes: { filtro?: FiltroMidia; busca?: string; pagina?: number; porPagina?: number } = {},
 ): Promise<{ itens: ItemMidia[]; total: number }> {
-  const porPagina = opcoes.porPagina ?? 48;
+  const porPagina = opcoes.porPagina ?? POR_PAGINA;
   const pagina = Math.max(1, opcoes.pagina ?? 1);
   const onde = and(CONDICAO[opcoes.filtro ?? "todos"], condicaoDaBusca(opcoes.busca));
   const usosPorMidia = banco()
@@ -60,22 +80,7 @@ export async function listarMidia(
   const [linhas, [contagem]] = await Promise.all([
     banco()
       .with(usosPorMidia)
-      .select({
-        id: midia.id,
-        chaveR2: midia.chaveR2,
-        nomeArquivo: midia.nomeArquivo,
-        tipo: midia.tipo,
-        mime: midia.mime,
-        largura: midia.largura,
-        altura: midia.altura,
-        bytes: midia.bytes,
-        paginas: midia.paginas,
-        alt: midia.alt,
-        legenda: midia.legenda,
-        criadoEm: midia.criadoEm,
-        enviadoPor: pessoaEquipe.nome,
-        usos: sql<number>`coalesce(${usosPorMidia.total}, 0)::int`,
-      })
+      .select({ ...COLUNAS, usos: sql<number>`coalesce(${usosPorMidia.total}, 0)::int` })
       .from(midia)
       .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, midia.enviadoPor))
       .leftJoin(usosPorMidia, eq(usosPorMidia.midiaId, midia.id))
@@ -105,21 +110,7 @@ export async function contarMidia() {
 /** O painel "Detalhes do arquivo", com a lista "Usado em". */
 export async function detalharMidia(id: string): Promise<(Omit<ItemMidia, "usos"> & { usos: UsoDaMidia[] }) | undefined> {
   const [linha] = await banco()
-    .select({
-      id: midia.id,
-      chaveR2: midia.chaveR2,
-      nomeArquivo: midia.nomeArquivo,
-      tipo: midia.tipo,
-      mime: midia.mime,
-      largura: midia.largura,
-      altura: midia.altura,
-      bytes: midia.bytes,
-      paginas: midia.paginas,
-      alt: midia.alt,
-      legenda: midia.legenda,
-      criadoEm: midia.criadoEm,
-      enviadoPor: pessoaEquipe.nome,
-    })
+    .select(COLUNAS)
     .from(midia)
     .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, midia.enviadoPor))
     .where(eq(midia.id, id));

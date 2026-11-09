@@ -1,5 +1,7 @@
 /** Textos da tela Mídia (Figma 116:2727). Funções puras, testadas. */
 
+import type { TipoMidia } from "./preparar";
+
 const FORMATOS: Record<string, { sigla: string; nome: string }> = {
   "image/jpeg": { sigla: "JPG", nome: "Imagem JPG" },
   "image/png": { sigla: "PNG", nome: "Imagem PNG" },
@@ -28,7 +30,7 @@ export function tamanhoLegivel(bytes: number): string {
 }
 
 type DadosDoCartao = {
-  tipo: "imagem" | "pdf" | "documento";
+  tipo: TipoMidia;
   mime: string;
   largura: number | null;
   altura: number | null;

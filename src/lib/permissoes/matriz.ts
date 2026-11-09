@@ -14,6 +14,9 @@ export type Quem =
   | { tipo: "associado"; id: string }
   | { tipo: "visitante" };
 
+/** Uma pessoa da equipe logada no painel. */
+export type QuemDaEquipe = Extract<Quem, { tipo: "equipe" }>;
+
 /** Os responsáveis por um serviço (ResponsavelServico, RN19). */
 export type DoServico = { responsaveisIds: readonly string[] };
 

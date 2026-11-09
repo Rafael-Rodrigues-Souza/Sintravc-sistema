@@ -8,10 +8,12 @@ import { midia, midiaUso, pessoaEquipe } from "@/lib/db/schema";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { imagem, office, pdf } from "@/testes/arquivos/gerar";
 
-import { enviarMidia, type QuemEnvia } from "./enviar";
+import type { QuemDaEquipe } from "@/lib/permissoes";
+
+import { enviarMidia } from "./enviar";
 import { contarMidia, detalharMidia, listarMidia } from "./listar";
 
-async function pessoa(): Promise<QuemEnvia & { nome: string }> {
+async function pessoa(): Promise<QuemDaEquipe & { nome: string }> {
   const nome = `Mariana ${randomUUID().slice(0, 6)}`;
   const [linha] = await banco()
     .insert(pessoaEquipe)

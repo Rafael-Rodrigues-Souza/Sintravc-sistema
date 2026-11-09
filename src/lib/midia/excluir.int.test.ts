@@ -5,17 +5,17 @@ import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
 import { atividade, midia, midiaUso, pessoaEquipe } from "@/lib/db/schema";
-import { SemPermissao, type Perfil } from "@/lib/permissoes";
+import { SemPermissao, type Perfil, type QuemDaEquipe } from "@/lib/permissoes";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { imagem } from "@/testes/arquivos/gerar";
 
-import { enviarMidia, type QuemEnvia } from "./enviar";
+import { enviarMidia } from "./enviar";
 import { ErroMidia } from "./erros";
 import { excluirMidia } from "./excluir";
 
 let contador = 0;
 
-async function pessoa(perfil: Perfil = "COM"): Promise<QuemEnvia> {
+async function pessoa(perfil: Perfil = "COM"): Promise<QuemDaEquipe> {
   contador += 1;
   const [linha] = await banco()
     .insert(pessoaEquipe)
@@ -24,7 +24,7 @@ async function pessoa(perfil: Perfil = "COM"): Promise<QuemEnvia> {
   return { tipo: "equipe", id: linha!.id, perfil };
 }
 
-async function arquivoNaMidia(quem: QuemEnvia, nome = "copa-rodoviarios.jpg") {
+async function arquivoNaMidia(quem: QuemDaEquipe, nome = "copa-rodoviarios.jpg") {
   const s3 = armazenamentoEmMemoria();
   const { id } = await enviarMidia({ bytes: await imagem("webp"), nome }, { quem, armazenamento: s3.armazenamento });
   const [linha] = await banco().select().from(midia).where(eq(midia.id, id));
@@ -51,7 +51,7 @@ describe("excluirMidia (RF49, RN16)", () => {
     expect(erro).toBeInstanceOf(ErroMidia);
     expect(erro).toMatchObject({
       codigo: "em_uso",
-      message: "Não é possível excluir: o arquivo está em uso em 1 conteúdo.",
+      message: "Não é possível excluir: o arquivo está em uso em 1 conteúdo. Tire o arquivo desses conteúdos e tente de novo.",
       usos: [expect.objectContaining({ donoTipo: "noticia", donoId: noticiaId, rotulo: expect.any(String) })],
     });
     expect(await banco().select().from(midia).where(eq(midia.id, id))).toHaveLength(1);

@@ -8,7 +8,7 @@
 
 | # | Tela no Figma | Está assim | Vale | Fonte | Feito |
 |---|---|---|---|---|---|
-| C1 | Mídia (116:2727) | `foto-assembleia.heic` aparece recusado: “Formato não aceito. Envie em JPG, PNG ou WebP (até 10 MB)”. | HEIC é aceito e convertido no servidor para JPG ou WebP. Trocar o exemplo de erro por um formato realmente não aceito (ex.: `.gif` ou `.pdf` acima do tamanho). | RN15 | ☑ |
+| C1 | Mídia (116:2727) | `foto-assembleia.heic` aparece recusado: “Formato não aceito. Envie em JPG, PNG ou WebP (até 10 MB)”. | HEIC é aceito e convertido no servidor para JPG (E39). Trocar o exemplo de erro por um formato realmente não aceito (ex.: `.gif` ou `.pdf` acima do tamanho). | RN15 | ☑ |
 | C1 | Visão geral · Notificações (113:2228) | O título diz “Falha no envio de imagem” e o texto diz que a foto “foi convertida para JPG automaticamente”. | Título de sucesso, ex.: “Imagem convertida”. | RN15 | ☑ |
 | C2 | Editor · Documento oficial (114:1972) | “Ao terminar, o estado muda para ‘Encerrado’ e você recebe um aviso.” | O estado de publicação não muda no fim da vigência. “Vigente” e “Encerrado” são um **selo calculado** pelas datas de vigência. O aviso continua (RN44). | RN10, RN44 | ☑ |
 | C2 | Documentos · Acordos coletivos (75:1438) e Editais (73:629) | Os selos “VIGENTE”, “ENCERRADO” e “Prazo” se parecem com estados. | Mantêm o mesmo visual, mas são documentados como selo de vigência, separado do estado de publicação. | RN10 | ☑ |

@@ -216,7 +216,8 @@ function Excluir({ arquivo, hrefFechar }: { arquivo: ArquivoDetalhado; hrefFecha
     return (
       <p className="flex items-start gap-2 texto-pequeno text-texto-terciario">
         <IconeFigma src="/painel/icone-lixeira.svg" tamanho={16} className="mt-0.5" />
-        Não é possível excluir: o arquivo está em uso em {emUso === 1 ? "1 conteúdo" : `${emUso} conteúdos`}.
+        Não é possível excluir: o arquivo está em uso em {emUso === 1 ? "1 conteúdo" : `${emUso} conteúdos`}. Tire o
+        arquivo desses conteúdos e tente de novo.
       </p>
     );
   }

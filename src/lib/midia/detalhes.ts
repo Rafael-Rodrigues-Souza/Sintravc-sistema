@@ -3,9 +3,8 @@ import { z } from "zod";
 
 import { banco } from "@/lib/db";
 import { midia } from "@/lib/db/schema";
-import { exigir } from "@/lib/permissoes";
+import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
-import type { QuemEnvia } from "./enviar";
 import { ErroMidia } from "./erros";
 
 const opcional = (maximo: number, mensagem: string) =>
@@ -32,7 +31,7 @@ export type CampoDosDetalhes = keyof typeof esquemaDetalhes.shape;
 export async function salvarDetalhesMidia(
   id: string,
   dados: Record<CampoDosDetalhes, string>,
-  deps: { quem: QuemEnvia },
+  deps: { quem: QuemDaEquipe },
 ): Promise<void> {
   exigir(deps.quem, "editar_alt", { tipo: "midia" });
   const validado = esquemaDetalhes.safeParse(dados);
