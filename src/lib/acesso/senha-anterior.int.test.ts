@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { banco } from "@/lib/db";
 import { parametro, pessoaEquipe } from "@/lib/db/schema";
@@ -7,6 +7,10 @@ import { limparCacheParametros } from "@/lib/parametros";
 
 import { auth } from "./auth";
 import { gravarSenha, registrarSenha, senhaJaUsada } from "./senha-anterior";
+
+// Cada teste faz vários hashes de senha (lentos de propósito). Com a máquina carregada,
+// os 5 s padrão do Vitest já estouraram uma vez.
+vi.setConfig({ testTimeout: 20_000 });
 
 // RN47: a senha nova não pode repetir as 3 últimas (equipe.senhas_anteriores_bloqueadas).
 let contador = 0;
