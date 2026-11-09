@@ -1,9 +1,10 @@
 import { randomInt } from "node:crypto";
 
-import { symmetricEncrypt } from "better-auth/crypto";
+import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 
 import { lerParametro } from "@/lib/parametros";
 
+import { auth } from "./auth";
 import { registroDuasEtapas } from "./duas-etapas";
 
 /**
@@ -43,4 +44,16 @@ export async function gerarCodigosRecuperacao(pessoaId: string): Promise<string[
     },
   });
   return lista;
+}
+
+/** Quantos códigos de recuperação a pessoa ainda pode usar (para a Atividade). */
+export async function quantosCodigosRestam(pessoaId: string): Promise<number> {
+  const contexto = await auth().$context;
+  const registro = await contexto.adapter.findOne<{ backupCodes: string }>({
+    model: "twoFactor",
+    where: [{ field: "userId", value: pessoaId }],
+  });
+  if (!registro?.backupCodes) return 0;
+  const lista: unknown = JSON.parse(await symmetricDecrypt({ key: contexto.secretConfig, data: registro.backupCodes }));
+  return Array.isArray(lista) ? lista.length : 0;
 }

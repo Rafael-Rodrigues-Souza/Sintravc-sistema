@@ -7,6 +7,7 @@ import { banco } from "@/lib/db";
 import { contaLogin, duasEtapas, pessoaEquipe, sessao, verificacao } from "@/lib/db/schema";
 import { lerEnvAcesso } from "@/lib/env";
 
+import { PREFIXO_COOKIE } from "./cookies";
 import { OPCOES_TOTP } from "./opcoes-totp";
 
 /**
@@ -30,7 +31,7 @@ function criarAuth() {
     }),
     advanced: {
       database: { generateId: "uuid" },
-      cookiePrefix: "sintravc",
+      cookiePrefix: PREFIXO_COOKIE,
     },
     // Só a equipe entra, por convite (RN46). Nada de cadastro aberto.
     emailAndPassword: { enabled: true, disableSignUp: true },
@@ -41,6 +42,11 @@ function criarAuth() {
       "/two-factor/verify-backup-code",
       "/two-factor/send-otp",
       "/two-factor/verify-otp",
+      // Nova senha só pelo nosso fluxo (nova-senha.ts), que aplica a RN47 (E38).
+      "/request-password-reset",
+      "/reset-password",
+      "/reset-password/:token",
+      "/change-password",
       "/update-user",
       "/change-email",
       "/delete-user",

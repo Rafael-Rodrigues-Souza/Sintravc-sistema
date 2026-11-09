@@ -31,3 +31,8 @@ export function diaNaBahia(data: Date): number {
   const parte = partesNaBahia(data, { day: "2-digit", month: "2-digit", year: "numeric" });
   return Math.round(Date.UTC(Number(parte("year")), Number(parte("month")) - 1, Number(parte("day"))) / DIA_MS);
 }
+
+/** "05/11/2026 · 14h30", no horário da Bahia (o "Quando" dos e-mails de segurança). */
+export function quandoNaBahia(data: Date): string {
+  return `${dataNaBahia(data)} · ${horaNaBahia(data)}`;
+}

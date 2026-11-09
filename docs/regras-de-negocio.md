@@ -59,7 +59,7 @@ Regras de negócio descrevem decisões do sindicato que valem em qualquer tela o
 | RN44 | **Tarefas automáticas** | A Visão geral lista tarefas geradas pelo sistema: documento com vigência terminando em 2 dias, publicação agendada para hoje, rascunhos parados há mais de 7 dias e imagens sem texto alternativo. |
 | RN46 | **Convite da equipe** | Só o Administrador geral convida. O convite chega por e-mail com link único, válido por 48 horas. Antes do primeiro acesso, a pessoa cria a senha, ativa as duas etapas e guarda os códigos de recuperação. Reenviar um convite invalida o anterior. Convites ficam registrados em Atividade. |
 | RN47 | **Senha da equipe** | Mínimo de 10 caracteres, com letras e números, diferente do e-mail, do nome e das 3 últimas senhas. |
-| RN48 | **Recuperação de senha da equipe** | A própria pessoa pede um link em “Esqueci minha senha”. O link vale 1 hora e uma única vez. A resposta na tela é a mesma exista ou não o e-mail, para não revelar quem tem acesso. Ao trocar a senha, as outras sessões são encerradas e chega um e-mail de “senha alterada”. A verificação em duas etapas continua sendo exigida. |
+| RN48 | **Recuperação de senha da equipe** | A própria pessoa pede um link em “Esqueci minha senha”. O link vale 1 hora e uma única vez. A resposta na tela é a mesma exista ou não o e-mail, para não revelar quem tem acesso. Ao trocar a senha, as outras sessões são encerradas e chega um e-mail de “senha alterada”. A verificação em duas etapas continua sendo exigida. Trocar a senha pelo link libera a conta bloqueada por tentativas (E38). |
 | RN49 | **Códigos de recuperação** | Na ativação das duas etapas são gerados 8 códigos de uso único, mostrados uma só vez. Cada código substitui o código do aplicativo em uma entrada. Sem celular e sem códigos, só o Administrador geral redefine as duas etapas, com motivo obrigatório e após confirmar a identidade; os códigos antigos deixam de valer e tudo fica em Atividade. |
 | RN50 | **Mínimo de administradores** | O painel precisa ter sempre pelo menos 2 administradores gerais ativos. O sistema impede desativar ou mudar o perfil de um administrador se isso deixar menos de 2. |
 | RN54 | **Exclusão definitiva** (E07) | Só pode ser excluído de vez um rascunho que nunca foi publicado, pelo autor ou pelo Administrador geral, com confirmação. O que já foi ao ar nunca é apagado, só arquivado. Arquivos de mídia seguem a RN16. |
@@ -124,6 +124,7 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Tentativas de login da equipe | 5 | RN05 |
 | Validade do convite da equipe | 48 horas | RN46 |
 | Validade do link de nova senha | 1 hora, uso único | RN48 |
+| Espera para pedir outro link de nova senha | 1 minuto | RN48, E38 |
 | Senha da equipe | mín. 10 caracteres, letras e números; não repetir as 3 últimas | RN47 |
 | Códigos de recuperação | 8, de uso único | RN49 |
 | Administradores gerais ativos | mínimo 2 | RN50 |

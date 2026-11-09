@@ -27,8 +27,11 @@ export type Mensagem = {
   html?: string;
 };
 
+/** Quem envia um e-mail: enviarEmail() de verdade, ou uma caixa de saída nos testes. */
+export type Enviar = (mensagem: Mensagem) => Promise<{ idMensagem: string }>;
+
 /** Envia um e-mail pelo SMTP configurado (Mailpit no desenvolvimento). */
-export async function enviarEmail(mensagem: Mensagem) {
+export const enviarEmail: Enviar = async (mensagem) => {
   const { EMAIL_REMETENTE } = lerEnvEmail();
   const info = await obterTransporte().sendMail({
     from: EMAIL_REMETENTE,
@@ -38,4 +41,4 @@ export async function enviarEmail(mensagem: Mensagem) {
     html: mensagem.html,
   });
   return { idMensagem: info.messageId };
-}
+};

@@ -7,10 +7,11 @@ import { atividade, convite, pessoaEquipe } from "@/lib/db/schema";
 import { auth } from "@/lib/acesso/auth";
 import { cookiesDe } from "@/lib/acesso/cookies";
 import { confirmarCodigo, entrar } from "@/lib/acesso/entrar";
+import { hashDoToken } from "@/lib/acesso/token";
 import { codigoTotp } from "@/lib/acesso/totp";
 
 import { abrirConvite, concluirConvite, confirmarDuasEtapas, criarSenhaDoConvite, etapaDoConvite } from "./aceite";
-import { convidarPessoa, criarConviteAdmin, hashDoToken, reenviarConvite } from "./convite";
+import { convidarPessoa, criarConviteAdmin, reenviarConvite } from "./convite";
 
 const URL_SITE = "http://localhost:3000";
 let contador = 0;
@@ -84,7 +85,11 @@ describe("reenviarConvite (RN46)", () => {
     const novoToken = mensagens[0]!.match(/\/painel\/convite\/([\w-]+)/)![1]!;
     expect(await abrirConvite(novoToken)).toMatchObject({ tipo: "valido", pessoa: { id: c.pessoaId } });
 
-    const acoes = await banco().select({ acao: atividade.acao }).from(atividade).where(eq(atividade.alvoId, c.pessoaId));
+    const acoes = await banco()
+      .select({ acao: atividade.acao })
+      .from(atividade)
+      .where(eq(atividade.alvoId, c.pessoaId))
+      .orderBy(atividade.id);
     expect(acoes.map((a) => a.acao)).toEqual(["convite.enviar", "convite.reenviar"]);
   });
 

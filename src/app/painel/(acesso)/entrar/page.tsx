@@ -40,6 +40,11 @@ export default async function PaginaEntrar({ searchParams }: Props) {
           {area && area.area !== "visao_geral" ? `Você estava em ${area.rotulo}.` : "Entre de novo para continuar."}
         </Alerta>
       ) : null}
+      {motivo === "senha_alterada" ? (
+        <Alerta tipo="sucesso" titulo="Senha alterada">
+          Entre com a senha nova. O código do aplicativo autenticador continua sendo pedido.
+        </Alerta>
+      ) : null}
       {motivo === "codigo" ? (
         <Alerta tipo="aviso" titulo="O tempo para digitar o código acabou">
           Por segurança, entre de novo com o e-mail e a senha.

@@ -11,6 +11,10 @@ async function main() {
     com: await criarPessoaDeTeste({ nome: "Carlos Ribeiro", email: "carlos@sintravc.local", perfil: "COM", senha }),
     bloqueio: await criarPessoaDeTeste({ nome: "Bruna Bloqueio", email: "bruna@sintravc.local", perfil: "COM", senha }),
     expira: await criarPessoaDeTeste({ nome: "Eduardo Expira", email: "eduardo@sintravc.local", perfil: "ADM", senha }),
+    // Recuperar acesso (issue #6).
+    esqueceu: await criarPessoaDeTeste({ nome: "Sandra Esqueceu", email: "sandra@sintravc.local", perfil: "COM", senha }),
+    semCelular: await criarPessoaDeTeste({ nome: "Paulo Sem Celular", email: "paulo@sintravc.local", perfil: "COM", senha }),
+    bloqueioAviso: await criarPessoaDeTeste({ nome: "Rita Aviso", email: "rita@sintravc.local", perfil: "COM", senha }),
   };
   mkdirSync("e2e/.dados", { recursive: true });
   writeFileSync("e2e/.dados/pessoas.json", JSON.stringify(pessoas, null, 2));

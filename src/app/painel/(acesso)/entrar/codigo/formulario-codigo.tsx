@@ -32,7 +32,11 @@ export function FormularioCodigo({ voltar }: { voltar: string }) {
       <p className="texto-pequeno text-texto-secundario">
         Perdeu o celular?{" "}
         <Link
-          href="/painel/entrar/recuperacao"
+          href={
+            voltar === "/painel"
+              ? "/painel/entrar/recuperacao"
+              : `/painel/entrar/recuperacao?voltar=${encodeURIComponent(voltar)}`
+          }
           className="texto-rotulo text-destaque-azul underline underline-offset-2"
         >
           Usar um código de recuperação
