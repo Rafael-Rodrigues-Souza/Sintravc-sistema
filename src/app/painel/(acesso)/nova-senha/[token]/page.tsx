@@ -5,6 +5,7 @@ import { Eyebrow, MolduraAcesso } from "@/components/painel/moldura-acesso";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { abrirLinkDeSenha } from "@/lib/acesso/nova-senha";
+import { duracaoPorExtenso } from "@/lib/duracao";
 import { lerParametro } from "@/lib/parametros";
 
 import { FormularioNovaSenha } from "./formulario-nova-senha";
@@ -51,7 +52,7 @@ function LinkInvalido({ horas }: { horas: number }) {
       <Eyebrow>Acesso da equipe</Eyebrow>
       <h1 className="texto-titulo-secao-mobile text-texto-primario lg:texto-titulo-secao">Este link não vale mais</h1>
       <p className="texto-corpo text-texto-secundario">
-        O link expirou (vale {horas === 1 ? "1 hora" : `${horas} horas`}), já foi usado ou um link mais novo foi
+        O link expirou (vale {duracaoPorExtenso(horas * 3600)}), já foi usado ou um link mais novo foi
         pedido.
       </p>
       <Button asChild className="w-full">

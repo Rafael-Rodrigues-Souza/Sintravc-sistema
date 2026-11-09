@@ -7,6 +7,7 @@ import { Eyebrow } from "@/components/painel/moldura-acesso";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { Campo } from "@/components/ui/campo";
+import { duracaoPorExtenso } from "@/lib/duracao";
 
 import { acaoPedirNovaSenha, type EstadoEsqueci } from "../../acoes";
 
@@ -16,10 +17,9 @@ const linkVoltar = "self-start texto-rotulo text-destaque-azul underline underli
 export function FormularioEsqueci({ horas, intervaloSegundos }: { horas: number; intervaloSegundos: number }) {
   const [estado, enviar, enviando] = useActionState<EstadoEsqueci, FormData>(acaoPedirNovaSenha, {});
   const faltam = useContagem(estado.enviadoEm, intervaloSegundos);
-  const validade = horas === 1 ? "1 hora" : `${horas} horas`;
+  const validade = duracaoPorExtenso(horas * 3600);
 
   if (estado.enviadoPara) {
-    const minuto = intervaloSegundos === 60 ? "1 minuto" : `${intervaloSegundos} segundos`;
     return (
       <>
         <Eyebrow>Acesso da equipe</Eyebrow>
@@ -29,7 +29,7 @@ export function FormularioEsqueci({ horas, intervaloSegundos }: { horas: number;
           pode ser usado uma vez.
         </p>
         <Alerta tipo="informacao" titulo="Não chegou?">
-          Olhe a caixa de spam ou lixo eletrônico. Você pode pedir outro link em {minuto}.
+          Olhe a caixa de spam ou lixo eletrônico. Você pode pedir outro link em {duracaoPorExtenso(intervaloSegundos)}.
         </Alerta>
         <form action={enviar} className="flex flex-col gap-[18px]">
           <input type="hidden" name="email" value={estado.enviadoPara} />

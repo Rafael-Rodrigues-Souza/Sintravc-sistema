@@ -1,3 +1,5 @@
+import { duracaoPorExtenso } from "@/lib/duracao";
+
 import { BotaoEmail, MolduraEmail, NotaEmail, ParagrafoEmail, TituloEmail } from "./base";
 
 /** M02 · Redefinir senha da equipe (Figma 265:40830; RN48, RF74). */
@@ -21,7 +23,7 @@ export function RedefinirSenha({ email, link, horas, urlSite }: DadosRedefinirSe
       </ParagrafoEmail>
       <BotaoEmail href={link}>Criar nova senha</BotaoEmail>
       <NotaEmail>
-        O link vale por {horas === 1 ? "1 hora" : `${horas} horas`} e só pode ser usado uma vez.
+        O link vale por {duracaoPorExtenso(horas * 3600)} e só pode ser usado uma vez.
       </NotaEmail>
       <NotaEmail>Se o botão não abrir, copie este endereço no navegador: {link}</NotaEmail>
       <NotaEmail ultimo>
