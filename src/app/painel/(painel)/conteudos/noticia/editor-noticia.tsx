@@ -275,7 +275,7 @@ export function EditorNoticia({
         dados: escolha === "minha" ? conflito.minha : conflito.servidor.dados,
       }),
       sessaoEdicao,
-    ).catch(() => ({ tipo: "erro" as const, mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo." }));
+    ).catch(semConexao);
     setResolvendo(false);
     if (resposta.tipo === "salvo") {
       const escolhidos = escolha === "minha" ? conflito.minha : conflito.servidor.dados;
@@ -287,10 +287,8 @@ export function EditorNoticia({
     } else if (resposta.tipo === "conflito") {
       fila.conflitoAtualizado(resposta.servidor);
       setErroConflito("Alguém salvou de novo enquanto você escolhia. Confira as versões e escolha outra vez.");
-    } else if (resposta.tipo === "erro") {
-      setErroConflito(resposta.mensagem);
     } else {
-      setErroConflito("Sem conexão com o servidor. Confira a internet e tente de novo.");
+      setErroConflito(resposta.tipo === "erro" ? resposta.mensagem : SEM_CONEXAO);
     }
   };
 
