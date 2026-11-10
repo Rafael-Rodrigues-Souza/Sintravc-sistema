@@ -2,12 +2,14 @@
 
 import { useEditorState, type Editor } from "@tiptap/react";
 import {
+  CalendarDays,
   ChevronLeft,
   Cloud,
   CloudOff,
   Eye,
   ImageIcon,
   LoaderCircle,
+  Clock,
   Lock,
   MapPin,
   Redo2,
@@ -36,16 +38,24 @@ import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type Versao
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
-import { dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
+import { bahiaEmCampos, camposEmTexto, dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
-import { acaoDescartarAlteracoes, acaoPublicarNoticia, acaoResolverConflito, acaoSalvarRascunho } from "../acoes";
+import {
+  acaoAgendar,
+  acaoCancelarAgendamento,
+  acaoDescartarAlteracoes,
+  acaoPublicarNoticia,
+  acaoReagendar,
+  acaoResolverConflito,
+  acaoSalvarRascunho,
+} from "../acoes";
 import { SeloEstado } from "../selos";
 import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
 import { FontesEAnexos } from "./fontes-anexos";
 import { irParaImagemSemAlt } from "./imagem-no-corpo";
-import { ModalConflito, ModalDescartarAlteracoes, ModalPublicar, ModalSair } from "./modais";
+import { ModalCancelarAgendamento, ModalConflito, ModalDescartarAlteracoes, ModalPublicar, ModalSair } from "./modais";
 import { SeletorDeMidia } from "./seletor-midia";
 
 export type InicioDoEditor = {
@@ -55,20 +65,26 @@ export type InicioDoEditor = {
   /** A revisão que está no ar (E42); nula se nunca foi publicada. */
   revisaoPublicada: number | null;
   publicadoEm: string | null;
+  /** Notícia agendada: quando entra no ar sozinha (E44). */
+  agendadoPara: string | null;
   dados: DadosNoticia;
   salvoEm: string | null;
   servidor: VersaoServidor | null;
 };
 
 type Saida = { tipo: "link"; href: string } | { tipo: "formulario"; formulario: HTMLFormElement };
-type Publicacao = { estado: EstadoConteudo; revisaoPublicada: number | null; publicadoEm: string | null };
+type Publicacao = { estado: EstadoConteudo; revisaoPublicada: number | null; publicadoEm: string | null; agendadoPara: string | null };
+type CamposDaData = { data: string; hora: string };
 
-const DICA_EM_BREVE = "Disponível em breve";
+/** Sugestão ao escolher "Agendar": amanhã às 08h00, no horário da Bahia. */
+function amanhaAsOito(): CamposDaData {
+  return { data: bahiaEmCampos(new Date(Date.now() + 24 * 60 * 60 * 1000)).data, hora: "08:00" };
+}
 const DICA_SEM_INTERNET = "Sem internet: publicar e agendar voltam quando a conexão voltar";
 const SEM_CONEXAO = "Sem conexão com o servidor. Confira a internet e tente de novo.";
 const SEM_INTERNET_PARA_PUBLICAR = "Sem internet. Publique quando a conexão voltar: o texto continua guardado.";
 /** Resposta quando a chamada ao servidor nem chega (sem internet, servidor fora). */
-const semConexao = () => ({ tipo: "erro", mensagem: SEM_CONEXAO }) as const;
+const semConexao = () => ({ tipo: "erro" as const, mensagem: SEM_CONEXAO, campo: undefined });
 
 /** Onde levar o foco quando falta um item obrigatório (CA-US21.3). */
 const ELEMENTO_DO_CAMPO: Record<CampoObrigatorio, string> = {
@@ -297,7 +313,16 @@ export function EditorNoticia({
     estado: inicio.estado,
     revisaoPublicada: inicio.revisaoPublicada,
     publicadoEm: inicio.publicadoEm,
+    agendadoPara: inicio.agendadoPara,
   });
+  const [quando, setQuando] = React.useState<"agora" | "agendar">(inicio.agendadoPara ? "agendar" : "agora");
+  const [campos, setCampos] = React.useState<CamposDaData>(() =>
+    inicio.agendadoPara ? bahiaEmCampos(new Date(inicio.agendadoPara)) : amanhaAsOito(),
+  );
+  const [erroDaData, setErroDaData] = React.useState<string | null>(null);
+  const [mudandoData, setMudandoData] = React.useState(false);
+  const [confirmarCancelamento, setConfirmarCancelamento] = React.useState(false);
+  const [cancelando, setCancelando] = React.useState(false);
   const [preparando, setPreparando] = React.useState<"previa" | "publicar" | null>(null);
   const [confirmar, setConfirmar] = React.useState(false);
   const [publicando, setPublicando] = React.useState(false);
@@ -307,6 +332,9 @@ export function EditorNoticia({
   const botaoPublicar = React.useRef<HTMLButtonElement>(null);
 
   const noAr = publicacao.estado === "publicado";
+  const agendada = publicacao.estado === "agendado";
+  // Rascunho com "Agendar" escolhido: o botão do topo agenda em vez de publicar (CA-US21.2).
+  const vaiAgendar = !noAr && !agendada && quando === "agendar";
   // Alterações que ainda não estão no site: salvas depois da publicação ou ainda na fila (E42).
   const comAlteracoes =
     temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (noAr && estado.situacao !== "sincronizado");
@@ -354,6 +382,11 @@ export function EditorNoticia({
 
   const pedirPublicacao = async () => {
     if (!conectado || preparando || publicando) return;
+    if (vaiAgendar && (!campos.data || !campos.hora)) {
+      setErroDaData("Escolha a data e a hora.");
+      document.getElementById("data-agendada")?.focus();
+      return;
+    }
     const pronto = await salvarAntes("publicar");
     if (!pronto) return;
     const agora = faltasParaPublicar(dadosAtuais.current);
@@ -365,7 +398,70 @@ export function EditorNoticia({
     setConfirmar(true);
   };
 
+  const agendar = async () => {
+    const { id, revisao } = fila.estado();
+    if (!id) return;
+    setPublicando(true);
+    const resposta = await acaoAgendar({ id, revisaoBase: revisao, quando: campos }, sessaoEdicao).catch(semConexao);
+    setPublicando(false);
+    setConfirmar(false);
+    if (resposta.tipo === "agendada") {
+      setPublicacao((atual) => ({ ...atual, estado: "agendado", agendadoPara: resposta.para }));
+      setMostrarFaltas(false);
+      setErroDaData(null);
+      toast.success(`Notícia agendada para ${dataHoraNaBahia(new Date(resposta.para))}.`);
+    } else if (resposta.tipo === "conflito") {
+      await mostrarConflito();
+    } else if (resposta.tipo === "faltam") {
+      setMostrarFaltas(true);
+      const primeiro = resposta.campos[0];
+      if (primeiro) focarCampo(primeiro);
+    } else if (resposta.campo === "agendadoPara") {
+      setErroDaData(resposta.mensagem);
+      document.getElementById("data-agendada")?.focus();
+    } else {
+      toast.error("Não foi possível agendar", { description: resposta.mensagem, duration: Infinity, closeButton: true });
+    }
+  };
+
+  /** Notícia já agendada: muda só a data (o texto continua sendo salvo sozinho). */
+  const mudarData = async () => {
+    if (!estado.id || mudandoData) return;
+    setMudandoData(true);
+    const resposta = await acaoReagendar({ id: estado.id, quando: campos }).catch(semConexao);
+    setMudandoData(false);
+    if (resposta.tipo === "agendada") {
+      setPublicacao((atual) => ({ ...atual, agendadoPara: resposta.para }));
+      setErroDaData(null);
+      toast.success(`Nova data: ${dataHoraNaBahia(new Date(resposta.para))}.`);
+    } else if (resposta.tipo === "erro" && resposta.campo === "agendadoPara") {
+      setErroDaData(resposta.mensagem);
+    } else {
+      toast.error("Não foi possível mudar a data", {
+        description: resposta.tipo === "erro" ? resposta.mensagem : undefined,
+        duration: Infinity,
+        closeButton: true,
+      });
+    }
+  };
+
+  const cancelarAgendamento = async () => {
+    if (!estado.id) return;
+    setCancelando(true);
+    const resposta = await acaoCancelarAgendamento({ id: estado.id }, sessaoEdicao).catch(semConexao);
+    setCancelando(false);
+    setConfirmarCancelamento(false);
+    if (resposta.tipo === "cancelado") {
+      setPublicacao((atual) => ({ ...atual, estado: "rascunho", agendadoPara: null }));
+      setQuando("agora");
+      toast.success("Agendamento cancelado. A notícia voltou a ser rascunho.");
+    } else {
+      toast.error(resposta.mensagem, { duration: Infinity, closeButton: true });
+    }
+  };
+
   const publicar = async () => {
+    if (vaiAgendar) return agendar();
     const { id, revisao } = fila.estado();
     if (!id) return;
     setPublicando(true);
@@ -374,7 +470,7 @@ export function EditorNoticia({
     setPublicando(false);
     setConfirmar(false);
     if (resposta.tipo === "publicada") {
-      setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm });
+      setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm, agendadoPara: null });
       setMostrarFaltas(false);
       toast.success(primeira ? "Notícia publicada." : "Alterações publicadas.");
     } else if (resposta.tipo === "conflito") {
@@ -456,7 +552,7 @@ export function EditorNoticia({
   const capa = dados.capaMidiaId ? arquivos[dados.capaMidiaId] : undefined;
   const emConflito = estado.situacao === "conflito" && estado.conflito;
   const nomeDaCategoria = categorias.find((c) => c.id === dados.categoriaId)?.nome;
-  const rotuloPublicar = noAr ? "Publicar alterações…" : "Publicar…";
+  const rotuloPublicar = noAr ? "Publicar alterações…" : vaiAgendar ? "Agendar…" : agendada ? "Publicar agora…" : "Publicar…";
   const dicaPublicar = !conectado
     ? DICA_SEM_INTERNET
     : noAr && !comAlteracoes
@@ -511,7 +607,7 @@ export function EditorNoticia({
               disabled={!!preparando || publicando}
               onClick={() => void pedirPublicacao()}
             >
-              <Upload aria-hidden />
+              {vaiAgendar ? <CalendarDays aria-hidden /> : <Upload aria-hidden />}
               {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
             </Button>
           )}
@@ -540,6 +636,22 @@ export function EditorNoticia({
                   </li>
                 ))}
               </ul>
+            </Alerta>
+          ) : null}
+          {agendada && publicacao.agendadoPara ? (
+            <Alerta tipo="informacao" titulo={`Agendada para ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}`}>
+              <div className="flex flex-col items-start gap-2">
+                Entra no ar sozinha nessa hora. Pode continuar editando: vai ao ar o que estiver salvo.
+                <Button
+                  type="button"
+                  variant="secundario"
+                  size="pequeno"
+                  disabled={!conectado || cancelando}
+                  onClick={() => setConfirmarCancelamento(true)}
+                >
+                  Cancelar agendamento
+                </Button>
+              </div>
             </Alerta>
           ) : null}
           {comAlteracoes ? (
@@ -750,33 +862,62 @@ export function EditorNoticia({
             {noAr ? null : (
               <fieldset className="flex flex-col gap-3">
                 <legend className="mb-3 texto-rotulo text-texto-primario">Quando publicar</legend>
-                <RadioGroup value="agora" aria-label="Quando publicar">
-                  <label htmlFor="quando-agora" className="flex cursor-pointer items-start gap-3">
-                    <RadioGroupItem id="quando-agora" value="agora" className="mt-0.5" />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="texto-corpo text-texto-primario">Assim que eu publicar</span>
-                      <span className="texto-pequeno text-texto-secundario">Data e hora registradas no momento da confirmação.</span>
-                    </span>
-                  </label>
-                  <label htmlFor="quando-agendar" className="flex cursor-not-allowed items-start gap-3">
-                    <RadioGroupItem id="quando-agendar" value="agendar" disabled className="mt-0.5" aria-describedby="dica-agendar" />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="flex items-center gap-1.5 texto-corpo text-texto-terciario">
-                        Agendar <Lock aria-hidden className="size-3.5" />
+                {agendada ? null : (
+                  <RadioGroup
+                    value={quando}
+                    onValueChange={(valor) => {
+                      setQuando(valor as "agora" | "agendar");
+                      setErroDaData(null);
+                    }}
+                    aria-label="Quando publicar"
+                  >
+                    <label htmlFor="quando-agora" className="flex cursor-pointer items-start gap-3">
+                      <RadioGroupItem id="quando-agora" value="agora" className="mt-0.5" />
+                      <span className="flex flex-col gap-0.5">
+                        <span className="texto-corpo text-texto-primario">Assim que eu publicar</span>
+                        <span className="texto-pequeno text-texto-secundario">Data e hora registradas no momento da confirmação.</span>
                       </span>
-                      <span id="dica-agendar" className="texto-pequeno text-texto-terciario">
-                        {DICA_EM_BREVE}
+                    </label>
+                    <label htmlFor="quando-agendar" className="flex cursor-pointer items-start gap-3">
+                      <RadioGroupItem id="quando-agendar" value="agendar" className="mt-0.5" />
+                      <span className="flex flex-col gap-0.5">
+                        <span className="texto-corpo text-texto-primario">Agendar</span>
+                        <span className="texto-pequeno text-texto-secundario">Publica sozinho na data escolhida.</span>
                       </span>
-                    </span>
-                  </label>
-                </RadioGroup>
+                    </label>
+                  </RadioGroup>
+                )}
+                {quando === "agendar" || agendada ? (
+                  <CamposDeData
+                    campos={campos}
+                    erro={erroDaData}
+                    aoMudar={(novos) => {
+                      setCampos(novos);
+                      setErroDaData(null);
+                    }}
+                  />
+                ) : null}
+                {agendada ? (
+                  <Button
+                    type="button"
+                    variant="secundario"
+                    size="pequeno"
+                    className="self-start"
+                    disabled={!conectado || mudandoData || !publicacao.agendadoPara || mesmaData(campos, publicacao.agendadoPara)}
+                    onClick={() => void mudarData()}
+                  >
+                    {mudandoData ? "Salvando…" : "Mudar data"}
+                  </Button>
+                ) : null}
               </fieldset>
             )}
             <p className="flex items-start gap-2 rounded-[12px] bg-fundo-superficie-alt p-3 texto-pequeno text-texto-secundario">
               <User aria-hidden className="mt-0.5 size-4 shrink-0" />
               {noAr && publicacao.publicadoEm
                 ? `No site desde ${dataHoraNaBahia(new Date(publicacao.publicadoEm))}. O que você muda aqui só vai ao site quando publicar as alterações.`
-                : "Fica como rascunho, fora do site, até alguém publicar."}
+                : agendada && publicacao.agendadoPara
+                  ? `Entra no ar sozinha em ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}, com o que estiver salvo nessa hora.`
+                  : "Fica como rascunho, fora do site, até alguém publicar."}
             </p>
             {noAr && estado.id ? (
               <div className="flex flex-col gap-1">
@@ -846,6 +987,7 @@ export function EditorNoticia({
       <ModalPublicar
         aberto={confirmar}
         alteracoes={noAr}
+        agendarPara={vaiAgendar ? camposEmTexto(campos) : null}
         titulo={dados.titulo}
         detalhe={["Notícia", nomeDaCategoria, dados.assinatura.trim()].filter(Boolean).join(" · ")}
         capaUrl={capa?.url ?? null}
@@ -855,6 +997,12 @@ export function EditorNoticia({
           botaoPublicar.current?.focus();
         }}
         aoConfirmar={() => void publicar()}
+      />
+      <ModalCancelarAgendamento
+        aberto={confirmarCancelamento}
+        cancelando={cancelando}
+        aoVoltar={() => setConfirmarCancelamento(false)}
+        aoConfirmar={() => void cancelarAgendamento()}
       />
       <ModalDescartarAlteracoes
         aberto={confirmarDescarte}
@@ -1064,5 +1212,59 @@ function BotaoTravado({ rotulo, dica, icone }: { rotulo: string; dica: string; i
         {dica}
       </span>
     </span>
+  );
+}
+
+function mesmaData(campos: CamposDaData, agendadoPara: string): boolean {
+  const atual = bahiaEmCampos(new Date(agendadoPara));
+  return atual.data === campos.data && atual.hora === campos.hora;
+}
+
+/** Data e hora do agendamento, sempre no horário da Bahia (E44): o servidor converte para UTC. */
+function CamposDeData({ campos, erro, aoMudar }: { campos: CamposDaData; erro: string | null; aoMudar: (c: CamposDaData) => void }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="data-agendada">Data</Label>
+          <div className="relative">
+            <CalendarDays aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-texto-terciario" />
+            <Input
+              id="data-agendada"
+              type="date"
+              className="pl-10"
+              value={campos.data}
+              aria-invalid={erro ? true : undefined}
+              aria-describedby={erro ? "erro-data-agendada" : "fuso-agendado"}
+              onChange={(evento) => aoMudar({ ...campos, data: evento.target.value })}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="hora-agendada">Hora</Label>
+          <div className="relative">
+            <Clock aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-texto-terciario" />
+            <Input
+              id="hora-agendada"
+              type="time"
+              className="pl-10"
+              value={campos.hora}
+              aria-invalid={erro ? true : undefined}
+              aria-describedby={erro ? "erro-data-agendada" : "fuso-agendado"}
+              onChange={(evento) => aoMudar({ ...campos, hora: evento.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+      {erro ? (
+        <p id="erro-data-agendada" className="texto-pequeno text-status-perigo-texto">
+          {erro}
+        </p>
+      ) : (
+        <p id="fuso-agendado" className="sr-only">
+          Horário de Vitória da Conquista.
+        </p>
+      )}
+    </div>
   );
 }

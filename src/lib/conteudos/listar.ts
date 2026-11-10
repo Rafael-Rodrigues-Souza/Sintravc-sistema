@@ -28,6 +28,8 @@ export type ItemConteudo = {
   categoria: { nome: string; cor: string } | null;
   autorNome: string;
   publicadoEm: Date | null;
+  /** Agendado: quando entra no ar sozinho (E44). */
+  agendadoPara: Date | null;
   atualizadoEm: Date;
 };
 
@@ -91,6 +93,7 @@ export async function listarConteudos(
       categoria: cat ? { nome: cat.nome, cor: cat.cor } : null,
       autorNome: autor.nome,
       publicadoEm: c.publicadoEm,
+      agendadoPara: c.agendadoPara,
       atualizadoEm: c.atualizadoEm,
     })),
   };

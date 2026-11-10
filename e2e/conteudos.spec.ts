@@ -92,8 +92,11 @@ test("menu Criar: a Comunicação vê Edital e Acordo travados", async ({ page }
   await expect(previa).toHaveAttribute("aria-disabled", "true");
   await expect(previa).toHaveAccessibleDescription("Escreva a notícia para pré-visualizar");
   await expect(page.getByRole("button", { name: "Publicar…" })).toBeEnabled();
-  // Agendar chega no #10.
-  await expect(page.getByRole("radio", { name: /Agendar/ })).toBeDisabled();
+  // Agendar (#10): liberado, e escolher mostra a data e a hora.
+  await expect(page.getByRole("radio", { name: /Agendar/ })).toBeEnabled();
+  await page.getByRole("radio", { name: /Agendar/ }).click();
+  await expect(page.getByLabel("Data", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Hora", { exact: true })).toHaveValue("08:00");
 });
 
 test("CA-US21.1 · rascunho salvo sozinho, e continua lá ao recarregar", async ({ page }) => {

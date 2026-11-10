@@ -179,10 +179,11 @@ function Opcao({ valor, marcada, titulo, detalhe }: { valor: string; marcada: bo
   );
 }
 
-/** "Publicar notícia?" (Figma 113:1314, na variante "agora"; sem rótulo de fuso, E18). */
+/** "Publicar notícia?" e "Agendar publicação?" (Figma 113:1314; sem rótulo de fuso, E18). */
 export function ModalPublicar({
   aberto,
   alteracoes,
+  agendarPara,
   titulo,
   detalhe,
   capaUrl,
@@ -193,6 +194,8 @@ export function ModalPublicar({
   aberto: boolean;
   /** Notícia já no ar: publica as alterações (E42). */
   alteracoes: boolean;
+  /** "03/11/2026 às 08h00": agenda em vez de publicar agora (CA-US21.2). */
+  agendarPara: string | null;
   titulo: string;
   /** "Notícia · Jurídico · Redação SINTRAVC" */
   detalhe: string;
@@ -207,14 +210,14 @@ export function ModalPublicar({
         <div className="flex flex-col gap-5 px-6 pt-6 pb-5">
           <div className="flex items-start gap-3.5">
             <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-destaque-azul-suave text-destaque-azul">
-              <Upload aria-hidden className="size-[22px]" />
+              {agendarPara ? <CalendarDays aria-hidden className="size-[22px]" /> : <Upload aria-hidden className="size-[22px]" />}
             </span>
             <div className="flex flex-col gap-1">
               <DialogPrimitive.Title className="texto-titulo-card text-texto-primario">
-                {alteracoes ? "Publicar alterações?" : "Publicar notícia?"}
+                {alteracoes ? "Publicar alterações?" : agendarPara ? "Agendar publicação?" : "Publicar notícia?"}
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="texto-pequeno text-texto-secundario">
-                Confira o resumo. Você poderá editar ou ocultar depois.
+                {agendarPara ? "Confira o resumo. Você poderá editar, reagendar ou ocultar depois." : "Confira o resumo. Você poderá editar ou ocultar depois."}
               </DialogPrimitive.Description>
             </div>
             <DialogPrimitive.Close
@@ -242,7 +245,9 @@ export function ModalPublicar({
               <CalendarDays aria-hidden className="size-4" />
               Entra no ar
             </dt>
-            <dd className="font-semibold text-texto-primario">{alteracoes ? "As alterações, ao confirmar" : "Agora, ao confirmar"}</dd>
+            <dd className="font-semibold text-texto-primario">
+              {alteracoes ? "As alterações, ao confirmar" : agendarPara ? agendarPara : "Agora, ao confirmar"}
+            </dd>
             <dt className="flex items-center gap-2 text-texto-secundario">
               <LayoutGrid aria-hidden className="size-4" />
               Onde aparece
@@ -266,7 +271,16 @@ export function ModalPublicar({
             Voltar ao editor
           </Button>
           <Button type="button" disabled={publicando} onClick={aoConfirmar}>
-            {publicando ? "Publicando…" : alteracoes ? "Publicar alterações" : "Publicar agora"}
+            {agendarPara ? <CalendarDays aria-hidden /> : null}
+            {publicando
+              ? agendarPara
+                ? "Agendando…"
+                : "Publicando…"
+              : alteracoes
+                ? "Publicar alterações"
+                : agendarPara
+                  ? "Confirmar agendamento"
+                  : "Publicar agora"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -300,6 +314,39 @@ export function ModalDescartarAlteracoes({
           </Button>
           <Button type="button" variant="perigo" disabled={descartando} onClick={aoConfirmar}>
             {descartando ? "Descartando…" : "Descartar alterações"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/** "Cancelar agendamento?" (E23: AlertDialog nas confirmações; E44: volta a Rascunho). */
+export function ModalCancelarAgendamento({
+  aberto,
+  cancelando,
+  aoVoltar,
+  aoConfirmar,
+}: {
+  aberto: boolean;
+  cancelando: boolean;
+  aoVoltar: () => void;
+  aoConfirmar: () => void;
+}) {
+  return (
+    <AlertDialog open={aberto} onOpenChange={(a) => (a || cancelando ? null : aoVoltar())}>
+      <AlertDialogContent
+        icone="/painel/icone-alerta.svg"
+        tom="aviso"
+        titulo="Cancelar agendamento?"
+        descricao="A notícia não entra mais no ar sozinha e volta a ser rascunho. O texto continua salvo."
+      >
+        <AlertDialogFooter>
+          <Button type="button" variant="secundario" disabled={cancelando} onClick={aoVoltar}>
+            Voltar
+          </Button>
+          <Button type="button" variant="perigo" disabled={cancelando} onClick={aoConfirmar}>
+            {cancelando ? "Cancelando…" : "Cancelar agendamento"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

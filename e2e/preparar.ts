@@ -10,6 +10,7 @@ import {
 import postgres from "postgres";
 
 import { ambienteE2E } from "../playwright.config";
+import { apagarBancoE2E } from "./apagar-banco";
 
 /**
  * Recria o banco sintravc_e2e, aplica as migrações e cria as pessoas de teste (pelas funções
@@ -21,9 +22,9 @@ export default async function preparar() {
   const nome = url.pathname.slice(1);
   const admin = new URL(url);
   admin.pathname = "/postgres";
+  await apagarBancoE2E();
   const conexao = postgres(admin.toString(), { max: 1, onnotice: () => {} });
   try {
-    await conexao.unsafe(`DROP DATABASE IF EXISTS "${nome}" WITH (FORCE)`);
     await conexao.unsafe(`CREATE DATABASE "${nome}"`);
   } finally {
     await conexao.end();

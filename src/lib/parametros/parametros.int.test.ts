@@ -58,6 +58,8 @@ describe("Parametro: valores iniciais do regras-de-negocio.md §3", () => {
     ["alerta.vigencia_documento_dias", 2], // RN44
     ["alerta.rascunho_parado_dias", 7], // RN44
     ["editor.salvamento_automatico_segundos", 2], // RF38, E40
+    ["tarefas.tentativas", 3], // RNF13, E44
+    ["tarefas.intervalo_segundos", 60], // RNF13, E44
   ])("%s = %j", async (chave, valor) => {
     expect(await lerParametro(chave as keyof typeof CATALOGO)).toEqual(valor);
   });

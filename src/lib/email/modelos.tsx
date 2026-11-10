@@ -10,6 +10,11 @@ import {
   type DadosContaBloqueada,
 } from "@/emails/conta-bloqueada";
 import { ASSUNTO_CONVITE, ConviteEquipe, type DadosConviteEquipe } from "@/emails/convite-equipe";
+import {
+  assuntoPublicacaoAgendadaFalhou,
+  PublicacaoAgendadaFalhou,
+  type DadosPublicacaoAgendadaFalhou,
+} from "@/emails/publicacao-agendada-falhou";
 import { ASSUNTO_REDEFINIR_SENHA, RedefinirSenha, type DadosRedefinirSenha } from "@/emails/redefinir-senha";
 import { ASSUNTO_SENHA_ALTERADA, SenhaAlterada, type DadosSenhaAlterada } from "@/emails/senha-alterada";
 
@@ -48,4 +53,9 @@ export function mensagemContaBloqueadaPessoa(dados: DadosContaBloqueada): Promis
 /** M04: conta bloqueada, na versão de um administrador geral. */
 export function mensagemContaBloqueadaAdm(para: string, dados: DadosContaBloqueada): Promise<Mensagem> {
   return mensagem(para, assuntoContaBloqueadaAdm(dados.nome), <ContaBloqueadaAdm {...dados} />);
+}
+
+/** M06: publicação agendada falhou (para quem agendou e os ADMs ativos, E44). */
+export function mensagemPublicacaoAgendadaFalhou(para: string, dados: DadosPublicacaoAgendadaFalhou): Promise<Mensagem> {
+  return mensagem(para, assuntoPublicacaoAgendadaFalhou(dados.titulo), <PublicacaoAgendadaFalhou {...dados} />);
 }

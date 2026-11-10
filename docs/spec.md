@@ -49,7 +49,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 | Entidade | Campos | Regras |
 |---|---|---|
 | **Categoria** | `id`; `nome` UQ; `cor`; `ordem`; `escopos[]` (noticias, documentos, radio, beneficios†) | Só o ADM gerencia (RN08). † `beneficios` é padrão adotado (§10, P1). |
-| **Conteudo** (base comum) | `id`; `tipo` (noticia, edital, acordo); `slug` UQ por tipo; `titulo`; `estado` (rascunho, agendado, publicado, oculto, arquivado); `agendado_para?`; `publicado_em?`; `ja_publicado` (bool); `motivo_oculto?`; `autor_id` FK; `categoria_id?` FK; `versao` (int); `revisao` (int); `revisao_publicada?` (int); `atualizado_por` FK | Ciclo de vida da RN10. `ja_publicado` controla a exclusão (RN54). `versao` é a versão publicada (E31); `revisao` sobe a cada salvamento e detecta o conflito entre o rascunho do navegador e o do servidor (E02, E40). `slug` fica nulo até a primeira publicação (E40) e é gerado nela (E42). Conteudo e Noticia são a cópia de trabalho; o site lê a versão publicada (`ConteudoVersao` de número `versao`). Há alterações ainda não publicadas quando o estado é publicado e `revisao > revisao_publicada` (E42). |
+| **Conteudo** (base comum) | `id`; `tipo` (noticia, edital, acordo); `slug` UQ por tipo; `titulo`; `estado` (rascunho, agendado, publicado, oculto, arquivado); `agendado_para?`; `agendado_por?` FK; `publicado_em?`; `ja_publicado` (bool); `motivo_oculto?`; `autor_id` FK; `categoria_id?` FK; `versao` (int); `revisao` (int); `revisao_publicada?` (int); `atualizado_por` FK | Ciclo de vida da RN10. `ja_publicado` controla a exclusão (RN54). `versao` é a versão publicada (E31); `revisao` sobe a cada salvamento e detecta o conflito entre o rascunho do navegador e o do servidor (E02, E40). `slug` fica nulo até a primeira publicação (E40) e é gerado nela (E42). Conteudo e Noticia são a cópia de trabalho; o site lê a versão publicada (`ConteudoVersao` de número `versao`). Há alterações ainda não publicadas quando o estado é publicado e `revisao > revisao_publicada` (E42). Na hora marcada vai ao ar a cópia atual; `agendado_por` recebe o aviso se falhar (E44). |
 | **Noticia** (1:1 com Conteudo) | `linha_fina?` (≤ 200); `lide`; `corpo` (JSON do Tiptap); `capa_midia_id?` FK; `capa_alt`; `capa_legenda?`; `assinatura`; `local?`; `palavras_chave[]`; `fixada_ate?` | Manchete = `titulo` (≤ 110). No rascunho, os textos podem ficar vazios; os obrigatórios são cobrados ao publicar (E40). Para publicar: manchete, lide, corpo com texto, assinatura e categoria; se houver capa, o texto alternativo dela, e o de toda imagem do corpo (RN15, E42). Só uma fixada por vez (RN58). |
 | **Documento** (1:1 com Conteudo; edital e acordo) | `numero` (UQ por tipo); `subtipo` (edital: convocação, eleição, prestação de contas, outros; acordo: ACT, CCT); `data_documento`; `data_evento?`; `vigencia_inicio?`; `vigencia_fim?`; `abrangencia?`; `partes_signatarias?`; `resumo` (≤ 400); `pdf_midia_id` FK; `texto_pesquisavel?`; `confirmado_oficial_por` FK | Só o ADM (RN08, RN12). O selo Vigente, Encerrado ou Prazo é **calculado** pelas datas e não é estado (C2). |
 | **ConteudoLink** | `conteudo_id` FK; `tipo` (fonte, anexo); `titulo`; `url?`; `midia_id?`; `visivel`; `ordem` | — |
@@ -70,7 +70,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 |---|---|---|
 | **Atividade** | `id`; `quando`; `ator_tipo` (pessoa, sistema, associado); `ator_id?`; `acao`; `area`; `alvo_tipo`; `alvo_id`; `alvo_rotulo`; `detalhe` (JSON); `motivo?` | **Só inserção**: UPDATE e DELETE são bloqueados no banco (RNF04). Guardada por 5 anos (E25). Visível só para o ADM. |
 | **Parametro** | `chave` PK; `valor` (JSON); `descricao`; `regra` | Valores do `regras-de-negocio.md` §3, criados pela migração e lidos com cache de 60 s (T4, E35). Só o ADM altera, direto no banco. |
-| **NotificacaoEquipe** | `id`; `pessoa_id` FK; `tipo`; `texto`; `link?`; `lida_em?` | — |
+| **NotificacaoEquipe** | `id`; `pessoa_id` FK; `tipo`; `texto`; `link?`; `lida_em?` | Avisos do painel (RN59). A primeira é a publicação agendada que falhou, para quem agendou e os ADMs ativos (E44). O sino e o painel lateral são do #23; a limpeza de 90 dias, do #25. |
 
 ### 2.4 Associado e agendamentos (Fase 2)
 
@@ -288,7 +288,7 @@ Todas as tarefas são idempotentes, com nova tentativa e registro de falha (RNF1
 
 | # | Tarefa | Quando | O que faz | Fase |
 |---|---|---|---|---|
-| T01 | Publicar agendados | No horário (job por item) | Notícia ou documento agendado → publicado; gera versão, Atividade e, se for documento, aviso aos associados (Fase 2). Falha → e-mail para quem agendou (E21). | 1 |
+| T01 | Publicar agendados | No horário (job por item) | Notícia ou documento agendado → publicado com a cópia atual; gera versão, Atividade (com o atraso, se o servidor estava fora do ar) e, se for documento, aviso aos associados (Fase 2). Pedido único por (item, hora marcada), posto na fila na transação de quem agendou; pedido velho não faz nada. Tentativas pelo `Parametro` (`tarefas.*`). Falha de vez → volta a Rascunho; notificação e e-mail M06 para quem agendou e os ADMs ativos (E21, E44). | 1 |
 | T02 | Comunicados | No início e no fim do período | Entra e sai do ar; Atividade. | 1 |
 | T03 | Episódios agendados | No horário | Publica. | 1 |
 | T04 | Destaques da Home | Em `entra_em` e `sai_em` | Entra e sai do carrossel. | 1 |
@@ -319,7 +319,7 @@ Todos os e-mails são enviados por SMTP (D2), com modelos em React Email e remet
 | M03 | Senha alterada | Equipe | 1 | 265:40852 |
 | M04 | Conta bloqueada por tentativas | Pessoa e ADMs | 1 | N6 |
 | M05 | Duas etapas redefinidas | Pessoa | 1 | N6 |
-| M06 | Publicação agendada falhou | Quem agendou | 1 | N6 |
+| M06 | Publicação agendada falhou | Quem agendou e ADMs ativos (E44) | 1 | 295:43916 |
 | M07 | Redefinir senha (1 h) | Associado | 2 | N12 |
 | M08 | Senha alterada | Associado | 2 | N12 |
 | M09 | Confirmar novo e-mail (24 h) + aviso ao e-mail antigo | Associado | 2 | N12 |

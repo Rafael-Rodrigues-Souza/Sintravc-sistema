@@ -33,6 +33,7 @@ export default async function PaginaEditarNoticia({ params }: { params: Promise<
         estado: noticia.estado,
         revisaoPublicada: noticia.revisaoPublicada,
         publicadoEm: noticia.publicadoEm?.toISOString() ?? null,
+        agendadoPara: noticia.agendadoPara?.toISOString() ?? null,
         dados: noticia.dados,
         salvoEm: noticia.atualizadoEm.toISOString(),
         servidor: versaoDoServidor(noticia),
