@@ -57,6 +57,7 @@ describe("Parametro: valores iniciais do regras-de-negocio.md §3", () => {
     ["site.atualizacao_config_segundos", 60], // RN43: até 1 minuto
     ["alerta.vigencia_documento_dias", 2], // RN44
     ["alerta.rascunho_parado_dias", 7], // RN44
+    ["editor.salvamento_automatico_segundos", 2], // RF38, E40
   ])("%s = %j", async (chave, valor) => {
     expect(await lerParametro(chave as keyof typeof CATALOGO)).toEqual(valor);
   });

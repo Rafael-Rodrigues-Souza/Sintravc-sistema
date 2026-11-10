@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /** O que o seletor de arquivos sugere. Quem decide é o servidor, pelos bytes (E39). */
-const ACEITOS = [
+export const ACEITOS = [
   ".jpg",
   ".jpeg",
   ".png",
@@ -74,10 +74,16 @@ function enviar(arquivo: File, aoProgredir: (porcento: number) => void): Promise
 export function ProvedorDeEnvios({
   tamanhoMaximoBytes,
   mensagemDeTamanho,
+  aceitos = ACEITOS,
+  aoEnviar,
   children,
 }: {
   tamanhoMaximoBytes: number;
   mensagemDeTamanho: string;
+  /** O que o seletor de arquivos sugere (ex.: só imagens, no seletor da capa). */
+  aceitos?: string;
+  /** Chamado com o id de cada arquivo enviado. Sem ele, a página é recarregada (tela da Mídia). */
+  aoEnviar?: (id: string) => void;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -110,11 +116,12 @@ export function ProvedorDeEnvios({
           }
           descartar(chave);
           toast.success(`${arquivo.name} está na Mídia.`);
-          router.refresh();
+          if (aoEnviar) aoEnviar(resultado.id);
+          else router.refresh();
         });
       }
     },
-    [atualizar, descartar, mensagemDeTamanho, router, tamanhoMaximoBytes],
+    [aoEnviar, atualizar, descartar, mensagemDeTamanho, router, tamanhoMaximoBytes],
   );
 
   const contexto = React.useMemo<Contexto>(
@@ -128,7 +135,7 @@ export function ProvedorDeEnvios({
         ref={entrada}
         type="file"
         multiple
-        accept={ACEITOS}
+        accept={aceitos}
         className="sr-only"
         tabIndex={-1}
         aria-hidden
@@ -143,12 +150,12 @@ export function ProvedorDeEnvios({
   );
 }
 
-export function BotaoEnviarArquivos() {
+export function BotaoEnviarArquivos({ rotulo = "Enviar arquivos", variant }: { rotulo?: string; variant?: "primario" | "secundario" }) {
   const { escolher } = useEnvios();
   return (
-    <Button type="button" onClick={escolher}>
+    <Button type="button" variant={variant} onClick={escolher}>
       <IconeFigma src="/painel/icone-enviar.svg" tamanho={18} />
-      Enviar arquivos
+      {rotulo}
     </Button>
   );
 }

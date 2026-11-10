@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { MenuCriar } from "@/components/painel/menu-criar";
+import { armazemDoNavegador, limparAoSair } from "@/lib/conteudos/fila-rascunho";
 import { cn } from "@/lib/utils";
 import { NOME_DO_PERFIL, type Perfil } from "@/lib/permissoes";
 import type { GrupoDoMenu } from "@/lib/permissoes/menu";
@@ -39,12 +41,14 @@ function iniciais(nome: string) {
 export function NavegacaoLateral({
   grupos,
   podeCriarConteudo,
+  podeCriarDocumento,
   pessoa,
   sair,
 }: {
   grupos: GrupoDoMenu[];
   podeCriarConteudo: boolean;
-  pessoa: { nome: string; perfil: Perfil };
+  podeCriarDocumento: boolean;
+  pessoa: { id: string; nome: string; perfil: Perfil };
   sair: () => Promise<void>;
 }) {
   const caminho = usePathname();
@@ -93,13 +97,15 @@ export function NavegacaoLateral({
       </div>
 
       {podeCriarConteudo ? (
-        <Link
-          href="/painel/conteudos"
-          className="flex h-12 items-center justify-center gap-2 rounded-full bg-destaque-amarelo pr-6 pl-5 texto-botao text-destaque-amarelo-texto hover:brightness-95"
-        >
-          <IconeFigma src="/painel/icone-mais.svg" tamanho={18} />
-          Criar conteúdo
-        </Link>
+        <MenuCriar podeCriarDocumento={podeCriarDocumento} alinhar="start">
+          <button
+            type="button"
+            className="flex h-12 items-center justify-center gap-2 rounded-full bg-destaque-amarelo pr-6 pl-5 texto-botao text-destaque-amarelo-texto outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-texto-invertido"
+          >
+            <IconeFigma src="/painel/icone-mais.svg" tamanho={18} />
+            Criar conteúdo
+          </button>
+        </MenuCriar>
       ) : null}
 
       <ul className="flex flex-col gap-1">
@@ -158,7 +164,8 @@ export function NavegacaoLateral({
           <p className="truncate texto-titulo-card-pequeno text-texto-invertido">{pessoa.nome}</p>
           <p className="truncate texto-pequeno text-texto-invertido-sec">{NOME_DO_PERFIL[pessoa.perfil]}</p>
         </div>
-        <form action={sair}>
+        {/* Computador compartilhado (E40): ao sair, apaga os rascunhos já salvos desta pessoa; os pendentes ficam só para ela. */}
+        <form action={sair} onSubmit={() => limparAoSair(armazemDoNavegador(), pessoa.id)}>
           <button
             type="submit"
             aria-label="Sair do painel"

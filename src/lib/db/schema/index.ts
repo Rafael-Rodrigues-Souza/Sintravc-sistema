@@ -4,3 +4,4 @@ export * from "./atividade";
 export * from "./equipe";
 export * from "./parametro";
 export * from "./midia";
+export * from "./conteudo";

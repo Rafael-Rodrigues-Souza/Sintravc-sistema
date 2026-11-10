@@ -148,6 +148,7 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Tamanho máximo de arquivo na Mídia | 10 MB | R7 |
 | Imagens reduzidas acima de | 2400 px no lado maior | RN15, E39 |
 | Qualidade do JPG e do WebP gravados | 82 | RN15, E39 |
+| Salvamento automático do rascunho | 2 segundos depois de parar de digitar | RF38, E40 |
 
 ## 4. Estados
 

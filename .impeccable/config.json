@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/app/painel/(painel)/conteudos/noticia/corpo-rico.tsx"
+        ],
+        "createdAt": "2026-11-09T22:22:49.251Z",
+        "reason": "Figma 112:1091: a citação do corpo da notícia é desenhada com barra amarela à esquerda (blockquote, não card)"
+      }
+    ]
+  }
+}

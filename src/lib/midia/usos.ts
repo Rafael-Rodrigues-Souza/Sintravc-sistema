@@ -1,7 +1,8 @@
 import { inArray } from "drizzle-orm";
 
+import { rotuloDaNoticia } from "@/lib/conteudos/dados";
 import { banco, type Transacao } from "@/lib/db";
-import { midiaUso } from "@/lib/db/schema";
+import { conteudo, midiaUso } from "@/lib/db/schema";
 
 import type { UsoDaMidia } from "./erros";
 
@@ -13,7 +14,14 @@ type Descricao = { rotulo: string; href?: string };
  * aparece o nome genérico do tipo.
  */
 const DESCRITORES: Record<string, (ids: string[], tx: Transacao | ReturnType<typeof banco>) => Promise<Map<string, Descricao>>> =
-  {};
+  {
+    noticia: async (ids, tx) => {
+      const linhas = await tx.select({ id: conteudo.id, titulo: conteudo.titulo }).from(conteudo).where(inArray(conteudo.id, ids));
+      return new Map(
+        linhas.map((l) => [l.id, { rotulo: rotuloDaNoticia(l.titulo), href: `/painel/conteudos/noticia/${l.id}` }]),
+      );
+    },
+  };
 
 const NOME_DO_DONO: Record<string, string> = {
   noticia: "Notícia",

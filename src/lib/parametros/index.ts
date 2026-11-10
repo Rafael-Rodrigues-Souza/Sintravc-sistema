@@ -48,6 +48,7 @@ export const CATALOGO = {
   "midia.tamanho_maximo_bytes": inteiro,
   "midia.imagem_lado_maximo_px": inteiro,
   "midia.jpg_qualidade": z.number().int().min(1).max(100),
+  "editor.salvamento_automatico_segundos": z.number().positive(),
 } satisfies Record<string, z.ZodType>;
 
 export type ChaveParametro = keyof typeof CATALOGO;

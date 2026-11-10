@@ -21,6 +21,7 @@ import {
 } from "@/lib/midia/listar";
 import { pode } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
+import { ehUuid } from "@/lib/uuid";
 
 import { DetalhesArquivo, MiniaturaDeArquivo, type ArquivoDetalhado } from "./detalhes-arquivo";
 import { AreaDeSoltar, BotaoEnviarArquivos, ListaDeEnvios, ProvedorDeEnvios } from "./envios";
@@ -46,7 +47,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
   const [lista, contagem, detalhe, limites] = await Promise.all([
     listarMidia({ filtro, busca, pagina, porPagina: POR_PAGINA }),
     contarMidia(),
-    parametros.arquivo && /^[0-9a-f-]{36}$/i.test(parametros.arquivo) ? detalharMidia(parametros.arquivo) : undefined,
+    ehUuid(parametros.arquivo) ? detalharMidia(parametros.arquivo) : undefined,
     limitesDaMidia(),
   ]);
 
