@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   outputFileTracingRoot: raiz,
   turbopack: { root: raiz },
+  // A fila de tarefas (E44) roda no Node, sem passar pelo empacotador.
+  serverExternalPackages: ["pg-boss"],
   experimental: {
     // forbidden() e a tela 403 do painel (N1).
     authInterrupts: true,

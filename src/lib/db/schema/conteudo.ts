@@ -40,6 +40,8 @@ export const conteudo = pgTable(
     titulo: text().notNull().default(""),
     estado: estadoConteudo().notNull().default("rascunho"),
     agendadoPara: dataHora(),
+    /** Quem agendou: recebe o e-mail se a publicação agendada falhar (E21, E44). */
+    agendadoPor: uuid().references(() => pessoaEquipe.id),
     publicadoEm: dataHora(),
     jaPublicado: boolean().notNull().default(false),
     motivoOculto: text(),

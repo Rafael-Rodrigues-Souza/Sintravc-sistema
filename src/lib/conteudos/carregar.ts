@@ -18,6 +18,9 @@ export type NoticiaAberta = {
   jaPublicado: boolean;
   slug: string | null;
   publicadoEm: Date | null;
+  /** Quando a notícia agendada entra no ar sozinha, e quem agendou (E44). */
+  agendadoPara: Date | null;
+  agendadoPor: string | null;
   autorId: string;
   autorNome: string;
   /** Quem fez o último salvamento e quando (N4: "Salva por Carlos Ribeiro às 10h38"). */
@@ -60,6 +63,8 @@ export async function lerNoticia(tx: Transacao | ReturnType<typeof banco>, id: s
     jaPublicado: c.jaPublicado,
     slug: c.slug,
     publicadoEm: c.publicadoEm,
+    agendadoPara: c.agendadoPara,
+    agendadoPor: c.agendadoPor,
     autorId: c.autorId,
     autorNome: linha.autorNome,
     salvoPorNome: linha.salvoPorNome,

@@ -36,46 +36,73 @@ export async function publicarNoticia(
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, entrada.id))! };
     }
-    if (atual.estado !== "rascunho" && atual.estado !== "publicado") {
-      throw new ErroConteudo("invalido", "Esta notícia não pode ser publicada no estado em que está. Atualize a página.");
-    }
-    if (atual.estado === "publicado" && atual.revisaoPublicada === atual.revisao) {
-      return publicada(atual);
-    }
-
-    const noticia = (await lerNoticia(tx, entrada.id))!;
-    const faltas = faltasParaPublicar(noticia.dados);
-    if (faltas.length > 0) throw new ErroFaltamCampos(faltas.map((f) => f.campo));
-
-    const primeira = atual.estado === "rascunho" && !atual.jaPublicado;
-    const versao = atual.versao + 1;
-    const [gravado] = await tx
-      .update(conteudo)
-      .set({
-        estado: "publicado",
-        slug: atual.slug ?? (await slugLivre(tx, noticia.dados.titulo)),
-        publicadoEm: atual.publicadoEm ?? new Date(),
-        jaPublicado: true,
-        versao,
-        revisaoPublicada: atual.revisao,
-      })
-      .where(eq(conteudo.id, entrada.id))
-      .returning();
-
-    const retrato: RetratoDaNoticia = { formato: 1, dados: noticia.dados };
-    await tx.insert(conteudoVersao).values({ conteudoId: entrada.id, versao, snapshot: retrato, criadoPor: deps.quem.id });
-    // A versão anterior saiu do ar: o que só ela usava deixa de contar como uso da Mídia.
-    await gravarUsos(tx, entrada.id, noticia.dados);
-    await registrarAtividadeNoticia(
-      tx,
-      primeira ? "noticia.publicar" : "noticia.publicar_alteracoes",
-      entrada.id,
-      noticia.dados.titulo,
-      { quem: deps.quem, sessaoEdicao: deps.sessaoEdicao },
-      { versao },
-    );
-    return publicada(gravado!);
+    return publicarNaTransacao(tx, atual, deps);
   });
+}
+
+/** "Publicar agora" dentro de uma transação já aberta, com a notícia travada (também usada pela Edição rápida). */
+export async function publicarNaTransacao(
+  tx: Transacao,
+  atual: typeof conteudo.$inferSelect,
+  deps: DepsDaPublicacao,
+): Promise<Extract<ResultadoPublicar, { tipo: "publicada" }>> {
+  exigir(deps.quem, "publicar", { tipo: "noticia" });
+  if (atual.estado !== "rascunho" && atual.estado !== "agendado" && atual.estado !== "publicado") {
+    throw new ErroConteudo("invalido", "Esta notícia não pode ser publicada no estado em que está. Atualize a página.");
+  }
+  if (atual.estado === "publicado" && atual.revisaoPublicada === atual.revisao) {
+    return publicada(atual);
+  }
+  const noticia = (await lerNoticia(tx, atual.id))!;
+  const { gravado, versao, primeira } = await irAoAr(tx, atual, noticia.dados, { criadoPor: deps.quem.id, agora: new Date() });
+  await registrarAtividadeNoticia(
+    tx,
+    primeira ? "noticia.publicar" : "noticia.publicar_alteracoes",
+    atual.id,
+    noticia.dados.titulo,
+    { quem: deps.quem, sessaoEdicao: deps.sessaoEdicao },
+    { versao },
+  );
+  return publicada(gravado);
+}
+
+/**
+ * Põe no ar a cópia de trabalho de uma notícia já travada (E42): confere os obrigatórios, grava o
+ * estado, o slug, a data e a versão, e o retrato. O mesmo núcleo serve ao "Publicar agora" e à
+ * publicação agendada (T01, E44). Quem chama registra a Atividade.
+ */
+export async function irAoAr(
+  tx: Transacao,
+  atual: typeof conteudo.$inferSelect,
+  dados: DadosNoticia,
+  opcoes: { criadoPor: string; agora: Date },
+) {
+  const faltas = faltasParaPublicar(dados);
+  if (faltas.length > 0) throw new ErroFaltamCampos(faltas.map((f) => f.campo));
+
+  const primeira = !atual.jaPublicado;
+  const versao = atual.versao + 1;
+  const [gravado] = await tx
+    .update(conteudo)
+    .set({
+      estado: "publicado",
+      slug: atual.slug ?? (await slugLivre(tx, dados.titulo)),
+      publicadoEm: atual.publicadoEm ?? opcoes.agora,
+      jaPublicado: true,
+      versao,
+      revisaoPublicada: atual.revisao,
+      // "Publicar agora" numa agendada tira da agenda (E44).
+      agendadoPara: null,
+      agendadoPor: null,
+    })
+    .where(eq(conteudo.id, atual.id))
+    .returning();
+
+  const retrato: RetratoDaNoticia = { formato: 1, dados };
+  await tx.insert(conteudoVersao).values({ conteudoId: atual.id, versao, snapshot: retrato, criadoPor: opcoes.criadoPor });
+  // A versão anterior saiu do ar: o que só ela usava deixa de contar como uso da Mídia.
+  await gravarUsos(tx, atual.id, dados);
+  return { gravado: gravado!, versao, primeira };
 }
 
 function publicada(linha: typeof conteudo.$inferSelect): Extract<ResultadoPublicar, { tipo: "publicada" }> {

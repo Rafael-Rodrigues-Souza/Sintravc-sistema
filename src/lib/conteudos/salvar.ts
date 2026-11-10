@@ -81,7 +81,10 @@ export type AcaoDaNoticia =
   | "noticia.resolver_conflito"
   | "noticia.publicar"
   | "noticia.publicar_alteracoes"
-  | "noticia.descartar_alteracoes";
+  | "noticia.descartar_alteracoes"
+  | "noticia.agendar"
+  | "noticia.reagendar"
+  | "noticia.cancelar_agendamento";
 
 export async function registrarAtividadeNoticia(
   tx: Transacao,
