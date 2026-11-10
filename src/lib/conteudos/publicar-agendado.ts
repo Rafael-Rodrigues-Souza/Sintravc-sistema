@@ -1,7 +1,7 @@
 import { and, eq, or } from "drizzle-orm";
 
 import { enviarSemFalhar } from "@/lib/acesso/avisos";
-import { banco } from "@/lib/db";
+import { banco, type Transacao } from "@/lib/db";
 import { registrarAtividade } from "@/lib/atividade";
 import { conteudo, notificacaoEquipe, pessoaEquipe } from "@/lib/db/schema";
 import { quandoNaBahia } from "@/lib/datas";
@@ -12,6 +12,7 @@ import type { PedidoPublicacao } from "@/lib/tarefas/fila";
 
 import { lerNoticia } from "./carregar";
 import { rotuloDaNoticia } from "./dados";
+import { ErroConteudo } from "./erros";
 import { irAoAr } from "./publicar";
 import { travarNoticia } from "./salvar";
 
@@ -35,7 +36,7 @@ export async function executarPublicacaoAgendada(
 ): Promise<ResultadoPublicacaoAgendada> {
   const marcadoPara = new Date(pedido.para);
   return banco().transaction(async (tx) => {
-    const atual = await travarNoticia(tx, pedido.conteudoId).catch(() => null);
+    const atual = await travarSeAindaExiste(tx, pedido.conteudoId);
     if (!atual || !aindaAgendada(atual, marcadoPara)) return { tipo: "ignorada" };
 
     const agora = deps.agora ?? new Date();
@@ -77,7 +78,7 @@ export async function registrarFalhaDaPublicacao(
 ): Promise<void> {
   const marcadoPara = new Date(pedido.para);
   const aviso = await banco().transaction(async (tx) => {
-    const atual = await travarNoticia(tx, pedido.conteudoId).catch(() => null);
+    const atual = await travarSeAindaExiste(tx, pedido.conteudoId);
     if (!atual || !aindaAgendada(atual, marcadoPara)) return null;
 
     await tx.update(conteudo).set({ estado: "rascunho", agendadoPara: null, agendadoPor: null }).where(eq(conteudo.id, atual.id));
@@ -129,5 +130,19 @@ export async function registrarFalhaDaPublicacao(
     await enviarSemFalhar(deps.enviar, mensagens, "publicação agendada falhou");
   } catch (erro) {
     console.error("Não consegui preparar o e-mail de publicação agendada que falhou:", erro);
+  }
+}
+
+/**
+ * Trava a notícia do pedido. Só "não existe mais" vira null (o pedido é ignorado). Qualquer outro
+ * erro (tempo de lock esgotado, banco fora do ar) sobe: o pg-boss tenta de novo e, esgotadas as
+ * tentativas, a falha é registrada e avisada (RNF13). Assim nada fica Agendado sem aviso.
+ */
+async function travarSeAindaExiste(tx: Transacao, id: string) {
+  try {
+    return await travarNoticia(tx, id);
+  } catch (erro) {
+    if (erro instanceof ErroConteudo && erro.codigo === "nao_encontrada") return null;
+    throw erro;
   }
 }
