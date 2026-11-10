@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "radix-ui";
+import { CalendarDays, CircleCheck, Eye, LayoutGrid, Upload } from "lucide-react";
 import * as React from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
@@ -175,5 +176,133 @@ function Opcao({ valor, marcada, titulo, detalhe }: { valor: string; marcada: bo
         <span className="texto-pequeno text-texto-secundario">{detalhe}</span>
       </span>
     </label>
+  );
+}
+
+/** "Publicar notícia?" (Figma 113:1314, na variante "agora"; sem rótulo de fuso, E18). */
+export function ModalPublicar({
+  aberto,
+  alteracoes,
+  titulo,
+  detalhe,
+  capaUrl,
+  publicando,
+  aoFechar,
+  aoConfirmar,
+}: {
+  aberto: boolean;
+  /** Notícia já no ar: publica as alterações (E42). */
+  alteracoes: boolean;
+  titulo: string;
+  /** "Notícia · Jurídico · Redação SINTRAVC" */
+  detalhe: string;
+  capaUrl: string | null;
+  publicando: boolean;
+  aoFechar: () => void;
+  aoConfirmar: () => void;
+}) {
+  return (
+    <Dialog open={aberto} onOpenChange={(a) => (a || publicando ? null : aoFechar())}>
+      <DialogContent className="max-w-[560px] rounded-[24px]">
+        <div className="flex flex-col gap-5 px-6 pt-6 pb-5">
+          <div className="flex items-start gap-3.5">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-destaque-azul-suave text-destaque-azul">
+              <Upload aria-hidden className="size-[22px]" />
+            </span>
+            <div className="flex flex-col gap-1">
+              <DialogPrimitive.Title className="texto-titulo-card text-texto-primario">
+                {alteracoes ? "Publicar alterações?" : "Publicar notícia?"}
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Description className="texto-pequeno text-texto-secundario">
+                Confira o resumo. Você poderá editar ou ocultar depois.
+              </DialogPrimitive.Description>
+            </div>
+            <DialogPrimitive.Close
+              aria-label="Fechar"
+              disabled={publicando}
+              className="ml-auto flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
+            >
+              <IconeFigma src="/painel/icone-fechar.svg" tamanho={18} />
+            </DialogPrimitive.Close>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-[14px] bg-fundo-superficie-alt p-3">
+            {capaUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={capaUrl} alt="" className="h-14 w-20 shrink-0 rounded-[10px] object-cover" />
+            ) : null}
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <p className="texto-titulo-card-pequeno text-texto-primario">{rotuloDaNoticia(titulo)}</p>
+              <p className="texto-pequeno text-texto-secundario">{detalhe}</p>
+            </div>
+          </div>
+
+          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 texto-pequeno">
+            <dt className="flex items-center gap-2 text-texto-secundario">
+              <CalendarDays aria-hidden className="size-4" />
+              Entra no ar
+            </dt>
+            <dd className="font-semibold text-texto-primario">{alteracoes ? "As alterações, ao confirmar" : "Agora, ao confirmar"}</dd>
+            <dt className="flex items-center gap-2 text-texto-secundario">
+              <LayoutGrid aria-hidden className="size-4" />
+              Onde aparece
+            </dt>
+            <dd className="font-semibold text-texto-primario">Página de Notícias, busca do site e lista da Home</dd>
+            <dt className="flex items-center gap-2 text-texto-secundario">
+              <Eye aria-hidden className="size-4" />
+              Visibilidade
+            </dt>
+            <dd className="font-semibold text-texto-primario">Pública para todos os visitantes</dd>
+          </dl>
+
+          <p className="flex items-center gap-2 rounded-[12px] bg-status-sucesso-fundo px-3 py-2.5 texto-pequeno text-status-sucesso-texto">
+            <CircleCheck aria-hidden className="size-[18px] shrink-0" />
+            Tudo certo: campos obrigatórios e imagens conferidos.
+          </p>
+          <p className="texto-pequeno text-texto-secundario">A ação fica registrada em Atividade com seu nome, data e hora.</p>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="secundario" disabled={publicando} onClick={aoFechar}>
+            Voltar ao editor
+          </Button>
+          <Button type="button" disabled={publicando} onClick={aoConfirmar}>
+            {publicando ? "Publicando…" : alteracoes ? "Publicar alterações" : "Publicar agora"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** "Descartar alterações?" (E42): a cópia de trabalho volta a ser igual ao que está no site. */
+export function ModalDescartarAlteracoes({
+  aberto,
+  descartando,
+  aoVoltar,
+  aoConfirmar,
+}: {
+  aberto: boolean;
+  descartando: boolean;
+  aoVoltar: () => void;
+  aoConfirmar: () => void;
+}) {
+  return (
+    <AlertDialog open={aberto} onOpenChange={(a) => (a || descartando ? null : aoVoltar())}>
+      <AlertDialogContent
+        icone="/painel/icone-alerta.svg"
+        tom="aviso"
+        titulo="Descartar alterações?"
+        descricao="O texto do editor volta a ser igual ao que está no site. As alterações feitas desde a última publicação são perdidas."
+      >
+        <AlertDialogFooter>
+          <Button type="button" variant="secundario" disabled={descartando} onClick={aoVoltar}>
+            Voltar
+          </Button>
+          <Button type="button" variant="perigo" disabled={descartando} onClick={aoConfirmar}>
+            {descartando ? "Descartando…" : "Descartar alterações"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

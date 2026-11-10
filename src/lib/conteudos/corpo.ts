@@ -153,3 +153,21 @@ export function contarPalavras(doc: DocCorpo): number {
 export function tempoDeLeitura(palavras: number): number {
   return Math.ceil(palavras / 200);
 }
+
+/** A regra única de "imagem sem texto alternativo" (RN15): capa, corpo e a marca no editor. */
+export function semTextoAlternativo(alt: unknown): boolean {
+  return String(alt ?? "").trim() === "";
+}
+
+/** Quantas imagens do corpo estão sem texto alternativo (RN15: obrigatório para publicar). */
+export function imagensSemAlt(doc: DocCorpo): number {
+  let total = 0;
+  const visitar = (nos: unknown) => {
+    for (const no of filhos(nos)) {
+      if (no.type === "image" && semTextoAlternativo(no.attrs?.alt)) total++;
+      visitar(no.content);
+    }
+  };
+  visitar(doc.content);
+  return total;
+}

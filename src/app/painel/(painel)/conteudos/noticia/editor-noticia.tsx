@@ -1,47 +1,92 @@
 "use client";
 
 import { useEditorState, type Editor } from "@tiptap/react";
-import { ChevronLeft, Cloud, CloudOff, Eye, ImageIcon, LoaderCircle, Lock, MapPin, Redo2, Undo2, Upload, User } from "lucide-react";
+import {
+  ChevronLeft,
+  Cloud,
+  CloudOff,
+  Eye,
+  ImageIcon,
+  LoaderCircle,
+  Lock,
+  MapPin,
+  Redo2,
+  Star,
+  Undo2,
+  Upload,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { ListaAntesDePublicar } from "@/components/painel/antes-de-publicar";
 import { useConectado } from "@/components/painel/use-conexao";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { Campo } from "@/components/ui/campo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type ArquivoConhecido, type DadosNoticia } from "@/lib/conteudos/dados";
 import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
-import { horaNaBahia } from "@/lib/datas";
+import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
+import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
+import { dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
-import { acaoResolverConflito, acaoSalvarRascunho } from "../acoes";
+import { acaoDescartarAlteracoes, acaoPublicarNoticia, acaoResolverConflito, acaoSalvarRascunho } from "../acoes";
 import { SeloEstado } from "../selos";
 import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
 import { FontesEAnexos } from "./fontes-anexos";
-import { ModalConflito, ModalSair } from "./modais";
+import { irParaImagemSemAlt } from "./imagem-no-corpo";
+import { ModalConflito, ModalDescartarAlteracoes, ModalPublicar, ModalSair } from "./modais";
 import { SeletorDeMidia } from "./seletor-midia";
 
 export type InicioDoEditor = {
   id: string | null;
   revisao: number;
   estado: EstadoConteudo;
+  /** A revisão que está no ar (E42); nula se nunca foi publicada. */
+  revisaoPublicada: number | null;
+  publicadoEm: string | null;
   dados: DadosNoticia;
   salvoEm: string | null;
   servidor: VersaoServidor | null;
 };
 
 type Saida = { tipo: "link"; href: string } | { tipo: "formulario"; formulario: HTMLFormElement };
+type Publicacao = { estado: EstadoConteudo; revisaoPublicada: number | null; publicadoEm: string | null };
 
 const DICA_EM_BREVE = "Disponível em breve";
 const DICA_SEM_INTERNET = "Sem internet: publicar e agendar voltam quando a conexão voltar";
+const SEM_CONEXAO = "Sem conexão com o servidor. Confira a internet e tente de novo.";
+const SEM_INTERNET_PARA_PUBLICAR = "Sem internet. Publique quando a conexão voltar: o texto continua guardado.";
+/** Resposta quando a chamada ao servidor nem chega (sem internet, servidor fora). */
+const semConexao = () => ({ tipo: "erro", mensagem: SEM_CONEXAO }) as const;
+
+/** Onde levar o foco quando falta um item obrigatório (CA-US21.3). */
+const ELEMENTO_DO_CAMPO: Record<CampoObrigatorio, string> = {
+  titulo: "#manchete",
+  lide: "#lide",
+  corpo: '[aria-label="Corpo da notícia"]',
+  imagensDoCorpo: '[aria-label="Corpo da notícia"]',
+  capaAlt: "#capa-alt",
+  assinatura: "#assinatura",
+  categoriaId: "#categoria",
+};
+const MENSAGEM_DO_CAMPO: Partial<Record<CampoObrigatorio, string>> = {
+  titulo: "Escreva a manchete para publicar.",
+  lide: "Escreva o lide para publicar.",
+  capaAlt: "Descreva a imagem para publicar: quem não enxerga ouve este texto.",
+  assinatura: "Escreva a assinatura para publicar.",
+  categoriaId: "Escolha a categoria para publicar.",
+};
 
 /**
  * Editor de notícia (RF37, RF38; Figma 112:1091 e 120:3836). O rascunho é salvo sozinho pela
@@ -230,7 +275,7 @@ export function EditorNoticia({
         dados: escolha === "minha" ? conflito.minha : conflito.servidor.dados,
       }),
       sessaoEdicao,
-    ).catch(() => ({ tipo: "erro" as const, mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo." }));
+    ).catch(semConexao);
     setResolvendo(false);
     if (resposta.tipo === "salvo") {
       const escolhidos = escolha === "minha" ? conflito.minha : conflito.servidor.dados;
@@ -242,16 +287,181 @@ export function EditorNoticia({
     } else if (resposta.tipo === "conflito") {
       fila.conflitoAtualizado(resposta.servidor);
       setErroConflito("Alguém salvou de novo enquanto você escolhia. Confira as versões e escolha outra vez.");
-    } else if (resposta.tipo === "erro") {
-      setErroConflito(resposta.mensagem);
     } else {
-      setErroConflito("Sem conexão com o servidor. Confira a internet e tente de novo.");
+      setErroConflito(resposta.tipo === "erro" ? resposta.mensagem : SEM_CONEXAO);
     }
   };
 
-  const erroDoCampo = (campo: keyof DadosNoticia) => (estado.erro?.campo === campo ? estado.erro.mensagem : undefined);
+  // --- Publicar (RF39, E42) ---------------------------------------------------
+  const [publicacao, setPublicacao] = React.useState<Publicacao>({
+    estado: inicio.estado,
+    revisaoPublicada: inicio.revisaoPublicada,
+    publicadoEm: inicio.publicadoEm,
+  });
+  const [preparando, setPreparando] = React.useState<"previa" | "publicar" | null>(null);
+  const [confirmar, setConfirmar] = React.useState(false);
+  const [publicando, setPublicando] = React.useState(false);
+  const [mostrarFaltas, setMostrarFaltas] = React.useState(false);
+  const [confirmarDescarte, setConfirmarDescarte] = React.useState(false);
+  const [descartando, setDescartando] = React.useState(false);
+  const botaoPublicar = React.useRef<HTMLButtonElement>(null);
+
+  const noAr = publicacao.estado === "publicado";
+  // Alterações que ainda não estão no site: salvas depois da publicação ou ainda na fila (E42).
+  const comAlteracoes =
+    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (noAr && estado.situacao !== "sincronizado");
+  const faltas = faltasParaPublicar(dados);
+  const faltando = mostrarFaltas ? new Set(faltas.map((f) => f.campo)) : new Set<CampoObrigatorio>();
+
+  const focarCampo = (campo: CampoObrigatorio) => {
+    // Imagem do corpo: vai até a primeira sem texto alternativo, com o foco no botão de editar.
+    if (campo === "imagensDoCorpo" && corpoEditor && irParaImagemSemAlt(corpoEditor)) return;
+    requestAnimationFrame(() => {
+      const alvo = document.querySelector<HTMLElement>(ELEMENTO_DO_CAMPO[campo]);
+      alvo?.scrollIntoView({ block: "center", behavior: "smooth" });
+      alvo?.focus({ preventScroll: true });
+    });
+  };
+
+  /**
+   * O servidor recusou porque alguém salvou no meio: reenvia o que está na tela, e o salvamento
+   * mostra o modal "Há duas versões" (N4).
+   */
+  const mostrarConflito = async () => {
+    fila.alterar(dadosAtuais.current);
+    await fila.salvarAgora();
+  };
+
+  /** Salva o que estiver pendente: a prévia e a publicação usam o que está na tela. */
+  const salvarAntes = async (motivo: "previa" | "publicar") => {
+    setPreparando(motivo);
+    await fila.salvarAgora();
+    setPreparando(null);
+    const depois = fila.estado();
+    if (depois.situacao === "sincronizado") return depois;
+    if (depois.situacao === "erro") {
+      toast.error(depois.erro?.mensagem ?? "Não foi possível salvar.", { duration: Infinity, closeButton: true });
+    }
+    // Conflito: o modal "Há duas versões" já abriu. Sem internet: a faixa e o botão travado avisam.
+    return null;
+  };
+
+  const abrirPrevia = async () => {
+    const pronto = await salvarAntes("previa");
+    if (!pronto?.id) return;
+    router.push(`/painel/conteudos/noticia/${pronto.id}/previa`);
+  };
+
+  const pedirPublicacao = async () => {
+    if (!conectado || preparando || publicando) return;
+    const pronto = await salvarAntes("publicar");
+    if (!pronto) return;
+    const agora = faltasParaPublicar(dadosAtuais.current);
+    if (agora.length > 0 || !pronto.id) {
+      setMostrarFaltas(true);
+      if (agora[0]) focarCampo(agora[0].campo);
+      return;
+    }
+    setConfirmar(true);
+  };
+
+  const publicar = async () => {
+    const { id, revisao } = fila.estado();
+    if (!id) return;
+    setPublicando(true);
+    const primeira = !noAr;
+    const resposta = await acaoPublicarNoticia({ id, revisaoBase: revisao }, sessaoEdicao).catch(semConexao);
+    setPublicando(false);
+    setConfirmar(false);
+    if (resposta.tipo === "publicada") {
+      setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm });
+      setMostrarFaltas(false);
+      toast.success(primeira ? "Notícia publicada." : "Alterações publicadas.");
+    } else if (resposta.tipo === "conflito") {
+      await mostrarConflito();
+    } else if (resposta.tipo === "faltam") {
+      setMostrarFaltas(true);
+      const primeiro = resposta.campos[0];
+      if (primeiro) focarCampo(primeiro);
+    } else {
+      // Erro fica até a pessoa fechar (RN42); "Tentar de novo" refaz a conferência (analise-figma §4).
+      toast.error("Não foi possível publicar", {
+        description: resposta.mensagem,
+        duration: Infinity,
+        closeButton: true,
+        action: { label: "Tentar de novo", onClick: () => tentarDeNovo() },
+      });
+    }
+  };
+
+  // O aviso de erro pode ficar aberto por muito tempo: "Tentar de novo" usa a versão mais recente da
+  // conferência e olha a conexão na hora do clique, não na hora em que o aviso apareceu.
+  const pedirPublicacaoAtual = React.useRef(pedirPublicacao);
+  React.useEffect(() => {
+    pedirPublicacaoAtual.current = pedirPublicacao;
+  });
+  const tentarDeNovo = () => {
+    if (!navigator.onLine) {
+      toast.error(SEM_INTERNET_PARA_PUBLICAR, { duration: Infinity, closeButton: true });
+      return;
+    }
+    void pedirPublicacaoAtual.current();
+  };
+
+  // Veio da prévia por "Publicar…": abre a mesma conferência do editor.
+  const veioDaPrevia = React.useRef(false);
+  React.useEffect(() => {
+    if (veioDaPrevia.current) return;
+    veioDaPrevia.current = true;
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.get("publicar") !== "1") return;
+    window.history.replaceState(null, "", window.location.pathname);
+    // O endereço só pode ser lido depois da hidratação; roda uma vez, ao abrir.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void pedirPublicacao();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const descartarAlteracoes = async () => {
+    setDescartando(true);
+    // O que ainda está na fila vai junto para o servidor e é descartado com o resto.
+    await fila.salvarAgora();
+    const { id, revisao, situacao } = fila.estado();
+    if (!id || situacao !== "sincronizado") {
+      setDescartando(false);
+      setConfirmarDescarte(false);
+      return;
+    }
+    const resposta = await acaoDescartarAlteracoes({ id, revisaoBase: revisao }, sessaoEdicao).catch(semConexao);
+    setDescartando(false);
+    setConfirmarDescarte(false);
+    if (resposta.tipo === "descartada") {
+      dadosAtuais.current = resposta.dados;
+      setDados(resposta.dados);
+      setBase(resposta.dados);
+      fila.conflitoResolvido({ tipo: "salvo", id, revisao: resposta.revisao, salvoEm: resposta.salvoEm });
+      setPublicacao((atual) => ({ ...atual, revisaoPublicada: resposta.revisao }));
+      toast.success("Alterações descartadas. O editor voltou a ficar igual ao site.");
+    } else if (resposta.tipo === "conflito") {
+      await mostrarConflito();
+    } else {
+      toast.error(resposta.mensagem, { duration: Infinity, closeButton: true });
+    }
+  };
+
+  const erroDoCampo = (campo: keyof DadosNoticia) => {
+    if (estado.erro?.campo === campo) return estado.erro.mensagem;
+    return ehCampoObrigatorio(campo) && faltando.has(campo) ? MENSAGEM_DO_CAMPO[campo] : undefined;
+  };
   const capa = dados.capaMidiaId ? arquivos[dados.capaMidiaId] : undefined;
   const emConflito = estado.situacao === "conflito" && estado.conflito;
+  const nomeDaCategoria = categorias.find((c) => c.id === dados.categoriaId)?.nome;
+  const rotuloPublicar = noAr ? "Publicar alterações…" : "Publicar…";
+  const dicaPublicar = !conectado
+    ? DICA_SEM_INTERNET
+    : noAr && !comAlteracoes
+      ? "Nada novo para publicar: o site já mostra esta versão"
+      : null;
 
   return (
     <div data-editor-noticia className="flex flex-1 flex-col">
@@ -267,27 +477,87 @@ export function EditorNoticia({
           <div className="flex min-w-0 flex-col">
             <div className="flex items-center gap-2">
               <h1 className="truncate texto-titulo-card text-texto-primario">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
-              <SeloEstado estado={inicio.estado} />
+              <SeloEstado estado={publicacao.estado} />
             </div>
             <StatusDoSalvamento estado={estado} temId={!!estado.id} />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DesfazerRefazer editor={corpoEditor} />
-          <BotaoTravado rotulo="Pré-visualizar" dica={DICA_EM_BREVE} icone={<Eye aria-hidden />} />
+          {estado.id || estado.situacao !== "sincronizado" ? (
+            <Button
+              type="button"
+              variant="secundario"
+              size="pequeno"
+              disabled={!!preparando}
+              onClick={() => void abrirPrevia()}
+            >
+              <Eye aria-hidden />
+              {preparando === "previa" ? "Salvando…" : "Pré-visualizar"}
+            </Button>
+          ) : (
+            <BotaoTravado rotulo="Pré-visualizar" dica="Escreva a notícia para pré-visualizar" icone={<Eye aria-hidden />} />
+          )}
           <Button type="button" variant="secundario" size="pequeno" onClick={() => void fila.salvarAgora()}>
-            Salvar rascunho
+            {noAr ? "Salvar" : "Salvar rascunho"}
           </Button>
-          <BotaoTravado
-            rotulo="Publicar…"
-            dica={conectado ? DICA_EM_BREVE : DICA_SEM_INTERNET}
-            icone={<Upload aria-hidden />}
-          />
+          {dicaPublicar ? (
+            <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} />
+          ) : (
+            <Button
+              ref={botaoPublicar}
+              type="button"
+              size="pequeno"
+              disabled={!!preparando || publicando}
+              onClick={() => void pedirPublicacao()}
+            >
+              <Upload aria-hidden />
+              {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
+            </Button>
+          )}
         </div>
       </header>
 
       <div className="flex flex-1 flex-col gap-6 px-5 pt-6 pb-12 lg:px-10 xl:flex-row xl:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
+          {mostrarFaltas && faltas.length > 0 ? (
+            <Alerta
+              tipo="erro"
+              titulo={
+                faltas.length === 1 ? "Falta 1 item obrigatório para publicar" : `Faltam ${faltas.length} itens obrigatórios para publicar`
+              }
+            >
+              <ul className="flex flex-col gap-1">
+                {faltas.map((falta) => (
+                  <li key={falta.campo}>
+                    <button
+                      type="button"
+                      onClick={() => focarCampo(falta.campo)}
+                      className="rounded-sm text-left underline underline-offset-2 outline-none hover:text-destaque-azul focus-visible:ring-[3px] focus-visible:ring-ring"
+                    >
+                      {falta.rotulo}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Alerta>
+          ) : null}
+          {comAlteracoes ? (
+            <Alerta tipo="informacao" titulo="Há alterações que ainda não estão no site">
+              <div className="flex flex-col items-start gap-2">
+                O site continua mostrando a versão publicada até você publicar as alterações.
+                <Button
+                  type="button"
+                  variant="secundario"
+                  size="pequeno"
+                  disabled={!conectado || descartando}
+                  onClick={() => setConfirmarDescarte(true)}
+                >
+                  Descartar alterações
+                </Button>
+              </div>
+            </Alerta>
+          ) : null}
           {estado.situacao === "erro" && estado.erro ? (
             <Alerta tipo="erro" titulo="Não foi possível salvar">
               {estado.erro.mensagem} Suas alterações continuam guardadas neste computador.
@@ -348,6 +618,7 @@ export function EditorNoticia({
                 conectado={conectado}
                 limites={limites}
                 rodape={<StatusCurto estado={estado} />}
+                marcarImagensSemAlt={mostrarFaltas}
               />
             </div>
           </Cartao>
@@ -430,7 +701,7 @@ export function EditorNoticia({
         <aside className="flex flex-col gap-6 xl:sticky xl:top-[88px] xl:w-[320px]">
           <Cartao
             titulo="Publicação"
-            acao={<SeloEstado estado={inicio.estado} />}
+            acao={<SeloEstado estado={publicacao.estado} />}
           >
             <Campo
               id="assinatura"
@@ -476,10 +747,70 @@ export function EditorNoticia({
                 <p className="texto-pequeno text-status-perigo-texto">{erroDoCampo("categoriaId")}</p>
               ) : null}
             </div>
+            {noAr ? null : (
+              <fieldset className="flex flex-col gap-3">
+                <legend className="mb-3 texto-rotulo text-texto-primario">Quando publicar</legend>
+                <RadioGroup value="agora" aria-label="Quando publicar">
+                  <label htmlFor="quando-agora" className="flex cursor-pointer items-start gap-3">
+                    <RadioGroupItem id="quando-agora" value="agora" className="mt-0.5" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="texto-corpo text-texto-primario">Assim que eu publicar</span>
+                      <span className="texto-pequeno text-texto-secundario">Data e hora registradas no momento da confirmação.</span>
+                    </span>
+                  </label>
+                  <label htmlFor="quando-agendar" className="flex cursor-not-allowed items-start gap-3">
+                    <RadioGroupItem id="quando-agendar" value="agendar" disabled className="mt-0.5" aria-describedby="dica-agendar" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5 texto-corpo text-texto-terciario">
+                        Agendar <Lock aria-hidden className="size-3.5" />
+                      </span>
+                      <span id="dica-agendar" className="texto-pequeno text-texto-terciario">
+                        {DICA_EM_BREVE}
+                      </span>
+                    </span>
+                  </label>
+                </RadioGroup>
+              </fieldset>
+            )}
             <p className="flex items-start gap-2 rounded-[12px] bg-fundo-superficie-alt p-3 texto-pequeno text-texto-secundario">
               <User aria-hidden className="mt-0.5 size-4 shrink-0" />
-              Fica como rascunho, fora do site, até alguém publicar.
+              {noAr && publicacao.publicadoEm
+                ? `No site desde ${dataHoraNaBahia(new Date(publicacao.publicadoEm))}. O que você muda aqui só vai ao site quando publicar as alterações.`
+                : "Fica como rascunho, fora do site, até alguém publicar."}
             </p>
+            {noAr && estado.id ? (
+              <div className="flex flex-col gap-1">
+                <Link
+                  href={`/painel/pagina-inicial?sugerir=${estado.id}`}
+                  className="inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
+                >
+                  <Star aria-hidden className="size-4" />
+                  Destacar na Home
+                </Link>
+                <p className="texto-pequeno text-texto-secundario">Abre a Página inicial com esta notícia já sugerida para um destaque.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {/* aria-disabled (e não disabled) para continuar focável e a dica ser lida (E43: só o que está no ar vai para a Home). */}
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby="dica-destacar"
+                  onClick={(evento) => evento.preventDefault()}
+                  className="inline-flex cursor-not-allowed items-center gap-2 self-start rounded-sm texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+                >
+                  <Star aria-hidden className="size-4" />
+                  Destacar na Home
+                  <Lock aria-hidden className="size-3.5" />
+                </button>
+                <p id="dica-destacar" className="texto-pequeno text-texto-terciario">
+                  Publique a notícia para destacar na Home.
+                </p>
+              </div>
+            )}
+          </Cartao>
+          <Cartao titulo="Antes de publicar" descricao="Conferido automaticamente enquanto você escreve.">
+            <ListaAntesDePublicar dados={dados} />
           </Cartao>
         </aside>
       </div>
@@ -511,6 +842,25 @@ export function EditorNoticia({
           if (saida) seguirSaida(saida);
         }}
         aoSalvarESair={() => void salvarESair()}
+      />
+      <ModalPublicar
+        aberto={confirmar}
+        alteracoes={noAr}
+        titulo={dados.titulo}
+        detalhe={["Notícia", nomeDaCategoria, dados.assinatura.trim()].filter(Boolean).join(" · ")}
+        capaUrl={capa?.url ?? null}
+        publicando={publicando}
+        aoFechar={() => {
+          setConfirmar(false);
+          botaoPublicar.current?.focus();
+        }}
+        aoConfirmar={() => void publicar()}
+      />
+      <ModalDescartarAlteracoes
+        aberto={confirmarDescarte}
+        descartando={descartando}
+        aoVoltar={() => setConfirmarDescarte(false)}
+        aoConfirmar={() => void descartarAlteracoes()}
       />
       {emConflito ? (
         <ModalConflito

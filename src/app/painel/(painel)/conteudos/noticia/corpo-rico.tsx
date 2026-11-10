@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "@tiptap/extension-image";
-import { EditorContent, useEditor, useEditorState, type Editor, type JSONContent } from "@tiptap/react";
+import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState, type Editor, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
@@ -20,8 +20,6 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Campo } from "@/components/ui/campo";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
 import { paraJsonSimples } from "@/lib/conteudos/json";
 import type { DocCorpo } from "@/lib/conteudos/dados";
@@ -29,6 +27,7 @@ import { normalizarEndereco } from "@/lib/conteudos/enderecos";
 import { cn } from "@/lib/utils";
 
 import type { ArquivoParaEscolher } from "../acoes";
+import { DialogoImagem, ImagemNoCorpo, MarcarImagensSemAlt } from "./imagem-no-corpo";
 import { SeletorDeMidia } from "./seletor-midia";
 
 /** Imagem do corpo: só da Mídia, com o id do arquivo guardado no nó (RN16, E40). */
@@ -42,6 +41,10 @@ const ImagemDaMidia = Image.extend({
         renderHTML: (atributos) => (atributos.midiaId ? { "data-midia-id": atributos.midiaId } : {}),
       },
     };
+  },
+  // Na tela do editor: "Editar texto alternativo e legenda" e a marca de erro (CA-US21.3).
+  addNodeView() {
+    return ReactNodeViewRenderer(ImagemNoCorpo);
   },
 });
 
@@ -67,6 +70,7 @@ export function CorpoRico({
   conectado,
   limites,
   rodape,
+  marcarImagensSemAlt = false,
 }: {
   valor: DocCorpo;
   aoMudar: (doc: DocCorpo) => void;
@@ -75,6 +79,8 @@ export function CorpoRico({
   conectado: boolean;
   limites: { tamanhoMaximoBytes: number; mensagemDeTamanho: string };
   rodape: React.ReactNode;
+  /** Depois de tentar publicar: marca as imagens sem texto alternativo. */
+  marcarImagensSemAlt?: boolean;
 }) {
   const aoMudarRef = React.useRef(aoMudar);
   React.useEffect(() => {
@@ -117,7 +123,9 @@ export function CorpoRico({
   return (
     <div className="flex flex-col overflow-hidden rounded-[14px] border border-borda-forte bg-fundo-superficie focus-within:border-destaque-azul">
       <BarraDeFerramentas editor={editor} conectado={conectado} limites={limites} />
-      <EditorContent editor={editor} />
+      <MarcarImagensSemAlt.Provider value={marcarImagensSemAlt}>
+        <EditorContent editor={editor} />
+      </MarcarImagensSemAlt.Provider>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-borda-padrao px-4 py-2.5 texto-pequeno text-texto-terciario">
         <span>
           {palavras} {palavras === 1 ? "palavra" : "palavras"}
@@ -233,9 +241,14 @@ function BarraDeFerramentas({
         aoEscolher={setImagem}
       />
       <DialogoImagem
-        imagem={imagem}
+        aberto={!!imagem}
+        url={imagem?.url ?? ""}
+        inicial={{ alt: imagem?.alt ?? "", legenda: imagem?.legenda ?? "" }}
+        rotuloAcao="Inserir imagem"
         aoFechar={() => setImagem(null)}
-        aoInserir={(atributos) => {
+        aoSalvar={({ alt, legenda }) => {
+          if (!imagem) return;
+          const atributos = { src: imagem.url, alt, title: legenda, midiaId: imagem.id };
           cadeia().setImage(atributos as Parameters<Editor["commands"]["setImage"]>[0]).run();
           setImagem(null);
         }}
@@ -338,70 +351,6 @@ function FormularioLink({ editor, aoFechar }: { editor: Editor; aoFechar: () => 
           Cancelar
         </Button>
         <Button type="submit">Aplicar</Button>
-      </DialogFooter>
-    </form>
-  );
-}
-
-/** Depois de escolher a imagem: texto alternativo e legenda (vêm da Mídia, podem ser trocados aqui). */
-function DialogoImagem({
-  imagem,
-  aoFechar,
-  aoInserir,
-}: {
-  imagem: ArquivoParaEscolher | null;
-  aoFechar: () => void;
-  aoInserir: (atributos: { src: string; alt: string; title: string; midiaId: string }) => void;
-}) {
-  return (
-    <Dialog open={!!imagem} onOpenChange={(aberto) => (aberto ? null : aoFechar())}>
-      <DialogContent className="max-w-[560px]">
-        <DialogHeader titulo="Imagem no corpo" descricao="O texto alternativo é lido por quem usa leitor de tela." />
-        {imagem ? <FormularioImagem key={imagem.id} imagem={imagem} aoFechar={aoFechar} aoInserir={aoInserir} /> : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function FormularioImagem({
-  imagem,
-  aoFechar,
-  aoInserir,
-}: {
-  imagem: ArquivoParaEscolher;
-  aoFechar: () => void;
-  aoInserir: (atributos: { src: string; alt: string; title: string; midiaId: string }) => void;
-}) {
-  const [alt, setAlt] = React.useState(imagem.alt);
-  const [legenda, setLegenda] = React.useState(imagem.legenda);
-  return (
-    <form
-      onSubmit={(evento) => {
-        evento.preventDefault();
-        aoInserir({ src: imagem.url, alt: alt.trim(), title: legenda.trim(), midiaId: imagem.id });
-      }}
-    >
-      <DialogBody>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imagem.url} alt="" className="max-h-48 w-full rounded-[12px] object-cover" />
-        <Campo
-          id="alt-da-imagem"
-          rotulo="Texto alternativo"
-          ajuda="Obrigatório para publicar. Descreva o que aparece na imagem."
-          value={alt}
-          maxLength={250}
-          onChange={(evento) => setAlt(evento.target.value)}
-        />
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="legenda-da-imagem">Legenda e crédito</Label>
-          <Input id="legenda-da-imagem" value={legenda} maxLength={300} onChange={(evento) => setLegenda(evento.target.value)} />
-        </div>
-      </DialogBody>
-      <DialogFooter>
-        <Button type="button" variant="secundario" onClick={aoFechar}>
-          Cancelar
-        </Button>
-        <Button type="submit">Inserir imagem</Button>
       </DialogFooter>
     </form>
   );

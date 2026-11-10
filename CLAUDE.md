@@ -51,6 +51,7 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
 - Diagramas Mermaid no PR: nada de ponto e vírgula nos textos (ele encerra o comando). Use vírgula.
 - Testes que leem várias linhas do banco e conferem a ordem sempre usam `ORDER BY` (na Atividade, por `id`, que é uuidv7). Sem isso o CI pode falhar por sorte.
 - Antes de criar um arquivo novo, confira se ele já existe para não sobrescrever.
+- Cada fluxo principal tem pelo menos um e2e que usa a tela como uma pessoa usaria (clicando nos botões e escolhendo nos seletores), e não só dados montados à mão no teste.
 - Só diga que terminou com o CI verde (`gh pr checks --watch`).
 
 ## Agent skills

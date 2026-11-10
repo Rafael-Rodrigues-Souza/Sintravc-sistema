@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { contarPalavras, limparCorpo, midiasDoCorpo, tempoDeLeitura } from "./corpo";
+import { contarPalavras, limparCorpo, midiasDoCorpo, semTextoAlternativo, tempoDeLeitura } from "./corpo";
 
 const MIDIA = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 const p = (...content: unknown[]) => ({ type: "paragraph", content });
@@ -91,5 +91,15 @@ describe("contarPalavras e tempoDeLeitura (Figma: “412 palavras · cerca de 3 
     expect(tempoDeLeitura(1)).toBe(1);
     expect(tempoDeLeitura(200)).toBe(1);
     expect(tempoDeLeitura(412)).toBe(3);
+  });
+});
+
+describe("semTextoAlternativo (RN15)", () => {
+  it("vazio, só espaços, nulo ou ausente contam como sem texto alternativo", () => {
+    expect(["", "   ", "\t", null, undefined].map(semTextoAlternativo)).toEqual([true, true, true, true, true]);
+  });
+
+  it("qualquer texto conta como preenchido", () => {
+    expect(semTextoAlternativo("Ônibus da frota")).toBe(false);
   });
 });
