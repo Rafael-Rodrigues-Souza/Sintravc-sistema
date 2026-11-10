@@ -107,8 +107,13 @@ export async function reagendarNaTransacao(tx: Transacao, atual: Linha, para: Da
 export async function cancelarNaTransacao(tx: Transacao, atual: Linha, deps: { quem: QuemDaEquipe; sessaoEdicao?: string }) {
   exigir(deps.quem, "agendar", { tipo: "noticia" });
   const de = agendadaPara(atual);
-  await tx.update(conteudo).set({ estado: "rascunho", agendadoPara: null, agendadoPor: null }).where(eq(conteudo.id, atual.id));
+  await voltarARascunho(tx, atual.id);
   await registrarAtividadeNoticia(tx, "noticia.cancelar_agendamento", atual.id, atual.titulo, deps, { de: de.toISOString() });
+}
+
+/** Tira da agenda: a notícia volta a Rascunho, sem data nem quem agendou (cancelar ou falha, E44). */
+export async function voltarARascunho(tx: Transacao, id: string) {
+  await tx.update(conteudo).set({ estado: "rascunho", agendadoPara: null, agendadoPor: null }).where(eq(conteudo.id, id));
 }
 
 function agendadaPara(atual: Linha): Date {

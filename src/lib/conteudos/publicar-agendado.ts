@@ -3,13 +3,14 @@ import { and, eq, or } from "drizzle-orm";
 import { enviarSemFalhar } from "@/lib/acesso/avisos";
 import { banco, type Transacao } from "@/lib/db";
 import { registrarAtividade } from "@/lib/atividade";
-import { conteudo, notificacaoEquipe, pessoaEquipe } from "@/lib/db/schema";
+import { notificacaoEquipe, pessoaEquipe } from "@/lib/db/schema";
 import { quandoNaBahia } from "@/lib/datas";
 import type { Enviar } from "@/lib/email";
 import { mensagemPublicacaoAgendadaFalhou } from "@/lib/email/modelos";
 import { lerEnvSite } from "@/lib/env";
 import type { PedidoPublicacao } from "@/lib/tarefas/fila";
 
+import { voltarARascunho } from "./agendar";
 import { lerNoticia } from "./carregar";
 import { rotuloDaNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
@@ -81,7 +82,7 @@ export async function registrarFalhaDaPublicacao(
     const atual = await travarSeAindaExiste(tx, pedido.conteudoId);
     if (!atual || !aindaAgendada(atual, marcadoPara)) return null;
 
-    await tx.update(conteudo).set({ estado: "rascunho", agendadoPara: null, agendadoPor: null }).where(eq(conteudo.id, atual.id));
+    await voltarARascunho(tx, atual.id);
     const titulo = rotuloDaNoticia(atual.titulo);
     await registrarAtividade(tx, {
       ator: { tipo: "sistema" },

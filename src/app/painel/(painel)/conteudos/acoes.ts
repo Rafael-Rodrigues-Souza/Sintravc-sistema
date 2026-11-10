@@ -204,6 +204,14 @@ const esquemaEdicaoRapida = esquemaRevisao.extend({
 });
 
 const DATA_INVALIDA = "Escolha uma data e uma hora válidas.";
+
+/** Data e hora da tela (horário da Bahia, E44) em UTC, ou a resposta de "data inválida" no campo. */
+function instanteDaTela(
+  quando: { data: string; hora: string } | null,
+): { para: Date } | { erro: { tipo: "erro"; mensagem: string; campo: "agendadoPara" } } {
+  const para = quando ? bahiaParaUtc(quando.data, quando.hora) : null;
+  return para ? { para } : { erro: { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" } };
+}
 const SEM_PERMISSAO_AGENDAR = "Seu perfil não pode agendar notícias.";
 
 export type RespostaAgendar =
@@ -226,8 +234,9 @@ export async function acaoAgendar(entrada: unknown, sessaoEdicao?: unknown): Pro
   const validado = esquemaAgendar.safeParse(entrada);
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "agendar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
-  const para = bahiaParaUtc(validado.data.quando.data, validado.data.quando.hora);
-  if (!para) return { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" };
+  const instante = instanteDaTela(validado.data.quando);
+  if ("erro" in instante) return instante.erro;
+  const { para } = instante;
   const sessao = esquemaSessao.safeParse(sessaoEdicao);
   try {
     const r = await agendarNoticia(
@@ -248,8 +257,9 @@ export async function acaoReagendar(entrada: unknown): Promise<RespostaAgendar> 
   const validado = esquemaReagendar.safeParse(entrada);
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "agendar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
-  const para = bahiaParaUtc(validado.data.quando.data, validado.data.quando.hora);
-  if (!para) return { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" };
+  const instante = instanteDaTela(validado.data.quando);
+  if ("erro" in instante) return instante.erro;
+  const { para } = instante;
   try {
     const r = await reagendarNoticia({ id: validado.data.id, para }, { quem: pessoa.quem, fila: await filaDoSistema() });
     revalidatePath("/painel/conteudos");
@@ -293,8 +303,9 @@ export async function acaoSalvarEdicaoRapida(entrada: unknown): Promise<Resposta
   const { quando, ...resto } = validado.data;
   let para: Date | null = null;
   if (resto.situacao === "agendado") {
-    para = quando ? bahiaParaUtc(quando.data, quando.hora) : null;
-    if (!para) return { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" };
+    const instante = instanteDaTela(quando);
+    if ("erro" in instante) return instante.erro;
+    para = instante.para;
   }
   try {
     const r = await salvarEdicaoRapida({ ...resto, para }, { quem: pessoa.quem, fila: await filaDoSistema(), urlDoArquivo });
