@@ -44,6 +44,7 @@ import { SeloEstado } from "../selos";
 import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
 import { FontesEAnexos } from "./fontes-anexos";
+import { irParaImagemSemAlt } from "./imagem-no-corpo";
 import { ModalConflito, ModalDescartarAlteracoes, ModalPublicar, ModalSair } from "./modais";
 import { SeletorDeMidia } from "./seletor-midia";
 
@@ -315,6 +316,8 @@ export function EditorNoticia({
   const faltando = mostrarFaltas ? new Set(faltas.map((f) => f.campo)) : new Set<CampoObrigatorio>();
 
   const focarCampo = (campo: CampoObrigatorio) => {
+    // Imagem do corpo: vai até a primeira sem texto alternativo, com o foco no botão de editar.
+    if (campo === "imagensDoCorpo" && corpoEditor && irParaImagemSemAlt(corpoEditor)) return;
     requestAnimationFrame(() => {
       const alvo = document.querySelector<HTMLElement>(ELEMENTO_DO_CAMPO[campo]);
       alvo?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -617,6 +620,7 @@ export function EditorNoticia({
                 conectado={conectado}
                 limites={limites}
                 rodape={<StatusCurto estado={estado} />}
+                marcarImagensSemAlt={mostrarFaltas}
               />
             </div>
           </Cartao>

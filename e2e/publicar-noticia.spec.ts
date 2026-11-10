@@ -227,6 +227,53 @@ test("erro ao publicar: “Tentar de novo” sem internet não tenta e avisa; co
   expect(await situacaoNoBanco(id)).toMatchObject({ versao: 3, versoes: 3 });
 });
 
+test("CA-US21.3 · imagem do corpo sem texto alternativo: o alerta leva à imagem, que é corrigida ali mesmo", async ({ page }) => {
+  await entrar(page, pessoas.com, "/painel/conteudos/noticia/nova");
+  await page.getByLabel("Manchete").fill("Frota nova chega às garagens");
+  await page.getByLabel("Lide").fill("Os ônibus novos começam a rodar na segunda-feira.");
+  await page.getByLabel("Assinatura").fill("Redação SINTRAVC");
+  await page.getByLabel("Categoria").selectOption({ label: "Geral" });
+  const corpo = page.getByRole("textbox", { name: "Corpo da notícia" });
+  await corpo.click();
+  await page.keyboard.type("Veja como ficaram os novos veículos.");
+  await salvo(page);
+  const idDaFrota = new URL(page.url()).pathname.split("/").at(-1)!;
+
+  // Insere uma imagem no corpo sem texto alternativo.
+  await page.getByRole("toolbar", { name: "Formatação do corpo" }).getByRole("button", { name: "Imagem da Mídia" }).click();
+  const seletor = page.getByRole("dialog", { name: "Imagem no corpo da notícia" });
+  const foto = await sharp({ create: { width: 800, height: 450, channels: 3, background: "#1d6fd8" } }).png().toBuffer();
+  await seletor.getByTestId("entrada-arquivos").setInputFiles({ name: "frota-nova.png", mimeType: "image/png", buffer: foto });
+  await expect(seletor.getByRole("button", { name: /frota-nova\.png/, pressed: true })).toBeVisible();
+  await seletor.getByRole("button", { name: "Usar este arquivo" }).click();
+  await page.getByRole("dialog", { name: "Imagem no corpo" }).getByRole("button", { name: "Inserir imagem" }).click();
+  await salvo(page);
+
+  // Tenta publicar: o alerta cita a imagem; o link leva até ela, marcada em erro.
+  await page.getByRole("button", { name: "Publicar…" }).click();
+  const alerta = page.getByRole("alert").filter({ hasText: "Falta 1 item obrigatório para publicar" });
+  await alerta.getByRole("button", { name: "Texto alternativo de 1 imagem do corpo" }).click();
+  const editar = corpo.getByRole("button", { name: "Editar texto alternativo e legenda" });
+  await expect(editar).toBeFocused();
+  await expect(corpo.getByText("Falta o texto alternativo desta imagem.")).toBeVisible();
+
+  // Corrige pela própria imagem.
+  await editar.click();
+  const dialogo = page.getByRole("dialog", { name: "Imagem no corpo" });
+  await dialogo.getByLabel("Texto alternativo").fill("Ônibus novos estacionados na garagem");
+  await dialogo.getByLabel("Legenda e crédito").fill("Foto: Comunicação/SINTRAVC");
+  await dialogo.getByRole("button", { name: "Salvar" }).click();
+  await expect(corpo.getByRole("img", { name: "Ônibus novos estacionados na garagem" })).toBeVisible();
+  await expect(corpo.getByText("Falta o texto alternativo desta imagem.")).toHaveCount(0);
+  await expect(alerta).toHaveCount(0);
+  await salvo(page);
+
+  await page.getByRole("button", { name: "Publicar…" }).click();
+  await page.getByRole("dialog", { name: "Publicar notícia?" }).getByRole("button", { name: "Publicar agora" }).click();
+  await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
+  expect(await situacaoNoBanco(idDaFrota)).toMatchObject({ estado: "publicado", versoes: 1 });
+});
+
 test("RNF01 · o Atendimento não abre a prévia pelo endereço direto", async ({ page }) => {
   await entrar(page, pessoas.atd, "/painel");
   const resposta = await page.goto(`/painel/conteudos/noticia/${id}/previa`);
