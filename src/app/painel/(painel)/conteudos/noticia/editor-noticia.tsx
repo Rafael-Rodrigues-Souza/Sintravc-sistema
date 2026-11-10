@@ -35,6 +35,7 @@ import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
+import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +65,8 @@ type Publicacao = { estado: EstadoConteudo; revisaoPublicada: number | null; pub
 const DICA_EM_BREVE = "Disponível em breve";
 const DICA_SEM_INTERNET = "Sem internet: publicar e agendar voltam quando a conexão voltar";
 const SEM_CONEXAO = "Sem conexão com o servidor. Confira a internet e tente de novo.";
+/** Resposta quando a chamada ao servidor nem chega (sem internet, servidor fora). */
+const semConexao = () => ({ tipo: "erro", mensagem: SEM_CONEXAO }) as const;
 
 /** Onde levar o foco quando falta um item obrigatório (CA-US21.3). */
 const ELEMENTO_DO_CAMPO: Record<CampoObrigatorio, string> = {
@@ -306,7 +309,7 @@ export function EditorNoticia({
   const noAr = publicacao.estado === "publicado";
   // Alterações que ainda não estão no site: salvas depois da publicação ou ainda na fila (E42).
   const comAlteracoes =
-    noAr && (estado.revisao > (publicacao.revisaoPublicada ?? 0) || estado.situacao !== "sincronizado");
+    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (noAr && estado.situacao !== "sincronizado");
   const faltas = faltasParaPublicar(dados);
   const faltando = mostrarFaltas ? new Set(faltas.map((f) => f.campo)) : new Set<CampoObrigatorio>();
 
@@ -316,6 +319,15 @@ export function EditorNoticia({
       alvo?.scrollIntoView({ block: "center", behavior: "smooth" });
       alvo?.focus({ preventScroll: true });
     });
+  };
+
+  /**
+   * O servidor recusou porque alguém salvou no meio: reenvia o que está na tela, e o salvamento
+   * mostra o modal "Há duas versões" (N4).
+   */
+  const mostrarConflito = async () => {
+    fila.alterar(dadosAtuais.current);
+    await fila.salvarAgora();
   };
 
   /** Salva o que estiver pendente: a prévia e a publicação usam o que está na tela. */
@@ -356,9 +368,7 @@ export function EditorNoticia({
     if (!id) return;
     setPublicando(true);
     const primeira = !noAr;
-    const resposta = await acaoPublicarNoticia({ id, revisaoBase: revisao }, sessaoEdicao).catch(
-      () => ({ tipo: "erro", mensagem: SEM_CONEXAO }) as const,
-    );
+    const resposta = await acaoPublicarNoticia({ id, revisaoBase: revisao }, sessaoEdicao).catch(semConexao);
     setPublicando(false);
     setConfirmar(false);
     if (resposta.tipo === "publicada") {
@@ -366,9 +376,7 @@ export function EditorNoticia({
       setMostrarFaltas(false);
       toast.success(primeira ? "Notícia publicada." : "Alterações publicadas.");
     } else if (resposta.tipo === "conflito") {
-      // Alguém salvou no meio: o salvamento mostra o modal "Há duas versões" (N4).
-      fila.alterar(dadosAtuais.current);
-      await fila.salvarAgora();
+      await mostrarConflito();
     } else if (resposta.tipo === "faltam") {
       setMostrarFaltas(true);
       const primeiro = resposta.campos[0];
@@ -408,9 +416,7 @@ export function EditorNoticia({
       setConfirmarDescarte(false);
       return;
     }
-    const resposta = await acaoDescartarAlteracoes({ id, revisaoBase: revisao }, sessaoEdicao).catch(
-      () => ({ tipo: "erro", mensagem: SEM_CONEXAO }) as const,
-    );
+    const resposta = await acaoDescartarAlteracoes({ id, revisaoBase: revisao }, sessaoEdicao).catch(semConexao);
     setDescartando(false);
     setConfirmarDescarte(false);
     if (resposta.tipo === "descartada") {
@@ -421,8 +427,7 @@ export function EditorNoticia({
       setPublicacao((atual) => ({ ...atual, revisaoPublicada: resposta.revisao }));
       toast.success("Alterações descartadas. O editor voltou a ficar igual ao site.");
     } else if (resposta.tipo === "conflito") {
-      fila.alterar(dadosAtuais.current);
-      await fila.salvarAgora();
+      await mostrarConflito();
     } else {
       toast.error(resposta.mensagem, { duration: Infinity, closeButton: true });
     }

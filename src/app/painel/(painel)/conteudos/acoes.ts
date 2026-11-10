@@ -131,7 +131,8 @@ export async function acaoBuscarMidia(
   };
 }
 
-const esquemaPublicar = z.object({ id: z.uuid(), revisaoBase: z.number().int().nonnegative() });
+/** Publicar e descartar: a notícia e a revisão que a pessoa está vendo. */
+const esquemaRevisao = z.object({ id: z.uuid(), revisaoBase: z.number().int().nonnegative() });
 
 export type RespostaPublicar =
   | { tipo: "publicada"; versao: number; revisaoPublicada: number; publicadoEm: string }
@@ -144,7 +145,7 @@ export type RespostaPublicar =
 /** "Publicar agora" e "Publicar alterações" (RF39, E42). A permissão é conferida no servidor (RNF01). */
 export async function acaoPublicarNoticia(entrada: unknown, sessaoEdicao: unknown): Promise<RespostaPublicar> {
   const pessoa = await sessaoDaEquipe();
-  const validado = esquemaPublicar.safeParse(entrada);
+  const validado = esquemaRevisao.safeParse(entrada);
   const sessao = esquemaSessao.safeParse(sessaoEdicao);
   if (!validado.success || !sessao.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "publicar", { tipo: "noticia" })) return { tipo: "erro", mensagem: "Seu perfil não pode publicar notícias." };
@@ -168,7 +169,7 @@ export type RespostaDescartar =
 /** "Descartar alterações" de uma notícia publicada (E42). */
 export async function acaoDescartarAlteracoes(entrada: unknown, sessaoEdicao: unknown): Promise<RespostaDescartar> {
   const pessoa = await sessaoDaEquipe();
-  const validado = esquemaPublicar.safeParse(entrada);
+  const validado = esquemaRevisao.safeParse(entrada);
   const sessao = esquemaSessao.safeParse(sessaoEdicao);
   if (!validado.success || !sessao.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "editar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };

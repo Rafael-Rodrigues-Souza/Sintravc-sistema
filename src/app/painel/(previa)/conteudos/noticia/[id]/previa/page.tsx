@@ -7,6 +7,7 @@ import { urlPublica } from "@/lib/armazenamento";
 import { carregarNoticia } from "@/lib/conteudos/carregar";
 import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
 import { listarCategorias } from "@/lib/conteudos/listar";
+import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { detalharMidia } from "@/lib/midia/listar";
 import { pode } from "@/lib/permissoes";
@@ -37,7 +38,7 @@ export default async function PaginaPrevia({ params }: { params: Promise<{ id: s
   const enderecoDe = new Map(arquivos.filter((a) => !!a).map((a) => [a!.id, urlPublica(a!.chaveR2, env)]));
 
   const publicada = noticia.estado === "publicado";
-  const comAlteracoes = publicada && noticia.revisaoPublicada !== null && noticia.revisao > noticia.revisaoPublicada;
+  const comAlteracoes = temAlteracoesNaoPublicadas(noticia);
   const capaUrl = dados.capaMidiaId ? enderecoDe.get(dados.capaMidiaId) : undefined;
 
   const paraLer: NoticiaParaLer = {
