@@ -107,7 +107,7 @@ async function agendada(quem: Awaited<ReturnType<typeof pessoaDaEquipe>>) {
 describe("reagendarNoticia (arrastar no calendário, Edição rápida)", () => {
   it("muda a data, registra a anterior e a nova na Atividade e põe um pedido novo na fila", async () => {
     const quem = await pessoaDaEquipe("COM");
-    const { id, revisao } = await agendada(quem);
+    const { id } = await agendada(quem);
     const outra = await pessoaDaEquipe("ADM");
     const { fila, pedidos } = filaEmMemoria();
     const cincoDeNovembro = new Date("2026-11-05T11:00:00Z");
@@ -126,7 +126,7 @@ describe("reagendarNoticia (arrastar no calendário, Edição rápida)", () => {
 
   it("só reagenda o que está agendado, e para o futuro", async () => {
     const quem = await pessoaDaEquipe("COM");
-    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    const { id } = await rascunhoSalvo(quem, await noticiaCompleta());
     const { fila } = filaEmMemoria();
     await expect(reagendarNoticia({ id, para: TRES_DE_NOVEMBRO_8H }, { quem, fila, agora: AGORA })).rejects.toMatchObject({
       codigo: "invalido",
@@ -142,7 +142,7 @@ describe("reagendarNoticia (arrastar no calendário, Edição rápida)", () => {
 describe("cancelarAgendamento", () => {
   it("volta a notícia a Rascunho, sem data, e registra na Atividade", async () => {
     const quem = await pessoaDaEquipe("COM");
-    const { id, revisao } = await agendada(quem);
+    const { id } = await agendada(quem);
 
     const resultado = await cancelarAgendamento({ id }, { quem });
 
@@ -157,7 +157,7 @@ describe("cancelarAgendamento", () => {
 
   it("Atendimento não cancela (RNF01)", async () => {
     const quem = await pessoaDaEquipe("COM");
-    const { id, revisao } = await agendada(quem);
+    const { id } = await agendada(quem);
     await expect(cancelarAgendamento({ id }, { quem: await pessoaDaEquipe("ATD") })).rejects.toBeInstanceOf(SemPermissao);
   });
 });

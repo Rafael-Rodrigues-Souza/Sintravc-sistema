@@ -53,8 +53,9 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `pnpm build && pnpm start --port ${PORTA}`,
-    // A página inicial não usa o banco: o servidor pode subir antes de e2e/preparar.ts criar o sintravc_e2e.
+    // Apaga o banco da rodada anterior antes de subir: a fila de tarefas (E44) só liga depois que
+    // e2e/preparar.ts recria o banco. A página inicial não usa o banco: o servidor pode subir antes.
+    command: `pnpm -s tsx e2e/apagar-banco.ts && pnpm build && pnpm start --port ${PORTA}`,
     url: `${URL_BASE}/`,
     timeout: 240_000,
     reuseExistingServer: false,

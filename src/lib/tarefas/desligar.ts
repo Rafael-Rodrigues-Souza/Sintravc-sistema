@@ -1,7 +1,7 @@
 type Sinal = "SIGTERM" | "SIGINT";
 type Ouvinte = (sinal: Sinal) => void;
 type Processo = {
-  listeners(evento: Sinal): Function[];
+  listeners(evento: Sinal): unknown[];
   removeAllListeners(evento: Sinal): unknown;
   on(evento: Sinal, ouvinte: Ouvinte): unknown;
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bahiaParaUtc, dataHoraNaBahia } from "./datas";
+import { bahiaParaUtc, camposEmTexto, dataHoraNaBahia } from "./datas";
 
 describe("dataHoraNaBahia", () => {
   it("escreve a data no horário da Bahia (RNF06)", () => {
@@ -37,5 +37,11 @@ describe("bahiaParaUtc: data e hora escolhidas na tela são do horário da Bahia
     expect(bahiaParaUtc("2026-11-03", "24:00")).toBeNull();
     expect(bahiaParaUtc("03/11/2026", "08:00")).toBeNull();
     expect(bahiaParaUtc("2026-11-03", "8h")).toBeNull();
+  });
+});
+
+describe("camposEmTexto", () => {
+  it("escreve a data e a hora escolhidas como a tela mostra", () => {
+    expect(camposEmTexto({ data: "2026-11-03", hora: "08:00" })).toBe("03/11/2026 às 08h00");
   });
 });

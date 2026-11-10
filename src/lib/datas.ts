@@ -82,3 +82,10 @@ export function bahiaEmCampos(instante: Date): { data: string; hora: string } {
   const parte = partesNaBahia(instante, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   return { data: `${parte("year")}-${parte("month")}-${parte("day")}`, hora: `${parte("hour")}:${parte("minute")}` };
 }
+
+/** "03/11/2026 às 08h00", a partir dos campos da tela (que já estão no horário da Bahia). */
+export function camposEmTexto({ data, hora }: { data: string; hora: string }): string {
+  const [ano, mes, dia] = data.split("-");
+  const [h, m] = hora.split(":");
+  return `${dia}/${mes}/${ano} às ${h}h${m}`;
+}

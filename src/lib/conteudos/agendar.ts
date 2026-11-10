@@ -51,7 +51,10 @@ export async function agendarNoticia(
  * nada quando chega a hora, porque a data não bate mais (E44). Quem reagenda passa a receber o
  * aviso de falha.
  */
-export async function reagendarNoticia(entrada: { id: string; para: Date }, deps: DepsDoAgendamento): Promise<ResultadoAgendar> {
+export async function reagendarNoticia(
+  entrada: { id: string; para: Date },
+  deps: DepsDoAgendamento,
+): Promise<{ tipo: "agendada"; para: Date }> {
   exigir(deps.quem, "agendar", { tipo: "noticia" });
   conferirNoFuturo(entrada.para, deps.agora);
   return banco().transaction(async (tx) => {

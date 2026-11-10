@@ -2,9 +2,13 @@
 
 import { z } from "zod";
 
+import { revalidatePath } from "next/cache";
+
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
+import { agendarNoticia, cancelarAgendamento, reagendarNoticia } from "@/lib/conteudos/agendar";
 import { versaoDoServidor } from "@/lib/conteudos/carregar";
+import { salvarEdicaoRapida } from "@/lib/conteudos/edicao-rapida";
 import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
@@ -12,9 +16,11 @@ import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import type { RespostaEnvio } from "@/lib/conteudos/fila-rascunho";
 import { descartarAlteracoes, ErroFaltamCampos, publicarNoticia } from "@/lib/conteudos/publicar";
 import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/salvar";
+import { bahiaParaUtc } from "@/lib/datas";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { listarMidia } from "@/lib/midia/listar";
 import { pode, SemPermissao } from "@/lib/permissoes";
+import { filaDoSistema } from "@/lib/tarefas";
 
 const SEM_PERMISSAO = "Seu perfil não pode editar notícias.";
 // As mensagens dizem o que aconteceu; o editor acrescenta, uma vez, que a cópia está guardada no computador.
@@ -181,5 +187,121 @@ export async function acaoDescartarAlteracoes(entrada: unknown, sessaoEdicao: un
     if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message };
     console.error("[conteudos] Falha ao descartar as alterações.", erro);
     return { tipo: "erro", mensagem: "Não foi possível descartar agora. Tente de novo em alguns minutos." };
+  }
+}
+
+// --- Agendamento (CA-US21.2, RF36, RF39, E44) ---
+
+/** Data e hora como a pessoa escolheu, sempre no horário da Bahia; o servidor converte para UTC (E44). */
+const esquemaQuando = z.object({ data: z.string().max(10), hora: z.string().max(5) });
+const esquemaAgendar = esquemaRevisao.extend({ quando: esquemaQuando });
+const esquemaReagendar = z.object({ id: z.uuid(), quando: esquemaQuando });
+const esquemaEdicaoRapida = esquemaRevisao.extend({
+  titulo: z.string().max(1000),
+  categoriaId: z.uuid().nullable(),
+  situacao: z.enum(["rascunho", "agendado", "publicado"]),
+  quando: esquemaQuando.nullable(),
+});
+
+const DATA_INVALIDA = "Escolha uma data e uma hora válidas.";
+const SEM_PERMISSAO_AGENDAR = "Seu perfil não pode agendar notícias.";
+
+export type RespostaAgendar =
+  | { tipo: "agendada"; para: string }
+  | { tipo: "conflito" }
+  | { tipo: "faltam"; campos: CampoObrigatorio[] }
+  | { tipo: "erro"; mensagem: string; campo?: string };
+
+function erroDoAgendamento(erro: unknown, contexto: string): Extract<RespostaAgendar, { tipo: "faltam" | "erro" }> {
+  if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos };
+  if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
+  if (erro instanceof SemPermissao) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
+  console.error(`[conteudos] Falha ao ${contexto}.`, erro);
+  return { tipo: "erro", mensagem: "Não foi possível salvar agora. Tente de novo em alguns minutos." };
+}
+
+/** "Agendar" no editor (CA-US21.2) e ao soltar um rascunho sem data no calendário. */
+export async function acaoAgendar(entrada: unknown, sessaoEdicao?: unknown): Promise<RespostaAgendar> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = esquemaAgendar.safeParse(entrada);
+  if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "agendar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
+  const para = bahiaParaUtc(validado.data.quando.data, validado.data.quando.hora);
+  if (!para) return { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" };
+  const sessao = esquemaSessao.safeParse(sessaoEdicao);
+  try {
+    const r = await agendarNoticia(
+      { id: validado.data.id, revisaoBase: validado.data.revisaoBase, para },
+      { quem: pessoa.quem, fila: await filaDoSistema(), sessaoEdicao: sessao.success ? sessao.data : undefined },
+    );
+    if (r.tipo === "conflito") return { tipo: "conflito" };
+    revalidatePath("/painel/conteudos");
+    return { tipo: "agendada", para: r.para.toISOString() };
+  } catch (erro) {
+    return erroDoAgendamento(erro, "agendar");
+  }
+}
+
+/** Arrastar uma notícia agendada para outro dia no calendário (mantém a hora). */
+export async function acaoReagendar(entrada: unknown): Promise<RespostaAgendar> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = esquemaReagendar.safeParse(entrada);
+  if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "agendar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
+  const para = bahiaParaUtc(validado.data.quando.data, validado.data.quando.hora);
+  if (!para) return { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" };
+  try {
+    const r = await reagendarNoticia({ id: validado.data.id, para }, { quem: pessoa.quem, fila: await filaDoSistema() });
+    revalidatePath("/painel/conteudos");
+    return { tipo: "agendada", para: r.para.toISOString() };
+  } catch (erro) {
+    return erroDoAgendamento(erro, "reagendar");
+  }
+}
+
+export type RespostaCancelarAgendamento = { tipo: "cancelado" } | { tipo: "erro"; mensagem: string };
+
+/** "Cancelar agendamento": a notícia volta a Rascunho (E44). */
+export async function acaoCancelarAgendamento(entrada: unknown, sessaoEdicao?: unknown): Promise<RespostaCancelarAgendamento> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = z.object({ id: z.uuid() }).safeParse(entrada);
+  if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "agendar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
+  const sessao = esquemaSessao.safeParse(sessaoEdicao);
+  try {
+    await cancelarAgendamento(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.success ? sessao.data : undefined });
+    revalidatePath("/painel/conteudos");
+    return { tipo: "cancelado" };
+  } catch (erro) {
+    const resposta = erroDoAgendamento(erro, "cancelar o agendamento");
+    return resposta.tipo === "erro" ? resposta : { tipo: "erro", mensagem: "Não foi possível cancelar agora." };
+  }
+}
+
+export type RespostaEdicaoRapida =
+  | { tipo: "salva"; estado: string; revisao: number; temAlteracoesNaoPublicadas: boolean }
+  | { tipo: "conflito" }
+  | { tipo: "faltam"; campos: CampoObrigatorio[] }
+  | { tipo: "erro"; mensagem: string; campo?: string };
+
+/** "Salvar alterações" da Edição rápida (RF36, Figma 115:2324). */
+export async function acaoSalvarEdicaoRapida(entrada: unknown): Promise<RespostaEdicaoRapida> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = esquemaEdicaoRapida.safeParse(entrada);
+  if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "editar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
+  const { quando, ...resto } = validado.data;
+  let para: Date | null = null;
+  if (resto.situacao === "agendado") {
+    para = quando ? bahiaParaUtc(quando.data, quando.hora) : null;
+    if (!para) return { tipo: "erro", mensagem: DATA_INVALIDA, campo: "agendadoPara" };
+  }
+  try {
+    const r = await salvarEdicaoRapida({ ...resto, para }, { quem: pessoa.quem, fila: await filaDoSistema(), urlDoArquivo });
+    if (r.tipo === "conflito") return { tipo: "conflito" };
+    revalidatePath("/painel/conteudos");
+    return { tipo: "salva", estado: r.estado, revisao: r.revisao, temAlteracoesNaoPublicadas: r.temAlteracoesNaoPublicadas };
+  } catch (erro) {
+    return erroDoAgendamento(erro, "salvar a edição rápida");
   }
 }

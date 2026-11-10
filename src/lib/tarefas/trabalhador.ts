@@ -54,36 +54,14 @@ export function bancoDaTransacao(tx: Transacao): Db {
 export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Trabalhador> {
   const boss = new PgBoss({ connectionString: opcoes.url, schema: "pgboss", max: 4 });
   boss.on("error", (erro) => console.error("Fila de tarefas (pg-boss):", erro));
-  await boss.start();
-
-  const tentativas = opcoes.tentativas ?? (await lerParametro("tarefas.tentativas"));
-  const intervalo = opcoes.intervaloSegundos ?? (await lerParametro("tarefas.intervalo_segundos"));
-  await garantirFila(boss, FILA_PUBLICAR_AGENDADO_FALHOU, {});
-  await garantirFila(boss, FILA_PUBLICAR_AGENDADO, {
-    retryLimit: tentativas,
-    retryDelay: intervalo,
-    deadLetter: FILA_PUBLICAR_AGENDADO_FALHOU,
-  });
-
-  const busca = opcoes.intervaloDeBuscaSegundos ? { pollingIntervalSeconds: opcoes.intervaloDeBuscaSegundos } : {};
-  const trabalhar = async () => {
-    const comTentativas = { ...busca, includeMetadata: true as const };
-    await boss.work<PedidoPublicacao, void, typeof comTentativas>(FILA_PUBLICAR_AGENDADO, comTentativas, async ([job]) => {
-      if (!job) return;
-      try {
-        await executarPublicacaoAgendada(job.data);
-      } catch (erro) {
-        if (job.retryCount < job.retryLimit) throw erro; // o pg-boss tenta de novo depois do intervalo
-        console.error(`Publicação agendada falhou de vez (${job.data.conteudoId}):`, erro);
-        await registrarFalhaDaPublicacao(job.data, { motivo: motivoDaFalha(erro), enviar: opcoes.enviar });
-      }
-    });
-    // Rede de segurança: a tarefa que nem chegou a terminar (servidor caiu no meio, tempo esgotado).
-    await boss.work<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO_FALHOU, busca, async ([job]) => {
-      if (job) await registrarFalhaDaPublicacao(job.data, { motivo: motivoDaFalha(undefined), enviar: opcoes.enviar });
-    });
-  };
-  await trabalhar();
+  try {
+    await boss.start();
+    await prepararFilas(boss, opcoes);
+  } catch (erro) {
+    // Sem os parâmetros (migração pendente) ou sem banco: fecha o que abriu antes de tentar de novo.
+    await boss.stop({ graceful: false }).catch(() => {});
+    throw erro;
+  }
 
   return {
     fila: {
@@ -104,6 +82,35 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
       await boss.stop({ graceful: true, timeout: ESPERA_AO_DESLIGAR_MS });
     },
   };
+}
+
+/** Cria as filas da T01 e começa a pegar as tarefas. */
+async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
+  const tentativas = opcoes.tentativas ?? (await lerParametro("tarefas.tentativas"));
+  const intervalo = opcoes.intervaloSegundos ?? (await lerParametro("tarefas.intervalo_segundos"));
+  await garantirFila(boss, FILA_PUBLICAR_AGENDADO_FALHOU, {});
+  await garantirFila(boss, FILA_PUBLICAR_AGENDADO, {
+    retryLimit: tentativas,
+    retryDelay: intervalo,
+    deadLetter: FILA_PUBLICAR_AGENDADO_FALHOU,
+  });
+
+  const busca = opcoes.intervaloDeBuscaSegundos ? { pollingIntervalSeconds: opcoes.intervaloDeBuscaSegundos } : {};
+  const comTentativas = { ...busca, includeMetadata: true as const };
+  await boss.work<PedidoPublicacao, void, typeof comTentativas>(FILA_PUBLICAR_AGENDADO, comTentativas, async ([job]) => {
+    if (!job) return;
+    try {
+      await executarPublicacaoAgendada(job.data);
+    } catch (erro) {
+      if (job.retryCount < job.retryLimit) throw erro; // o pg-boss tenta de novo depois do intervalo
+      console.error(`Publicação agendada falhou de vez (${job.data.conteudoId}):`, erro);
+      await registrarFalhaDaPublicacao(job.data, { motivo: motivoDaFalha(erro), enviar: opcoes.enviar });
+    }
+  });
+  // Rede de segurança: a tarefa que nem chegou a terminar (servidor caiu no meio, tempo esgotado).
+  await boss.work<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO_FALHOU, busca, async ([job]) => {
+    if (job) await registrarFalhaDaPublicacao(job.data, { motivo: motivoDaFalha(undefined), enviar: opcoes.enviar });
+  });
 }
 
 /** Cria a fila na primeira vez; depois, atualiza as tentativas (o ADM pode ter mudado o Parametro). */
