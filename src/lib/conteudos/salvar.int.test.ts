@@ -298,6 +298,21 @@ describe("salvarRascunhoNoticia: corpo rico (RF37)", () => {
     expect(imagem!.attrs.src).toMatch(/\/midia\/\d{4}\/\d{2}\/[0-9a-f-]+\.png$/);
   });
 
+  it("recusa com mensagem clara o que não é JSON simples (ex.: referência temporária do React no lugar dos atributos)", async () => {
+    const referenciaTemporaria = new Proxy(() => {}, {
+      get(_alvo, nome) {
+        throw new Error(`Cannot access ${String(nome)} on the server.`);
+      },
+    });
+    const corpo = { type: "doc" as const, content: [{ type: "image", attrs: referenciaTemporaria }] };
+
+    await expect(salvarRascunhoNoticia({ dados: dados({ corpo }) }, edicaoDe(await pessoaDaEquipe()))).rejects.toMatchObject({
+      codigo: "invalido",
+      campo: "corpo",
+      message: "A tela mandou o texto num formato que o servidor não aceita. Atualize a página e tente de novo.",
+    });
+  });
+
   it("recusa corpo grande demais", async () => {
     const paragrafo = { type: "paragraph", content: [{ type: "text", text: "x".repeat(1000) }] };
     const corpo = { type: "doc" as const, content: Array.from({ length: 300 }, () => paragrafo) };

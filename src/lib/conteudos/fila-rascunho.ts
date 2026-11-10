@@ -124,7 +124,7 @@ export function criarFilaDoRascunho(opcoes: {
         resposta = await opcoes.enviar(pedido);
       } catch {
         resposta = opcoes.online()
-          ? { tipo: "erro", mensagem: "Não foi possível salvar agora. Suas alterações estão guardadas neste computador." }
+          ? { tipo: "erro", mensagem: "Não foi possível falar com o servidor agora. Tente de novo em alguns minutos." }
           : { tipo: "sem_conexao" };
       }
       if (resposta.tipo === "salvo") {

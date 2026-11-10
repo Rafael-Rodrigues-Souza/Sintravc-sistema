@@ -23,6 +23,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
+import { paraJsonSimples } from "@/lib/conteudos/json";
 import type { DocCorpo } from "@/lib/conteudos/dados";
 import { normalizarEndereco } from "@/lib/conteudos/enderecos";
 import { cn } from "@/lib/utils";
@@ -93,7 +94,8 @@ export function CorpoRico({
           "corpo-da-noticia min-h-[280px] px-5 py-4 texto-corpo text-texto-primario outline-none [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:texto-titulo-card [&_p]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:mb-3 [&_blockquote]:border-l-4 [&_blockquote]:border-destaque-amarelo [&_blockquote]:pl-4 [&_blockquote]:text-texto-secundario [&_a]:text-destaque-azul [&_a]:underline [&_img]:my-3 [&_img]:max-h-[420px] [&_img]:rounded-[12px] [&_img.ProseMirror-selectednode]:ring-[3px] [&_img.ProseMirror-selectednode]:ring-destaque-azul",
       },
     },
-    onUpdate: ({ editor: atual }) => aoMudarRef.current(atual.getJSON() as DocCorpo),
+    // Cópia em JSON puro: os atributos do ProseMirror não têm protótipo e não podem ir para o servidor assim.
+    onUpdate: ({ editor: atual }) => aoMudarRef.current(paraJsonSimples(atual.getJSON()) as DocCorpo),
   });
 
   React.useEffect(() => {

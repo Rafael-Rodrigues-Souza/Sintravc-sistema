@@ -15,7 +15,8 @@ import { listarMidia } from "@/lib/midia/listar";
 import { pode, SemPermissao } from "@/lib/permissoes";
 
 const SEM_PERMISSAO = "Seu perfil não pode editar notícias.";
-const FALHOU = "Não foi possível salvar agora. Suas alterações estão guardadas neste computador.";
+// As mensagens dizem o que aconteceu; o editor acrescenta, uma vez, que a cópia está guardada no computador.
+const FALHOU = "Não foi possível salvar agora. Tente de novo em alguns minutos.";
 const PEDIDO_INVALIDO = "Não foi possível salvar: a tela mandou dados incompletos. Atualize a página.";
 
 /** Quantos arquivos o seletor do editor mostra por vez ("Carregar mais" traz os próximos). */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEditorState, type Editor } from "@tiptap/react";
-import { ChevronLeft, Cloud, CloudOff, Eye, ImageIcon, LoaderCircle, MapPin, Redo2, Undo2, Upload, User } from "lucide-react";
+import { ChevronLeft, Cloud, CloudOff, Eye, ImageIcon, LoaderCircle, Lock, MapPin, Redo2, Undo2, Upload, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type ArquivoConhecido, type DadosNoticia } from "@/lib/conteudos/dados";
+import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { horaNaBahia } from "@/lib/datas";
@@ -85,7 +86,7 @@ export function EditorNoticia({
       revisao: inicio.revisao,
       salvoEm: inicio.salvoEm,
       intervaloMs,
-      enviar: (pedido) => acaoSalvarRascunho(pedido, sessaoEdicao),
+      enviar: (pedido) => acaoSalvarRascunho(paraJsonSimples(pedido), sessaoEdicao),
       online: () => navigator.onLine,
       armazem: armazemDoNavegador(),
       versaoServidor: inicio.servidor ?? undefined,
@@ -222,12 +223,12 @@ export function EditorNoticia({
     setResolvendo(true);
     setErroConflito(null);
     const resposta = await acaoResolverConflito(
-      {
+      paraJsonSimples({
         id: estado.id,
         escolha,
         revisaoServidor: conflito.servidor.revisao,
         dados: escolha === "minha" ? conflito.minha : conflito.servidor.dados,
-      },
+      }),
       sessaoEdicao,
     ).catch(() => ({ tipo: "erro" as const, mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo." }));
     setResolvendo(false);
@@ -281,7 +282,6 @@ export function EditorNoticia({
             rotulo="Publicar…"
             dica={conectado ? DICA_EM_BREVE : DICA_SEM_INTERNET}
             icone={<Upload aria-hidden />}
-            primario
           />
         </div>
       </header>
@@ -694,14 +694,22 @@ function DesfazerRefazer({ editor }: { editor: Editor | null }) {
 }
 
 /** Botão que ainda não funciona aqui: fica visível, travado, com a dica lida pelo leitor de tela. */
-function BotaoTravado({ rotulo, dica, icone, primario }: { rotulo: string; dica: string; icone: React.ReactNode; primario?: boolean }) {
+function BotaoTravado({ rotulo, dica, icone }: { rotulo: string; dica: string; icone: React.ReactNode }) {
   const id = React.useId();
   return (
     <span className="inline-flex" title={dica}>
-      <Button type="button" variant={primario ? "primario" : "secundario"} size="pequeno" aria-disabled aria-describedby={id}>
+      {/* aria-disabled (e não disabled) para continuar focável e a dica ser lida; o clique não faz nada. */}
+      <button
+        type="button"
+        aria-disabled="true"
+        aria-describedby={id}
+        onClick={(evento) => evento.preventDefault()}
+        className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-full border-[1.5px] border-dashed border-borda-forte bg-fundo-superficie-alt px-4 texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]"
+      >
         {icone}
         {rotulo}
-      </Button>
+        <Lock aria-hidden className="size-3.5" />
+      </button>
       <span id={id} className="sr-only">
         {dica}
       </span>

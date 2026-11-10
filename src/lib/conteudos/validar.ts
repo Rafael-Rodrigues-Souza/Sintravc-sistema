@@ -8,6 +8,7 @@ import { limparCorpo, midiasDoCorpo, trocarEnderecosDasImagens } from "./corpo";
 import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type DadosNoticia } from "./dados";
 import { ehEnderecoDaWeb } from "./enderecos";
 import { ErroConteudo } from "./erros";
+import { ehJsonSimples } from "./json";
 
 /** Tamanho máximo do corpo gravado (JSON do Tiptap). Uma notícia longa fica bem abaixo disso. */
 export const LIMITE_CORPO_CARACTERES = 200_000;
@@ -61,6 +62,15 @@ export async function validarNoticia(
   entrada: DadosNoticia,
   urlDoArquivo: UrlDoArquivo,
 ): Promise<DadosNoticia> {
+  if (!ehJsonSimples(entrada)) {
+    // Ex.: atributos do ProseMirror enviados sem conversão chegam como referência temporária do React.
+    const doCorpo = typeof entrada === "object" && entrada !== null && !ehJsonSimples((entrada as { corpo?: unknown }).corpo);
+    throw new ErroConteudo(
+      "invalido",
+      "A tela mandou o texto num formato que o servidor não aceita. Atualize a página e tente de novo.",
+      doCorpo ? "corpo" : undefined,
+    );
+  }
   if (JSON.stringify(entrada.corpo ?? null).length > LIMITE_CORPO_CARACTERES) {
     throw new ErroConteudo(
       "invalido",

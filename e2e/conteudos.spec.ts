@@ -86,6 +86,12 @@ test("menu Criar: a Comunicação vê Edital e Acordo travados", async ({ page }
   await menu.getByRole("menuitem", { name: /Notícia/ }).click();
   await expect(page).toHaveURL(/\/painel\/conteudos\/noticia\/nova$/);
   await expect(page.getByRole("heading", { name: "Nova notícia" })).toBeVisible();
+
+  // Publicar ainda não existe (#9): travado, com a dica, e sem o amarelo de botão ativo.
+  const publicar = page.getByRole("button", { name: "Publicar…" });
+  await expect(publicar).toHaveAttribute("aria-disabled", "true");
+  await expect(publicar).toHaveAccessibleDescription("Disponível em breve");
+  expect(await publicar.evaluate((botao) => getComputedStyle(botao).backgroundColor)).not.toBe("rgb(255, 204, 0)");
 });
 
 test("CA-US21.1 · rascunho salvo sozinho, e continua lá ao recarregar", async ({ page }) => {
