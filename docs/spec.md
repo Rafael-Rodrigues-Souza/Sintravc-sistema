@@ -138,7 +138,7 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
   - “Encerrar agora” pede confirmação;
   - pode ser duplicado (RN14).
 - **Episódio:** usa o link do YouTube e o player só carrega no clique. Marcar “Último programa” substitui o anterior (RN17, R12).
-- **Home:** só a área Página inicial controla os destaques, com rascunho e “Publicar alterações” (E13).
+- **Home:** só a área Página inicial controla os destaques, com rascunho e “Publicar alterações” (E13). No editor, o link “Destacar na Home” só vale para notícia publicada; no rascunho fica travado (E43).
 - **Notícia fixada:** uma por vez no topo da página Notícias (RN58).
 - **Parceiro:** período com “Começa em” e “Válido até”; ao vencer, é arquivado sozinho (RN57).
 - **Imagens:** JPG, PNG, WebP e HEIC (convertido); o texto alternativo é obrigatório para publicar (RN15). Só pode excluir mídia sem uso (RN16). A Mídia também aceita PDF, DOCX, XLSX, ODT e ODS; SVG, GIF e Office com macro ficam de fora (E39).

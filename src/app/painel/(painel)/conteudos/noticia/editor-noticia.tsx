@@ -793,7 +793,7 @@ export function EditorNoticia({
               </div>
             ) : (
               <div className="flex flex-col gap-1">
-                {/* aria-disabled (e não disabled) para continuar focável e a dica ser lida (E13: só o que está no ar vai para a Home). */}
+                {/* aria-disabled (e não disabled) para continuar focável e a dica ser lida (E43: só o que está no ar vai para a Home). */}
                 <button
                   type="button"
                   aria-disabled="true"
@@ -806,7 +806,7 @@ export function EditorNoticia({
                   <Lock aria-hidden className="size-3.5" />
                 </button>
                 <p id="dica-destacar" className="texto-pequeno text-texto-terciario">
-                  Publique a notícia para destacar na Home
+                  Publique a notícia para destacar na Home.
                 </p>
               </div>
             )}
