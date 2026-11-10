@@ -200,7 +200,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               itens.map((i) => ({ id: i.id, titulo: i.titulo, estado: i.estado, quando: i.quando.toISOString(), revisao: i.revisao })),
             ]),
           )}
-          rascunhos={rascunhos.itens.filter((r) => r.tipo === "noticia").map(({ id, titulo, revisao }) => ({ id, titulo, revisao }))}
+          rascunhos={rascunhos.itens.map(({ id, titulo, revisao }) => ({ id, titulo, revisao }))}
           totalDeRascunhos={rascunhos.total}
           podeAgendar={podeAgendar}
           hrefMesAnterior={endereco({ mes: mesTexto(mesVizinho(mesAberto.ano, mesAberto.mes, -1)) })}

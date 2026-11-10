@@ -75,10 +75,14 @@ export async function itensDoCalendario(
 
 export type RascunhoSemData = { id: string; tipo: TipoConteudo; titulo: string; revisao: number };
 
-/** "Rascunhos sem data", do mais recente para o mais antigo: arraste para um dia para agendar. */
+/**
+ * "Rascunhos sem data", do mais recente para o mais antigo: arraste para um dia para agendar.
+ * Só notícias, já na consulta: a lista mostra até 20 e o total conta só notícias (editais e
+ * acordos chegam no #12).
+ */
 export async function rascunhosSemData(deps: { quem: QuemDaEquipe }): Promise<{ itens: RascunhoSemData[]; total: number }> {
   exigir(deps.quem, "ver", { tipo: "noticia" });
-  const onde = and(eq(conteudo.estado, "rascunho"), isNull(conteudo.agendadoPara));
+  const onde = and(eq(conteudo.tipo, "noticia"), eq(conteudo.estado, "rascunho"), isNull(conteudo.agendadoPara));
   const [itens, [contagem]] = await Promise.all([
     banco()
       .select({ id: conteudo.id, tipo: conteudo.tipo, titulo: conteudo.titulo, revisao: conteudo.revisao })

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { banco } from "@/lib/db";
+import { conteudo } from "@/lib/db/schema";
 import { SemPermissao } from "@/lib/permissoes";
 import { filaEmMemoria } from "@/lib/tarefas/fila";
 import { pessoaDaEquipe } from "@/testes/equipe";
@@ -77,5 +79,20 @@ describe("rascunhosSemData", () => {
     expect(ids).not.toContain(agendada);
     expect(total).toBeGreaterThanOrEqual(2);
     expect(itens.find((i) => i.id === segundo.id)).toMatchObject({ titulo: "Rascunho mais novo", revisao: segundo.revisao });
+  });
+
+  it("só notícias: o edital em rascunho não entra na lista nem no total (os documentos chegam no #12)", async () => {
+    const quem = await pessoaDaEquipe("ADM");
+    const antes = await rascunhosSemData({ quem });
+    const [edital] = await banco()
+      .insert(conteudo)
+      .values({ tipo: "edital", titulo: "Edital de convocação", autorId: quem.id, atualizadoPor: quem.id })
+      .returning({ id: conteudo.id });
+
+    const depois = await rascunhosSemData({ quem });
+
+    expect(depois.total).toBe(antes.total);
+    expect(depois.itens.map((i) => i.id)).not.toContain(edital!.id);
+    expect(depois.itens.every((i) => i.tipo === "noticia")).toBe(true);
   });
 });
