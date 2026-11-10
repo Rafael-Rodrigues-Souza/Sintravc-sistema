@@ -67,7 +67,12 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
     fila: {
       async agendarPublicacao(tx, { conteudoId, para }) {
         const pedido: PedidoPublicacao = { conteudoId, para: para.toISOString() };
-        await boss.send(FILA_PUBLICAR_AGENDADO, pedido, { startAfter: para, db: bancoDaTransacao(tx) });
+        // Pedido único por (notícia, hora marcada) enquanto espera a hora (E44): repetido, é descartado.
+        await boss.send(FILA_PUBLICAR_AGENDADO, pedido, {
+          startAfter: para,
+          singletonKey: `${conteudoId}:${pedido.para}`,
+          db: bancoDaTransacao(tx),
+        });
       },
     },
     async pedidosPendentes() {
@@ -89,7 +94,9 @@ async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
   const tentativas = opcoes.tentativas ?? (await lerParametro("tarefas.tentativas"));
   const intervalo = opcoes.intervaloSegundos ?? (await lerParametro("tarefas.intervalo_segundos"));
   await garantirFila(boss, FILA_PUBLICAR_AGENDADO_FALHOU, {});
+  // "short": o pg-boss guarda um pedido só por singletonKey enquanto ele espera a hora.
   await garantirFila(boss, FILA_PUBLICAR_AGENDADO, {
+    policy: "short",
     retryLimit: tentativas,
     retryDelay: intervalo,
     deadLetter: FILA_PUBLICAR_AGENDADO_FALHOU,
@@ -117,8 +124,9 @@ async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
 async function garantirFila(
   boss: PgBoss,
   nome: string,
-  opcoes: { retryLimit?: number; retryDelay?: number; deadLetter?: string },
+  { policy, ...opcoes }: { policy?: "short"; retryLimit?: number; retryDelay?: number; deadLetter?: string },
 ) {
-  if (!(await boss.getQueue(nome))) await boss.createQueue(nome, opcoes);
+  // A política só vale na criação; as tentativas são atualizadas a cada vez que a fila liga.
+  if (!(await boss.getQueue(nome))) await boss.createQueue(nome, { policy, ...opcoes });
   else if (Object.keys(opcoes).length > 0) await boss.updateQueue(nome, opcoes);
 }

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { agendarNoticia } from "@/lib/conteudos/agendar";
+import { agendarNoticia, cancelarAgendamento, reagendarNoticia } from "@/lib/conteudos/agendar";
 import { carregarNoticia } from "@/lib/conteudos/carregar";
 import { salvarRascunhoNoticia } from "@/lib/conteudos/salvar";
 import { banco } from "@/lib/db";
@@ -61,6 +61,23 @@ describe("fila real (pg-boss): a notícia agendada entra no ar sozinha (CA-US21.
       }),
     ).rejects.toThrow("a ação falhou");
     expect(await trabalhador.pedidosPendentes()).not.toContainEqual(expect.objectContaining({ conteudoId: id }));
+  }, 30_000);
+
+  it("pedido único por (notícia, hora marcada): agendar duas vezes para a mesma hora deixa um pedido só (E44)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const trabalhador = await ligar();
+    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    const para = new Date(Date.now() + 10 * 60_000);
+    const outraHora = new Date(para.getTime() + 60_000);
+
+    // Agenda, cancela e agenda de novo para a mesma hora; depois, outra hora conta como outro pedido.
+    await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: trabalhador.fila });
+    await cancelarAgendamento({ id }, { quem });
+    await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: trabalhador.fila });
+    await reagendarNoticia({ id, para: outraHora }, { quem, fila: trabalhador.fila });
+
+    const daNoticia = (await trabalhador.pedidosPendentes()).filter((p) => p.conteudoId === id);
+    expect(daNoticia.map((p) => p.para).sort()).toEqual([para.toISOString(), outraHora.toISOString()]);
   }, 30_000);
 
   it("tenta de novo e, esgotadas as tentativas, registra a falha e avisa", async () => {
