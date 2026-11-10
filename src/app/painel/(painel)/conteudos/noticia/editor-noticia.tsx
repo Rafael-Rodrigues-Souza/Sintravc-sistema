@@ -65,6 +65,7 @@ type Publicacao = { estado: EstadoConteudo; revisaoPublicada: number | null; pub
 const DICA_EM_BREVE = "Disponível em breve";
 const DICA_SEM_INTERNET = "Sem internet: publicar e agendar voltam quando a conexão voltar";
 const SEM_CONEXAO = "Sem conexão com o servidor. Confira a internet e tente de novo.";
+const SEM_INTERNET_PARA_PUBLICAR = "Sem internet. Publique quando a conexão voltar: o texto continua guardado.";
 /** Resposta quando a chamada ao servidor nem chega (sem internet, servidor fora). */
 const semConexao = () => ({ tipo: "erro", mensagem: SEM_CONEXAO }) as const;
 
@@ -387,9 +388,23 @@ export function EditorNoticia({
         description: resposta.mensagem,
         duration: Infinity,
         closeButton: true,
-        action: { label: "Tentar de novo", onClick: () => void pedirPublicacao() },
+        action: { label: "Tentar de novo", onClick: () => tentarDeNovo() },
       });
     }
+  };
+
+  // O aviso de erro pode ficar aberto por muito tempo: "Tentar de novo" usa a versão mais recente da
+  // conferência e olha a conexão na hora do clique, não na hora em que o aviso apareceu.
+  const pedirPublicacaoAtual = React.useRef(pedirPublicacao);
+  React.useEffect(() => {
+    pedirPublicacaoAtual.current = pedirPublicacao;
+  });
+  const tentarDeNovo = () => {
+    if (!navigator.onLine) {
+      toast.error(SEM_INTERNET_PARA_PUBLICAR, { duration: Infinity, closeButton: true });
+      return;
+    }
+    void pedirPublicacaoAtual.current();
   };
 
   // Veio da prévia por "Publicar…": abre a mesma conferência do editor.

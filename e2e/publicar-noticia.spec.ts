@@ -185,6 +185,42 @@ test("E42 · editar a publicada: o site só muda ao publicar as alterações, e 
   );
 });
 
+test("erro ao publicar: “Tentar de novo” sem internet não tenta e avisa; com internet, publica", async ({ page, context }) => {
+  await entrar(page, pessoas.com, `/painel/conteudos/noticia/${id}`);
+  await page.getByLabel("Lide").fill(`${LIDE} Plantão também às sextas.`);
+  await salvo(page);
+  await page.getByRole("button", { name: "Publicar alterações…" }).click();
+  const modal = page.getByRole("dialog", { name: "Publicar alterações?" });
+  await expect(modal).toBeVisible();
+
+  // A chamada ao servidor cai no meio: aparece o aviso de erro com "Tentar de novo".
+  const derrubar = (rota: import("@playwright/test").Route) => rota.abort("internetdisconnected");
+  await page.route(`**/painel/conteudos/noticia/${id}`, derrubar);
+  await modal.getByRole("button", { name: "Publicar alterações" }).click();
+  const erro = page.getByText("Não foi possível publicar", { exact: true });
+  await expect(erro).toBeVisible();
+  await page.unroute(`**/painel/conteudos/noticia/${id}`, derrubar);
+
+  // A internet cai depois que o aviso apareceu: o clique não tenta publicar e avisa.
+  await context.setOffline(true);
+  let chamadas = 0;
+  page.on("request", (pedido) => {
+    if (pedido.method() === "POST") chamadas++;
+  });
+  await page.getByRole("button", { name: "Tentar de novo" }).click();
+  await expect(page.getByText(/^Sem internet\. Publique quando a conexão voltar/)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(chamadas).toBe(0);
+  expect((await situacaoNoBanco(id)).versao).toBe(2);
+
+  // A conexão volta: publica pelo botão, normalmente.
+  await context.setOffline(false);
+  await page.getByRole("button", { name: "Publicar alterações…" }).click();
+  await page.getByRole("dialog", { name: "Publicar alterações?" }).getByRole("button", { name: "Publicar alterações" }).click();
+  await expect(page.getByText("Alterações publicadas.", { exact: true })).toBeVisible();
+  expect(await situacaoNoBanco(id)).toMatchObject({ versao: 3, versoes: 3 });
+});
+
 test("RNF01 · o Atendimento não abre a prévia pelo endereço direto", async ({ page }) => {
   await entrar(page, pessoas.atd, "/painel");
   const resposta = await page.goto(`/painel/conteudos/noticia/${id}/previa`);
