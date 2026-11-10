@@ -5,7 +5,7 @@ import { registrarAtividade } from "@/lib/atividade";
 import { atividade, conteudo, conteudoLink, midiaUso, noticia } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
-import { lerNoticia, type NoticiaAberta } from "./carregar";
+import { lerNoticia, retratoNoAr, type NoticiaAberta } from "./carregar";
 import { rotuloDaNoticia, type DadosNoticia } from "./dados";
 import { noticiaNaoEncontrada } from "./erros";
 import { midiasDaNoticia, validarNoticia, type UrlDoArquivo } from "./validar";
@@ -75,12 +75,20 @@ async function sessaoJaRegistrada(tx: Transacao, id: string, sessao: string) {
   return !!linha;
 }
 
+export type AcaoDaNoticia =
+  | "noticia.criar"
+  | "noticia.editar"
+  | "noticia.resolver_conflito"
+  | "noticia.publicar"
+  | "noticia.publicar_alteracoes"
+  | "noticia.descartar_alteracoes";
+
 export async function registrarAtividadeNoticia(
   tx: Transacao,
-  acao: "noticia.criar" | "noticia.editar" | "noticia.resolver_conflito",
+  acao: AcaoDaNoticia,
   id: string,
   titulo: string,
-  deps: Pick<DepsDoSalvamento, "quem" | "sessaoEdicao">,
+  deps: { quem: QuemDaEquipe; sessaoEdicao?: string },
   detalhe: Record<string, unknown> = {},
 ) {
   await registrarAtividade(tx, {
@@ -88,7 +96,7 @@ export async function registrarAtividadeNoticia(
     acao,
     area: "conteudos",
     alvo: { tipo: "noticia", id, rotulo: rotuloDaNoticia(titulo) },
-    detalhe: { ...detalhe, sessao: deps.sessaoEdicao },
+    detalhe: deps.sessaoEdicao ? { ...detalhe, sessao: deps.sessaoEdicao } : detalhe,
   });
 }
 
@@ -147,8 +155,16 @@ async function gravarLinksEUsos(tx: Transacao, id: string, dados: DadosNoticia) 
   if (dados.links.length > 0) {
     await tx.insert(conteudoLink).values(dados.links.map((link, ordem) => ({ conteudoId: id, ...link, ordem })));
   }
+  await gravarUsos(tx, id, dados);
+}
 
-  const usadas = midiasDaNoticia(dados);
+/**
+ * Uso da Mídia pela notícia: o que está na cópia de trabalho mais o que está no ar (E42). Assim,
+ * tirar uma imagem só da cópia de trabalho não deixa a Mídia apagar o que o site ainda mostra.
+ */
+export async function gravarUsos(tx: Transacao, id: string, dados: DadosNoticia) {
+  const noAr = await retratoNoAr(tx, id);
+  const usadas = [...new Set([...midiasDaNoticia(dados), ...(noAr ? midiasDaNoticia(noAr.dados) : [])])];
   await tx.delete(midiaUso).where(and(eq(midiaUso.donoTipo, "noticia"), eq(midiaUso.donoId, id)));
   if (usadas.length > 0) {
     await tx.insert(midiaUso).values(usadas.map((midiaId) => ({ midiaId, donoTipo: "noticia", donoId: id })));

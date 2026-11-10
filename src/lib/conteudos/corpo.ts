@@ -153,3 +153,16 @@ export function contarPalavras(doc: DocCorpo): number {
 export function tempoDeLeitura(palavras: number): number {
   return Math.ceil(palavras / 200);
 }
+
+/** Quantas imagens do corpo estão sem texto alternativo (RN15: obrigatório para publicar). */
+export function imagensSemAlt(doc: DocCorpo): number {
+  let total = 0;
+  const visitar = (nos: unknown) => {
+    for (const no of filhos(nos)) {
+      if (no.type === "image" && String(no.attrs?.alt ?? "").trim() === "") total++;
+      visitar(no.content);
+    }
+  };
+  visitar(doc.content);
+  return total;
+}

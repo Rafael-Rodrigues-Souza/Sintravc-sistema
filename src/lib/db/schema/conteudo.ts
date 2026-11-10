@@ -28,7 +28,7 @@ export const categoria = pgTable("categoria", {
  * - `versao`: número da versão publicada (E31, #9). O salvamento automático não muda.
  * - `revisao`: sobe a cada salvamento; é o que detecta o conflito entre o rascunho do navegador e o
  *   do servidor (E02, E40).
- * - `slug` fica nulo até a primeira publicação (#9, E40); UNIQUE por tipo aceita vários nulos.
+ * - `slug` fica nulo até a primeira publicação (E40) e é gerado nela (E42); UNIQUE por tipo aceita vários nulos.
  * - No rascunho os textos podem ficar vazios; os obrigatórios são cobrados ao publicar (E40).
  */
 export const conteudo = pgTable(
@@ -49,6 +49,12 @@ export const conteudo = pgTable(
     categoriaId: uuid().references(() => categoria.id, { onDelete: "restrict" }),
     versao: integer().notNull().default(0),
     revisao: integer().notNull().default(1),
+    /**
+     * A `revisao` que foi ao ar na última publicação (E42). O site mostra o retrato da versão
+     * publicada (ConteudoVersao); o editor salva a cópia de trabalho. Há alterações ainda não
+     * publicadas quando o estado é publicado e `revisao > revisao_publicada`.
+     */
+    revisaoPublicada: integer(),
     /** Quem fez o último salvamento ("Salva por Carlos Ribeiro às 10h38", N4). */
     atualizadoPor: uuid()
       .notNull()
@@ -101,4 +107,26 @@ export const conteudoLink = pgTable(
     ...datas,
   },
   (tabela) => [index().on(tabela.conteudoId, tabela.ordem)],
+);
+
+/**
+ * Versões publicadas (E31, E42). Cada publicação grava o retrato completo do que foi ao ar; o
+ * salvamento automático não gera versão (CA-US21.10). O site lê a versão `conteudo.versao`.
+ */
+export const conteudoVersao = pgTable(
+  "conteudo_versao",
+  {
+    id: idUuid(),
+    conteudoId: uuid()
+      .notNull()
+      .references(() => conteudo.id, { onDelete: "cascade" }),
+    versao: integer().notNull(),
+    /** `RetratoDaNoticia` (src/lib/conteudos/carregar.ts). */
+    snapshot: jsonb().notNull(),
+    criadoPor: uuid()
+      .notNull()
+      .references(() => pessoaEquipe.id),
+    criadoEm: dataHora().notNull().defaultNow(),
+  },
+  (tabela) => [unique().on(tabela.conteudoId, tabela.versao)],
 );

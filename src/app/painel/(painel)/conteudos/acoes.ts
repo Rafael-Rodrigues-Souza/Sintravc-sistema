@@ -9,6 +9,7 @@ import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
 import type { RespostaEnvio } from "@/lib/conteudos/fila-rascunho";
+import { descartarAlteracoes, ErroFaltamCampos, publicarNoticia } from "@/lib/conteudos/publicar";
 import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/salvar";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { listarMidia } from "@/lib/midia/listar";
@@ -127,4 +128,56 @@ export async function acaoBuscarMidia(
       legenda: item.legenda ?? "",
     })),
   };
+}
+
+const esquemaPublicar = z.object({ id: z.uuid(), revisaoBase: z.number().int().nonnegative() });
+
+export type RespostaPublicar =
+  | { tipo: "publicada"; versao: number; revisaoPublicada: number; publicadoEm: string }
+  /** Alguém salvou depois do que a pessoa está vendo: o editor mostra o modal de conflito (N4). */
+  | { tipo: "conflito" }
+  /** Faltam obrigatórios (CA-US21.3): o editor indica cada campo. */
+  | { tipo: "faltam"; campos: string[] }
+  | { tipo: "erro"; mensagem: string };
+
+/** "Publicar agora" e "Publicar alterações" (RF39, E42). A permissão é conferida no servidor (RNF01). */
+export async function acaoPublicarNoticia(entrada: unknown, sessaoEdicao: unknown): Promise<RespostaPublicar> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = esquemaPublicar.safeParse(entrada);
+  const sessao = esquemaSessao.safeParse(sessaoEdicao);
+  if (!validado.success || !sessao.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "publicar", { tipo: "noticia" })) return { tipo: "erro", mensagem: "Seu perfil não pode publicar notícias." };
+  try {
+    const r = await publicarNoticia(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data });
+    if (r.tipo === "conflito") return { tipo: "conflito" };
+    return { tipo: "publicada", versao: r.versao, revisaoPublicada: r.revisaoPublicada, publicadoEm: r.publicadoEm.toISOString() };
+  } catch (erro) {
+    if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos };
+    if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message };
+    console.error("[conteudos] Falha ao publicar.", erro);
+    return { tipo: "erro", mensagem: "Não foi possível publicar agora. Tente de novo em alguns minutos." };
+  }
+}
+
+export type RespostaDescartar =
+  | { tipo: "descartada"; revisao: number; salvoEm: string; dados: DadosNoticia }
+  | { tipo: "conflito" }
+  | { tipo: "erro"; mensagem: string };
+
+/** "Descartar alterações" de uma notícia publicada (E42). */
+export async function acaoDescartarAlteracoes(entrada: unknown, sessaoEdicao: unknown): Promise<RespostaDescartar> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = esquemaPublicar.safeParse(entrada);
+  const sessao = esquemaSessao.safeParse(sessaoEdicao);
+  if (!validado.success || !sessao.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "editar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
+  try {
+    const r = await descartarAlteracoes(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data });
+    if (r.tipo === "conflito") return { tipo: "conflito" };
+    return { tipo: "descartada", revisao: r.noticia.revisao, salvoEm: r.noticia.atualizadoEm.toISOString(), dados: r.noticia.dados };
+  } catch (erro) {
+    if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message };
+    console.error("[conteudos] Falha ao descartar as alterações.", erro);
+    return { tipo: "erro", mensagem: "Não foi possível descartar agora. Tente de novo em alguns minutos." };
+  }
 }

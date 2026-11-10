@@ -1,8 +1,8 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { banco, type Transacao } from "@/lib/db";
-import { conteudo, conteudoLink, noticia, pessoaEquipe } from "@/lib/db/schema";
+import { conteudo, conteudoLink, conteudoVersao, noticia, pessoaEquipe } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import type { DadosNoticia, DocCorpo } from "./dados";
@@ -13,6 +13,11 @@ export type NoticiaAberta = {
   estado: (typeof conteudo.$inferSelect)["estado"];
   revisao: number;
   versao: number;
+  /** A revisão que está no ar (E42). Nula enquanto nunca foi publicada. */
+  revisaoPublicada: number | null;
+  jaPublicado: boolean;
+  slug: string | null;
+  publicadoEm: Date | null;
   autorId: string;
   autorNome: string;
   /** Quem fez o último salvamento e quando (N4: "Salva por Carlos Ribeiro às 10h38"). */
@@ -51,6 +56,10 @@ export async function lerNoticia(tx: Transacao | ReturnType<typeof banco>, id: s
     estado: c.estado,
     revisao: c.revisao,
     versao: c.versao,
+    revisaoPublicada: c.revisaoPublicada,
+    jaPublicado: c.jaPublicado,
+    slug: c.slug,
+    publicadoEm: c.publicadoEm,
     autorId: c.autorId,
     autorNome: linha.autorNome,
     salvoPorNome: linha.salvoPorNome,
@@ -80,4 +89,17 @@ export function versaoDoServidor(noticia: NoticiaAberta): VersaoServidor {
     salvoPorNome: noticia.salvoPorNome,
     salvoEm: noticia.atualizadoEm.toISOString(),
   };
+}
+
+/** O que fica guardado em cada versão publicada (E31, E42): tudo o que o site mostra. */
+export type RetratoDaNoticia = { formato: 1; dados: DadosNoticia };
+
+/** O retrato da versão que está no ar (a `versao` atual), ou null se nunca foi publicada. */
+export async function retratoNoAr(tx: Transacao | ReturnType<typeof banco>, id: string): Promise<RetratoDaNoticia | null> {
+  const [linha] = await tx
+    .select({ snapshot: conteudoVersao.snapshot })
+    .from(conteudoVersao)
+    .innerJoin(conteudo, and(eq(conteudo.id, conteudoVersao.conteudoId), eq(conteudo.versao, conteudoVersao.versao)))
+    .where(eq(conteudoVersao.conteudoId, id));
+  return linha ? (linha.snapshot as RetratoDaNoticia) : null;
 }
