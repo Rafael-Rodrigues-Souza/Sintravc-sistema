@@ -51,7 +51,12 @@ export async function conferirSessaoDaEquipe(
     .where(eq(sessao.id, resultado.session.id));
   const [pessoa] = await banco().select().from(pessoaEquipe).where(eq(pessoaEquipe.id, resultado.user.id));
 
-  if (!linha || !pessoa || pessoa.situacao !== "ativa") {
+  if (!linha) {
+    // A sessão sumiu entre a leitura do Better Auth e esta: outra requisição ao mesmo tempo (ex.: a
+    // pré-busca dos links do menu) viu que ela venceu e a apagou. Para a pessoa, a sessão expirou.
+    return { motivo: "expirou", tinhaCookie: true };
+  }
+  if (!pessoa || pessoa.situacao !== "ativa") {
     await banco().delete(sessao).where(eq(sessao.id, resultado.session.id));
     return { motivo: "inativa", tinhaCookie: true };
   }
@@ -87,6 +92,11 @@ export function sessaoRecusada(resultado: PessoaLogada | SessaoRecusada): result
   return "motivo" in resultado;
 }
 
+/** O login deve dizer "Sua sessão expirou"? Sim se venceu, ou se havia cookie de uma sessão que já não existe. */
+export function mostrarComoExpirada(recusa: SessaoRecusada): boolean {
+  return recusa.motivo === "expirou" || (recusa.motivo === "sem_sessao" && recusa.tinhaCookie);
+}
+
 /**
  * A pessoa da equipe desta requisição. Roda em todo layout, página e server action do painel
  * (uma vez por requisição, pelo cache do React). Sem sessão válida, manda para o login, que
@@ -97,8 +107,7 @@ export const sessaoDaEquipe = cache(async (): Promise<PessoaLogada> => {
   const caminho = cabecalhos.get(CABECALHO_CAMINHO) ?? "/painel";
   const resultado = await conferirSessaoDaEquipe(cabecalhos);
   if (sessaoRecusada(resultado)) {
-    const expirou = resultado.motivo === "expirou" || (resultado.motivo === "sem_sessao" && resultado.tinhaCookie);
-    redirect(urlDoLogin({ voltar: caminho, expirou }));
+    redirect(urlDoLogin({ voltar: caminho, expirou: mostrarComoExpirada(resultado) }));
   }
   return resultado;
 });
