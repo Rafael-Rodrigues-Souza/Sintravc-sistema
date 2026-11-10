@@ -7,7 +7,12 @@ import { imagensSemAlt, textoDoCorpo } from "./corpo";
 import type { DadosNoticia } from "./dados";
 
 /** `campo` é a chave do campo na tela (a mesma do erro do salvamento). */
-export type CampoObrigatorio = "titulo" | "lide" | "corpo" | "categoriaId" | "assinatura" | "capaAlt" | "imagensDoCorpo";
+export const CAMPOS_OBRIGATORIOS = ["titulo", "lide", "corpo", "imagensDoCorpo", "capaAlt", "assinatura", "categoriaId"] as const;
+export type CampoObrigatorio = (typeof CAMPOS_OBRIGATORIOS)[number];
+
+export function ehCampoObrigatorio(campo: string): campo is CampoObrigatorio {
+  return (CAMPOS_OBRIGATORIOS as readonly string[]).includes(campo);
+}
 export type Falta = { campo: CampoObrigatorio; rotulo: string };
 
 const vazio = (texto: string) => texto.trim() === "";

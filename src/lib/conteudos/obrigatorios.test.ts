@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { noticiaVazia, type DadosNoticia } from "./dados";
-import { faltasParaPublicar } from "./obrigatorios";
+import { ehCampoObrigatorio, faltasParaPublicar } from "./obrigatorios";
 
 const MIDIA = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 const p = (texto: string) => ({ type: "paragraph", content: [{ type: "text", text: texto }] });
@@ -67,5 +67,12 @@ describe("faltasParaPublicar (E42, RN15, CA-US21.3)", () => {
     expect(faltasParaPublicar(completa({ corpo }))).toEqual([
       { campo: "imagensDoCorpo", rotulo: "Texto alternativo de 2 imagens do corpo" },
     ]);
+  });
+});
+
+describe("ehCampoObrigatorio", () => {
+  it("reconhece os campos cobrados na publicação e recusa os opcionais", () => {
+    expect(["titulo", "capaAlt", "imagensDoCorpo"].map(ehCampoObrigatorio)).toEqual([true, true, true]);
+    expect(["linhaFina", "local", "palavrasChave", "toString"].map(ehCampoObrigatorio)).toEqual([false, false, false, false]);
   });
 });

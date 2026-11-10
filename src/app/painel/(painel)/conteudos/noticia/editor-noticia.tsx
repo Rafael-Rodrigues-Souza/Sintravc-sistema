@@ -34,7 +34,7 @@ import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type ArquivoConhecido, type DadosNo
 import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
-import { faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
+import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
@@ -371,8 +371,8 @@ export function EditorNoticia({
       await fila.salvarAgora();
     } else if (resposta.tipo === "faltam") {
       setMostrarFaltas(true);
-      const primeiro = resposta.campos[0] as CampoObrigatorio | undefined;
-      if (primeiro && primeiro in ELEMENTO_DO_CAMPO) focarCampo(primeiro);
+      const primeiro = resposta.campos[0];
+      if (primeiro) focarCampo(primeiro);
     } else {
       // Erro fica até a pessoa fechar (RN42); "Tentar de novo" refaz a conferência (analise-figma §4).
       toast.error("Não foi possível publicar", {
@@ -430,7 +430,7 @@ export function EditorNoticia({
 
   const erroDoCampo = (campo: keyof DadosNoticia) => {
     if (estado.erro?.campo === campo) return estado.erro.mensagem;
-    return faltando.has(campo as CampoObrigatorio) ? MENSAGEM_DO_CAMPO[campo as CampoObrigatorio] : undefined;
+    return ehCampoObrigatorio(campo) && faltando.has(campo) ? MENSAGEM_DO_CAMPO[campo] : undefined;
   };
   const capa = dados.capaMidiaId ? arquivos[dados.capaMidiaId] : undefined;
   const emConflito = estado.situacao === "conflito" && estado.conflito;

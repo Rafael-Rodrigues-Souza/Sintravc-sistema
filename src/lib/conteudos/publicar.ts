@@ -7,7 +7,7 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import type { DadosNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
-import { faltasParaPublicar } from "./obrigatorios";
+import { faltasParaPublicar, type CampoObrigatorio } from "./obrigatorios";
 import { gravarPorCima, gravarUsos, registrarAtividadeNoticia, travarNoticia } from "./salvar";
 
 export type DepsDaPublicacao = {
@@ -119,7 +119,7 @@ export async function descartarAlteracoes(
 
 /** Faltam campos obrigatórios para publicar (CA-US21.3). A tela indica cada um. */
 export class ErroFaltamCampos extends ErroConteudo {
-  constructor(readonly campos: string[]) {
+  constructor(readonly campos: CampoObrigatorio[]) {
     super(
       "invalido",
       campos.length === 1 ? "Falta 1 item obrigatório para publicar." : `Faltam ${campos.length} itens obrigatórios para publicar.`,

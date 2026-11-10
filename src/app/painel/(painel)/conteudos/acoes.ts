@@ -8,6 +8,7 @@ import { versaoDoServidor } from "@/lib/conteudos/carregar";
 import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
+import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import type { RespostaEnvio } from "@/lib/conteudos/fila-rascunho";
 import { descartarAlteracoes, ErroFaltamCampos, publicarNoticia } from "@/lib/conteudos/publicar";
 import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/salvar";
@@ -137,7 +138,7 @@ export type RespostaPublicar =
   /** Alguém salvou depois do que a pessoa está vendo: o editor mostra o modal de conflito (N4). */
   | { tipo: "conflito" }
   /** Faltam obrigatórios (CA-US21.3): o editor indica cada campo. */
-  | { tipo: "faltam"; campos: string[] }
+  | { tipo: "faltam"; campos: CampoObrigatorio[] }
   | { tipo: "erro"; mensagem: string };
 
 /** "Publicar agora" e "Publicar alterações" (RF39, E42). A permissão é conferida no servidor (RNF01). */
