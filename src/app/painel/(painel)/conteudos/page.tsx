@@ -17,9 +17,11 @@ import {
   type ItemConteudo,
   type TipoConteudo,
 } from "@/lib/conteudos/listar";
+import { rotuloDaNoticia } from "@/lib/conteudos/dados";
 import { quandoNaBahia } from "@/lib/datas";
 import { pode } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
+import { ehUuid } from "@/lib/uuid";
 
 import { FiltroSelect } from "./filtros";
 import { ESTADO, SeloCategoria, SeloEstado } from "./selos";
@@ -41,8 +43,6 @@ const NOME_DO_TIPO: Record<TipoConteudo, { rotulo: string; icone: typeof FileTex
   acordo: { rotulo: "Acordo", icone: Scale },
 };
 
-const UUID = /^[0-9a-f-]{36}$/i;
-
 /**
  * Conteúdos (RF35; Figma 110:845, 120:3650 e 214:33364): notícias, editais e acordos num lugar
  * só, com abas por tipo, busca, filtros e páginas. Seleção em lote e Arquivados chegam no #11.
@@ -52,8 +52,8 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
   const p = await searchParams;
   const tipo = TIPOS.some((t) => t.valor === p.tipo && t.valor !== "todos") ? (p.tipo as TipoConteudo) : undefined;
   const estado = (ESTADOS_DA_LISTA as readonly string[]).includes(p.estado ?? "") ? (p.estado as EstadoConteudo) : undefined;
-  const categoriaId = p.categoria && UUID.test(p.categoria) ? p.categoria : undefined;
-  const autorId = p.autor && UUID.test(p.autor) ? p.autor : undefined;
+  const categoriaId = ehUuid(p.categoria) ? p.categoria : undefined;
+  const autorId = ehUuid(p.autor) ? p.autor : undefined;
   const busca = p.busca?.trim() ?? "";
   const pagina = Math.max(1, Number.parseInt(p.pagina ?? "1", 10) || 1);
 
@@ -61,7 +61,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
   const [lista, porTipo, categorias, autores] = await Promise.all([
     listarConteudos({ tipo, estado, categoriaId, autorId, busca, pagina }, deps),
     contarConteudosPorTipo(deps),
-    listarCategorias("noticias", deps),
+    listarCategorias(["noticias", "documentos"], deps),
     listarAutores(deps),
   ]);
 
@@ -225,7 +225,7 @@ function hrefDoEditor(item: ItemConteudo) {
 function Linha({ item }: { item: ItemConteudo }) {
   const tipo = NOME_DO_TIPO[item.tipo];
   const href = hrefDoEditor(item);
-  const titulo = item.titulo || "Notícia sem manchete";
+  const titulo = rotuloDaNoticia(item.titulo);
   return (
     <tr className="flex flex-col gap-2 border-t border-borda-padrao px-5 py-4 first:border-t-0 md:table-row md:px-0 md:py-0">
       <td className="md:px-5 md:py-4">

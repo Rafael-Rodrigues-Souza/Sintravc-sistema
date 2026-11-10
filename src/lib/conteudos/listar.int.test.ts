@@ -4,20 +4,14 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
-import { categoria, conteudo, pessoaEquipe } from "@/lib/db/schema";
-import { SemPermissao, type Perfil, type QuemDaEquipe } from "@/lib/permissoes";
+import { categoria, conteudo } from "@/lib/db/schema";
+import { SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
+import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 
 import { noticiaVazia, type DadosNoticia } from "./dados";
 import { listarCategorias, listarConteudos } from "./listar";
 import { salvarRascunhoNoticia } from "./salvar";
 
-async function pessoa(perfil: Perfil = "COM", nome = `Pessoa ${randomUUID().slice(0, 6)}`): Promise<QuemDaEquipe> {
-  const [linha] = await banco()
-    .insert(pessoaEquipe)
-    .values({ nome, email: `${randomUUID()}@sintravc.local`, perfil, situacao: "ativa" })
-    .returning({ id: pessoaEquipe.id });
-  return { tipo: "equipe", id: linha!.id, perfil };
-}
 
 async function idDaCategoria(nome: string) {
   const [linha] = await banco().select({ id: categoria.id }).from(categoria).where(eq(categoria.nome, nome));
@@ -25,14 +19,14 @@ async function idDaCategoria(nome: string) {
 }
 
 async function noticia(quem: QuemDaEquipe, mudancas: Partial<DadosNoticia>) {
-  const r = await salvarRascunhoNoticia({ dados: { ...noticiaVazia(), ...mudancas } }, { quem, sessaoEdicao: randomUUID() });
+  const r = await salvarRascunhoNoticia({ dados: { ...noticiaVazia(), ...mudancas } }, edicaoDe(quem));
   if (r.tipo !== "salvo") throw new Error("esperava salvo");
   return r.id;
 }
 
 describe("listarConteudos (RF35)", () => {
   it("mostra manchete, categoria, autor e estado, da alteração mais recente para a mais antiga", async () => {
-    const autora = await pessoa("COM", "Mariana Souza");
+    const autora = await pessoaDaEquipe("COM", "Mariana Souza");
     const juridico = await idDaCategoria("Jurídico");
     const primeira = await noticia(autora, { titulo: "Primeira", categoriaId: juridico });
     const segunda = await noticia(autora, { titulo: "" });
@@ -47,7 +41,7 @@ describe("listarConteudos (RF35)", () => {
   });
 
   it("filtra por categoria e por estado", async () => {
-    const autora = await pessoa();
+    const autora = await pessoaDaEquipe();
     const esportes = await idDaCategoria("Esportes");
     const comCategoria = await noticia(autora, { titulo: "Copa", categoriaId: esportes });
     await noticia(autora, { titulo: "Sem categoria" });
@@ -61,7 +55,7 @@ describe("listarConteudos (RF35)", () => {
 
   it("busca na manchete, no nome do autor e nas palavras-chave, sem diferenciar acento e maiúscula", async () => {
     const marca = randomUUID().slice(0, 8);
-    const autora = await pessoa("COM", `Joana Conceição ${marca}`);
+    const autora = await pessoaDaEquipe("COM", `Joana Conceição ${marca}`);
     const porManchete = await noticia(autora, { titulo: `Plantão jurídico ${marca}` });
     const porPalavra = await noticia(autora, { titulo: "Outra", palavrasChave: [`saúde-${marca}`] });
 
@@ -71,7 +65,7 @@ describe("listarConteudos (RF35)", () => {
   });
 
   it("não mostra arquivados (eles têm aba própria, #11)", async () => {
-    const autora = await pessoa();
+    const autora = await pessoaDaEquipe();
     const id = await noticia(autora, { titulo: "Antiga" });
     await banco().update(conteudo).set({ estado: "arquivado" }).where(eq(conteudo.id, id));
 
@@ -79,7 +73,7 @@ describe("listarConteudos (RF35)", () => {
   });
 
   it("pagina de 20 em 20", async () => {
-    const autora = await pessoa();
+    const autora = await pessoaDaEquipe();
     for (let i = 0; i < 21; i++) await noticia(autora, { titulo: `N${i}` });
 
     const primeira = await listarConteudos({ autorId: autora.id, pagina: 1 }, { quem: autora });
@@ -90,17 +84,30 @@ describe("listarConteudos (RF35)", () => {
   });
 
   it("o Atendimento não vê a lista", async () => {
-    await expect(listarConteudos({}, { quem: await pessoa("ATD") })).rejects.toBeInstanceOf(SemPermissao);
+    await expect(listarConteudos({}, { quem: await pessoaDaEquipe("ATD") })).rejects.toBeInstanceOf(SemPermissao);
   });
 });
 
 describe("listarCategorias", () => {
   it("a Comunicação vê as categorias de Notícias na ordem, para escolher no editor", async () => {
-    const lista = await listarCategorias("noticias", { quem: await pessoa("COM") });
+    const lista = await listarCategorias(["noticias"], { quem: await pessoaDaEquipe("COM") });
     expect(lista.map((c) => c.nome)).toEqual(["Geral", "Jurídico", "Benefícios", "Esportes", "Rádio Chofer"]);
   });
 
   it("o Atendimento não vê", async () => {
-    await expect(listarCategorias("noticias", { quem: await pessoa("ATD") })).rejects.toBeInstanceOf(SemPermissao);
+    await expect(listarCategorias(["noticias"], { quem: await pessoaDaEquipe("ATD") })).rejects.toBeInstanceOf(SemPermissao);
+  });
+
+  it("o filtro da lista mostra as de Notícias e as de Documentos", async () => {
+    const lista = await listarCategorias(["noticias", "documentos"], { quem: await pessoaDaEquipe("COM") });
+    expect(lista.map((c) => c.nome)).toEqual([
+      "Geral",
+      "Jurídico",
+      "Benefícios",
+      "Esportes",
+      "Rádio Chofer",
+      "Assembleias",
+      "Acordos e convenções",
+    ]);
   });
 });

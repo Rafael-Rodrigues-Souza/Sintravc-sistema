@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
 import type { DocCorpo } from "@/lib/conteudos/dados";
+import { normalizarEndereco } from "@/lib/conteudos/enderecos";
 import { cn } from "@/lib/utils";
 
 import type { ArquivoParaEscolher } from "../acoes";
@@ -303,8 +304,8 @@ function FormularioLink({ editor, aoFechar }: { editor: Editor; aoFechar: () => 
       aoFechar();
       return;
     }
-    const href = /^(https?:\/\/|mailto:)/i.test(texto) ? texto : `https://${texto}`;
-    if (!/^(https?:\/\/[^\s]+\.[^\s]+|mailto:[^\s]+@[^\s]+)$/i.test(href)) {
+    const href = normalizarEndereco(texto, { aceitarEmail: true });
+    if (!href) {
       setErro("Confira o endereço. Ex.: https://www.planalto.gov.br");
       return;
     }

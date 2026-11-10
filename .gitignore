@@ -13,3 +13,5 @@ next-env.d.ts
 *.tsbuildinfo
 coverage/
 .pnpm-store/
+# Cache local do hook de design (impeccable); as exceções combinadas ficam em .impeccable/config.json.
+.impeccable/*.cache.json

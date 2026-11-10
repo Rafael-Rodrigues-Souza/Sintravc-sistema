@@ -14,7 +14,7 @@ import { Campo } from "@/components/ui/campo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type DadosNoticia } from "@/lib/conteudos/dados";
+import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type ArquivoConhecido, type DadosNoticia } from "@/lib/conteudos/dados";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { horaNaBahia } from "@/lib/datas";
@@ -24,7 +24,7 @@ import { acaoResolverConflito, acaoSalvarRascunho } from "../acoes";
 import { SeloEstado } from "../selos";
 import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
-import { FontesEAnexos, type ArquivoConhecido } from "./fontes-anexos";
+import { FontesEAnexos } from "./fontes-anexos";
 import { ModalConflito, ModalSair } from "./modais";
 import { SeletorDeMidia } from "./seletor-midia";
 
@@ -92,7 +92,15 @@ export function EditorNoticia({
     }),
   );
   const estado = React.useSyncExternalStore(fila.assinar, fila.estado, fila.estado);
-  React.useEffect(() => () => fila.destruir(), [fila]);
+  // Saiu do editor sem passar pelo modal (ex.: botão Voltar do navegador): salva o que estiver pendente.
+  // A cópia no navegador continua como garantia se o envio não chegar.
+  React.useEffect(
+    () => () => {
+      if (fila.temPendencia()) void fila.salvarAgora();
+      fila.destruir();
+    },
+    [fila],
+  );
 
   // Ao abrir: há uma cópia desta pessoa guardada neste navegador? (E02, computador compartilhado)
   // O navegador só pode ser lido depois da hidratação (no servidor não há localStorage): por isso o efeito.
@@ -201,7 +209,11 @@ export function EditorNoticia({
       return seguirSaida(saida);
     }
     setSaida(null);
-    toast.error(depois.erro?.mensagem ?? "Não foi possível salvar. Confira o aviso no topo do editor.");
+    // Erro fica até a pessoa fechar (RN42).
+    toast.error(depois.erro?.mensagem ?? "Não foi possível salvar. Confira o aviso no topo do editor.", {
+      duration: Infinity,
+      closeButton: true,
+    });
   };
 
   const resolver = async (escolha: "minha" | "servidor") => {

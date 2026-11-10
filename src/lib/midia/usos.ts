@@ -1,5 +1,6 @@
 import { inArray } from "drizzle-orm";
 
+import { rotuloDaNoticia } from "@/lib/conteudos/dados";
 import { banco, type Transacao } from "@/lib/db";
 import { conteudo, midiaUso } from "@/lib/db/schema";
 
@@ -17,7 +18,7 @@ const DESCRITORES: Record<string, (ids: string[], tx: Transacao | ReturnType<typ
     noticia: async (ids, tx) => {
       const linhas = await tx.select({ id: conteudo.id, titulo: conteudo.titulo }).from(conteudo).where(inArray(conteudo.id, ids));
       return new Map(
-        linhas.map((l) => [l.id, { rotulo: l.titulo || "Notícia sem manchete", href: `/painel/conteudos/noticia/${l.id}` }]),
+        linhas.map((l) => [l.id, { rotulo: rotuloDaNoticia(l.titulo), href: `/painel/conteudos/noticia/${l.id}` }]),
       );
     },
   };

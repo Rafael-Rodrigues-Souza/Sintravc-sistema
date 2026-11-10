@@ -1,9 +1,9 @@
 import { banco } from "@/lib/db";
-import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
+import { exigir } from "@/lib/permissoes";
 
 import { lerNoticia } from "./carregar";
 import type { DadosNoticia } from "./dados";
-import { gravarPorCima, registrar, travarNoticia, type ResultadoSalvar } from "./salvar";
+import { gravarPorCima, registrarAtividadeNoticia, travarNoticia, type DepsDoSalvamento, type ResultadoSalvar } from "./salvar";
 import { validarNoticia } from "./validar";
 
 /**
@@ -13,7 +13,7 @@ import { validarNoticia } from "./validar";
  */
 export async function resolverConflitoNoticia(
   entrada: { id: string; escolha: "minha" | "servidor"; revisaoServidor: number; dados: DadosNoticia },
-  deps: { quem: QuemDaEquipe; sessaoEdicao: string },
+  deps: DepsDoSalvamento,
 ): Promise<ResultadoSalvar> {
   exigir(deps.quem, "editar", { tipo: "noticia" });
   const { id, escolha } = entrada;
@@ -23,12 +23,12 @@ export async function resolverConflitoNoticia(
       return { tipo: "conflito", servidor: (await lerNoticia(tx, id))! };
     }
     if (escolha === "servidor") {
-      await registrar(tx, "noticia.resolver_conflito", id, atual.titulo, deps, { escolha });
+      await registrarAtividadeNoticia(tx, "noticia.resolver_conflito", id, atual.titulo, deps, { escolha });
       return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm };
     }
-    const dados = await validarNoticia(tx, entrada.dados);
+    const dados = await validarNoticia(tx, entrada.dados, deps.urlDoArquivo);
     const salvo = await gravarPorCima(tx, id, dados, deps.quem);
-    await registrar(tx, "noticia.resolver_conflito", id, dados.titulo, deps, { escolha });
+    await registrarAtividadeNoticia(tx, "noticia.resolver_conflito", id, dados.titulo, deps, { escolha });
     return salvo;
   });
 }

@@ -48,3 +48,11 @@ export function noticiaVazia(): DadosNoticia {
     links: [],
   };
 }
+
+/** Como a notícia aparece em listas, na Atividade e na Mídia ("Usado em") quando ainda não tem manchete. */
+export function rotuloDaNoticia(titulo: string): string {
+  return titulo.trim() || "Notícia sem manchete";
+}
+
+/** Um arquivo da Mídia que a tela do editor já conhece (capa, anexos). */
+export type ArquivoConhecido = { nomeArquivo: string; url: string };

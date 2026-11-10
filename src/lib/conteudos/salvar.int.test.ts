@@ -4,25 +4,19 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
-import { atividade, categoria, pessoaEquipe } from "@/lib/db/schema";
-import { SemPermissao, type Perfil, type QuemDaEquipe } from "@/lib/permissoes";
+import { atividade, categoria } from "@/lib/db/schema";
+import { SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { usosDasMidias } from "@/lib/midia/usos";
 import { enviarMidia } from "@/lib/midia/enviar";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { imagem } from "@/testes/arquivos/gerar";
+import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 
 import { carregarNoticia } from "./carregar";
 import { noticiaVazia, type DadosNoticia } from "./dados";
 import { salvarRascunhoNoticia } from "./salvar";
 
-async function pessoa(perfil: Perfil = "COM", nome = "Redação"): Promise<QuemDaEquipe> {
-  const [linha] = await banco()
-    .insert(pessoaEquipe)
-    .values({ nome, email: `${randomUUID()}@sintravc.local`, perfil, situacao: "ativa" })
-    .returning({ id: pessoaEquipe.id });
-  return { tipo: "equipe", id: linha!.id, perfil };
-}
 
 function dados(mudancas: Partial<DadosNoticia> = {}): DadosNoticia {
   return { ...noticiaVazia(), ...mudancas };
@@ -30,11 +24,11 @@ function dados(mudancas: Partial<DadosNoticia> = {}): DadosNoticia {
 
 describe("salvarRascunhoNoticia: criar (RF38, CA-US21.1)", () => {
   it("cria a notícia como rascunho no primeiro salvamento, e ela volta igual ao abrir", async () => {
-    const quem = await pessoa();
+    const quem = await pessoaDaEquipe();
 
     const resultado = await salvarRascunhoNoticia(
       { dados: dados({ titulo: "Plantão jurídico em novo horário", lide: "A partir de segunda." }) },
-      { quem, sessaoEdicao: randomUUID() },
+      edicaoDe(quem),
     );
 
     expect(resultado).toMatchObject({ tipo: "salvo", revisao: 1 });
@@ -50,19 +44,19 @@ describe("salvarRascunhoNoticia: criar (RF38, CA-US21.1)", () => {
 });
 
 async function criar(quem: QuemDaEquipe, mudancas: Partial<DadosNoticia> = {}) {
-  const r = await salvarRascunhoNoticia({ dados: dados(mudancas) }, { quem, sessaoEdicao: randomUUID() });
+  const r = await salvarRascunhoNoticia({ dados: dados(mudancas) }, edicaoDe(quem));
   if (r.tipo !== "salvo") throw new Error("esperava salvo");
   return r;
 }
 
 describe("salvarRascunhoNoticia: atualizar", () => {
   it("salvar de novo sobre a revisão atual grava o texto novo e sobe a revisão", async () => {
-    const quem = await pessoa();
+    const quem = await pessoaDaEquipe();
     const { id } = await criar(quem, { titulo: "Primeira manchete" });
 
     const resultado = await salvarRascunhoNoticia(
       { id, revisaoBase: 1, dados: dados({ titulo: "Manchete corrigida", palavrasChave: ["direitos", "jurídico"] }) },
-      { quem, sessaoEdicao: randomUUID() },
+      edicaoDe(quem),
     );
 
     expect(resultado).toMatchObject({ tipo: "salvo", id, revisao: 2 });
@@ -73,17 +67,17 @@ describe("salvarRascunhoNoticia: atualizar", () => {
 
 describe("salvarRascunhoNoticia: conflito de versões (E02, N4)", () => {
   it("quem salva sobre uma revisão antiga não sobrescreve: recebe a versão do servidor, de quem e quando", async () => {
-    const ana = await pessoa("COM", "Ana Lima");
-    const carlos = await pessoa("COM", "Carlos Ribeiro");
+    const ana = await pessoaDaEquipe("COM", "Ana Lima");
+    const carlos = await pessoaDaEquipe("COM", "Carlos Ribeiro");
     const { id } = await criar(ana, { titulo: "Original" });
     await salvarRascunhoNoticia(
       { id, revisaoBase: 1, dados: dados({ titulo: "Versão do Carlos" }) },
-      { quem: carlos, sessaoEdicao: randomUUID() },
+      edicaoDe(carlos),
     );
 
     const resultado = await salvarRascunhoNoticia(
       { id, revisaoBase: 1, dados: dados({ titulo: "Versão da Ana, feita sem internet" }) },
-      { quem: ana, sessaoEdicao: randomUUID() },
+      edicaoDe(ana),
     );
 
     expect(resultado).toMatchObject({
@@ -96,30 +90,30 @@ describe("salvarRascunhoNoticia: conflito de versões (E02, N4)", () => {
 
 describe("salvarRascunhoNoticia: quem pode (spec §4, RN55, E08)", () => {
   it("o Administrador geral e a Comunicação editam a notícia de outro autor", async () => {
-    const autora = await pessoa("COM");
+    const autora = await pessoaDaEquipe("COM");
     const { id } = await criar(autora, { titulo: "Da autora" });
 
     const daAdm = await salvarRascunhoNoticia(
       { id, revisaoBase: 1, dados: dados({ titulo: "Ajuste da ADM" }) },
-      { quem: await pessoa("ADM"), sessaoEdicao: randomUUID() },
+      edicaoDe(await pessoaDaEquipe("ADM")),
     );
     const deOutraCom = await salvarRascunhoNoticia(
       { id, revisaoBase: 2, dados: dados({ titulo: "Ajuste de outra pessoa da COM" }) },
-      { quem: await pessoa("COM"), sessaoEdicao: randomUUID() },
+      edicaoDe(await pessoaDaEquipe("COM")),
     );
 
     expect([daAdm.tipo, deOutraCom.tipo]).toEqual(["salvo", "salvo"]);
   });
 
   it("o Atendimento não cria nem edita notícia", async () => {
-    const atd = await pessoa("ATD");
-    const { id } = await criar(await pessoa("COM"));
+    const atd = await pessoaDaEquipe("ATD");
+    const { id } = await criar(await pessoaDaEquipe("COM"));
 
     await expect(
-      salvarRascunhoNoticia({ dados: dados() }, { quem: atd, sessaoEdicao: randomUUID() }),
+      salvarRascunhoNoticia({ dados: dados() }, edicaoDe(atd)),
     ).rejects.toBeInstanceOf(SemPermissao);
     await expect(
-      salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, { quem: atd, sessaoEdicao: randomUUID() }),
+      salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, edicaoDe(atd)),
     ).rejects.toBeInstanceOf(SemPermissao);
   });
 
@@ -127,7 +121,7 @@ describe("salvarRascunhoNoticia: quem pode (spec §4, RN55, E08)", () => {
     await expect(
       salvarRascunhoNoticia(
         { id: randomUUID(), revisaoBase: 1, dados: dados() },
-        { quem: await pessoa("COM"), sessaoEdicao: randomUUID() },
+        edicaoDe(await pessoaDaEquipe("COM")),
       ),
     ).rejects.toMatchObject({ codigo: "nao_encontrada" });
   });
@@ -144,30 +138,30 @@ describe("salvarRascunhoNoticia: o que o servidor recusa", () => {
     ["linhaFina", { linhaFina: "x".repeat(201) }, "A linha fina pode ter até 200 caracteres."],
   ] as const)("recusa %s acima do limite, com a mensagem do campo", async (campo, mudancas, mensagem) => {
     await expect(
-      salvarRascunhoNoticia({ dados: dados(mudancas) }, { quem: await pessoa(), sessaoEdicao: randomUUID() }),
+      salvarRascunhoNoticia({ dados: dados(mudancas) }, edicaoDe(await pessoaDaEquipe())),
     ).rejects.toMatchObject({ codigo: "invalido", campo, message: mensagem });
   });
 
   it("aceita exatamente 110 e 200 caracteres, e campos vazios no rascunho (E40)", async () => {
     const r = await salvarRascunhoNoticia(
       { dados: dados({ titulo: "x".repeat(110), linhaFina: "y".repeat(200) }) },
-      { quem: await pessoa(), sessaoEdicao: randomUUID() },
+      edicaoDe(await pessoaDaEquipe()),
     );
     expect(r.tipo).toBe("salvo");
   });
 
   it("aceita categoria de Notícias e recusa categoria só de Documentos", async () => {
-    const quem = await pessoa();
+    const quem = await pessoaDaEquipe();
     const ok = await salvarRascunhoNoticia(
       { dados: dados({ categoriaId: await idDaCategoria("Jurídico") }) },
-      { quem, sessaoEdicao: randomUUID() },
+      edicaoDe(quem),
     );
     expect(ok.tipo).toBe("salvo");
 
     await expect(
       salvarRascunhoNoticia(
         { dados: dados({ categoriaId: await idDaCategoria("Assembleias") }) },
-        { quem, sessaoEdicao: randomUUID() },
+        edicaoDe(quem),
       ),
     ).rejects.toMatchObject({ codigo: "invalido", campo: "categoriaId" });
   });
@@ -180,7 +174,7 @@ async function arquivo(quem: QuemDaEquipe, nome = "foto.png") {
 
 describe("salvarRascunhoNoticia: fontes, anexos e uso da Mídia (RN16)", () => {
   it("grava fontes e anexos na ordem da tela", async () => {
-    const quem = await pessoa();
+    const quem = await pessoaDaEquipe();
     const pdf = await arquivo(quem, "orientacoes.png");
     const links = [
       { tipo: "fonte", titulo: "Lei nº 13.467/2017", url: "https://www.planalto.gov.br/lei", midiaId: null, visivel: true },
@@ -193,7 +187,7 @@ describe("salvarRascunhoNoticia: fontes, anexos e uso da Mídia (RN16)", () => {
   });
 
   it("a capa e os anexos aparecem em 'Usado em' com a manchete, e saem quando deixam de ser usados", async () => {
-    const quem = await pessoa();
+    const quem = await pessoaDaEquipe();
     const capa = await arquivo(quem);
     const anexo = await arquivo(quem);
     const { id } = await criar(quem, {
@@ -210,7 +204,7 @@ describe("salvarRascunhoNoticia: fontes, anexos e uso da Mídia (RN16)", () => {
 
     await salvarRascunhoNoticia(
       { id, revisaoBase: 1, dados: dados({ titulo: "Assembleia geral", capaMidiaId: null }) },
-      { quem, sessaoEdicao: randomUUID() },
+      edicaoDe(quem),
     );
 
     const depois = await usosDasMidias([capa, anexo]);
@@ -229,19 +223,19 @@ async function atividadesDa(id: string) {
 
 describe("salvarRascunhoNoticia: Atividade (E40, CA-US21.5)", () => {
   it("registra a criação, e a edição uma vez por sessão do editor, com quem editou", async () => {
-    const autora = await pessoa("COM");
-    const colega = await pessoa("COM");
+    const autora = await pessoaDaEquipe("COM");
+    const colega = await pessoaDaEquipe("COM");
     const sessaoDaAutora = randomUUID();
-    const r = await salvarRascunhoNoticia({ dados: dados({ titulo: "Plantão" }) }, { quem: autora, sessaoEdicao: sessaoDaAutora });
+    const r = await salvarRascunhoNoticia({ dados: dados({ titulo: "Plantão" }) }, edicaoDe(autora, sessaoDaAutora));
     if (r.tipo !== "salvo") throw new Error("esperava salvo");
     const { id } = r;
 
     // A autora continua digitando na mesma sessão: o salvamento automático não repete a Atividade.
-    await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados({ titulo: "Plantão jurídico" }) }, { quem: autora, sessaoEdicao: sessaoDaAutora });
+    await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados({ titulo: "Plantão jurídico" }) }, edicaoDe(autora, sessaoDaAutora));
     // A colega abre o editor e salva duas vezes.
     const sessaoDaColega = randomUUID();
-    await salvarRascunhoNoticia({ id, revisaoBase: 2, dados: dados({ titulo: "Plantão jurídico novo" }) }, { quem: colega, sessaoEdicao: sessaoDaColega });
-    await salvarRascunhoNoticia({ id, revisaoBase: 3, dados: dados({ titulo: "Plantão jurídico em novo horário" }) }, { quem: colega, sessaoEdicao: sessaoDaColega });
+    await salvarRascunhoNoticia({ id, revisaoBase: 2, dados: dados({ titulo: "Plantão jurídico novo" }) }, edicaoDe(colega, sessaoDaColega));
+    await salvarRascunhoNoticia({ id, revisaoBase: 3, dados: dados({ titulo: "Plantão jurídico em novo horário" }) }, edicaoDe(colega, sessaoDaColega));
 
     expect(await atividadesDa(id)).toEqual([
       { acao: "noticia.criar", atorId: autora.id, alvoRotulo: "Plantão" },
@@ -250,12 +244,12 @@ describe("salvarRascunhoNoticia: Atividade (E40, CA-US21.5)", () => {
   });
 
   it("um conflito não grava nada, nem na Atividade", async () => {
-    const autora = await pessoa("COM");
+    const autora = await pessoaDaEquipe("COM");
     const { id } = await criar(autora);
-    await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, { quem: autora, sessaoEdicao: randomUUID() });
+    await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, edicaoDe(autora));
     const antes = await atividadesDa(id);
 
-    const r = await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, { quem: await pessoa(), sessaoEdicao: randomUUID() });
+    const r = await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, edicaoDe(await pessoaDaEquipe()));
 
     expect(r.tipo).toBe("conflito");
     expect(await atividadesDa(id)).toEqual(antes);
@@ -264,7 +258,7 @@ describe("salvarRascunhoNoticia: Atividade (E40, CA-US21.5)", () => {
 
 describe("salvarRascunhoNoticia: corpo rico (RF37)", () => {
   it("grava o corpo limpo, e as imagens do corpo contam como uso da Mídia", async () => {
-    const quem = await pessoa();
+    const quem = await pessoaDaEquipe();
     const foto = await arquivo(quem);
     const corpo = {
       type: "doc" as const,
@@ -278,9 +272,38 @@ describe("salvarRascunhoNoticia: corpo rico (RF37)", () => {
 
     expect((await carregarNoticia(id, { quem }))!.dados.corpo).toEqual({
       type: "doc",
-      content: [{ type: "paragraph", content: [{ type: "text", text: "Texto" }] }, corpo.content[1]],
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Texto" }] },
+        {
+          type: "image",
+          attrs: { midiaId: foto, src: expect.stringMatching(/^https:\/\/arquivos\.teste\/midia\//), alt: "Ônibus", title: "Foto" },
+        },
+      ],
     });
     expect((await usosDasMidias([foto])).get(foto)).toHaveLength(1);
+  });
+
+  it("o endereço da imagem vem da Mídia, não do que a tela mandou (sem imagem de outro site)", async () => {
+    const quem = await pessoaDaEquipe();
+    const foto = await arquivo(quem);
+    const corpo = {
+      type: "doc" as const,
+      content: [{ type: "image", attrs: { midiaId: foto, src: "https://rastreador.example/pixel.gif", alt: "", title: "" } }],
+    };
+
+    const { id } = await criar(quem, { corpo });
+
+    const [imagem] = (await carregarNoticia(id, { quem }))!.dados.corpo.content as { attrs: { src: string } }[];
+    expect(imagem!.attrs.src).not.toContain("rastreador.example");
+    expect(imagem!.attrs.src).toMatch(/\/midia\/\d{4}\/\d{2}\/[0-9a-f-]+\.png$/);
+  });
+
+  it("recusa corpo grande demais", async () => {
+    const paragrafo = { type: "paragraph", content: [{ type: "text", text: "x".repeat(1000) }] };
+    const corpo = { type: "doc" as const, content: Array.from({ length: 300 }, () => paragrafo) };
+    await expect(
+      salvarRascunhoNoticia({ dados: dados({ corpo }) }, edicaoDe(await pessoaDaEquipe())),
+    ).rejects.toMatchObject({ codigo: "invalido", campo: "corpo" });
   });
 
   it("recusa imagem no corpo de um arquivo que não está na Mídia", async () => {
@@ -289,7 +312,7 @@ describe("salvarRascunhoNoticia: corpo rico (RF37)", () => {
       content: [{ type: "image", attrs: { midiaId: randomUUID(), src: "https://x/y.png", alt: "", title: "" } }],
     };
     await expect(
-      salvarRascunhoNoticia({ dados: dados({ corpo }) }, { quem: await pessoa(), sessaoEdicao: randomUUID() }),
+      salvarRascunhoNoticia({ dados: dados({ corpo }) }, edicaoDe(await pessoaDaEquipe())),
     ).rejects.toMatchObject({ codigo: "invalido", campo: "midia" });
   });
 });

@@ -1,4 +1,5 @@
 import { urlPublica } from "@/lib/armazenamento";
+import type { ArquivoConhecido } from "@/lib/conteudos/dados";
 import { listarCategorias } from "@/lib/conteudos/listar";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { limitesDaMidia } from "@/lib/midia/enviar";
@@ -7,13 +8,13 @@ import { detalharMidia } from "@/lib/midia/listar";
 import { lerParametro } from "@/lib/parametros";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 
-import type { ArquivoConhecido } from "./fontes-anexos";
+
 
 /** O que as duas páginas do editor (nova e existente) carregam do servidor. */
 export async function prepararEditor(quem: QuemDaEquipe, idsDeArquivos: string[]) {
   const env = lerEnvArmazenamento();
   const [categorias, segundos, limites, detalhes] = await Promise.all([
-    listarCategorias("noticias", { quem }),
+    listarCategorias(["noticias"], { quem }),
     lerParametro("editor.salvamento_automatico_segundos"),
     limitesDaMidia(),
     Promise.all([...new Set(idsDeArquivos)].map((id) => detalharMidia(id))),

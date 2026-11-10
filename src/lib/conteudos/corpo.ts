@@ -3,7 +3,10 @@
  * só os formatos que o editor oferece (Figma 112:1091 e analise-figma §2.2: parágrafo, negrito,
  * itálico, sublinhado, H2, listas, citação, link e imagem da Mídia). Roda também no navegador.
  */
+import { ehUuid } from "@/lib/uuid";
+
 import type { DocCorpo } from "./dados";
+import { ehLinkPermitido } from "./enderecos";
 
 type No = { type?: unknown; attrs?: Record<string, unknown>; content?: unknown; marks?: unknown; text?: unknown };
 type Marca = { type: string; attrs?: Record<string, unknown> };
@@ -11,7 +14,6 @@ type Marca = { type: string; attrs?: Record<string, unknown> };
 const BLOCOS_COM_BLOCOS = new Set(["blockquote", "bulletList", "orderedList", "listItem"]);
 const BLOCOS_COM_TEXTO = new Set(["paragraph", "heading"]);
 const MARCAS_SIMPLES = new Set(["bold", "italic", "underline"]);
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function limparCorpo(entrada: unknown): DocCorpo {
   const doc = entrada as No | null;
@@ -79,7 +81,7 @@ function limparMarcas(marks: unknown): Marca[] {
     if (MARCAS_SIMPLES.has(marca?.type)) saida.push({ type: marca.type });
     if (marca?.type === "link") {
       const href = String(marca.attrs?.href ?? "").trim();
-      if (/^(https?:\/\/|mailto:)/i.test(href)) saida.push({ type: "link", attrs: { href } });
+      if (ehLinkPermitido(href)) saida.push({ type: "link", attrs: { href } });
     }
   }
   return saida;
@@ -88,12 +90,29 @@ function limparMarcas(marks: unknown): Marca[] {
 function limparImagem(no: No) {
   const attrs = no.attrs ?? {};
   const midiaId = String(attrs.midiaId ?? "");
+  // O endereço é trocado pelo da Mídia no servidor (trocarEnderecosDasImagens); aqui só se guarda o que veio.
   const src = String(attrs.src ?? "");
-  if (!UUID.test(midiaId) || !/^https?:\/\//i.test(src)) return null;
+  if (!ehUuid(midiaId)) return null;
   return {
     type: "image",
     attrs: { midiaId, src, alt: String(attrs.alt ?? ""), title: String(attrs.title ?? "") },
   };
+}
+
+/**
+ * Troca o endereço de cada imagem pelo do arquivo na Mídia (o servidor não confia no `src` da tela:
+ * assim não entra imagem de outro site, como um rastreador). Imagem de arquivo desconhecido sai.
+ */
+export function trocarEnderecosDasImagens(doc: DocCorpo, enderecoDe: (midiaId: string) => string | undefined): DocCorpo {
+  const trocar = (nos: unknown): unknown[] =>
+    filhos(nos).flatMap((no) => {
+      if (no.type === "image") {
+        const src = enderecoDe(String(no.attrs?.midiaId ?? ""));
+        return src ? [{ ...no, attrs: { ...no.attrs, src } }] : [];
+      }
+      return [no.content === undefined ? no : { ...no, content: trocar(no.content) }];
+    });
+  return { type: "doc", content: trocar(doc.content) };
 }
 
 /** Ids da Mídia usados como imagem no corpo, sem repetir. */

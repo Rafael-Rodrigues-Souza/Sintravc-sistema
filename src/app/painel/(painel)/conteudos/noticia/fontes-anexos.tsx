@@ -6,13 +6,12 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Campo } from "@/components/ui/campo";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
-import type { LinkDaNoticia } from "@/lib/conteudos/dados";
+import type { ArquivoConhecido, LinkDaNoticia } from "@/lib/conteudos/dados";
+import { normalizarEndereco } from "@/lib/conteudos/enderecos";
 import { cn } from "@/lib/utils";
 
 import { MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { SeletorDeMidia } from "./seletor-midia";
-
-export type ArquivoConhecido = { nomeArquivo: string; url: string };
 
 function dominio(url: string | null) {
   try {
@@ -232,8 +231,8 @@ function FormularioFonte({
     <form
       onSubmit={(evento) => {
         evento.preventDefault();
-        const endereco = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
-        if (!url.trim() || !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(endereco)) {
+        const endereco = normalizarEndereco(url);
+        if (!endereco) {
           setErro("Confira o endereço. Ex.: https://www.planalto.gov.br");
           return;
         }

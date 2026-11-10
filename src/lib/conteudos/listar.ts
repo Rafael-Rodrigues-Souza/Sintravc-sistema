@@ -123,17 +123,17 @@ export async function listarAutores(deps: { quem: QuemDaEquipe }): Promise<{ id:
 }
 
 /**
- * Categorias de um escopo, na ordem definida pelo ADM. A Comunicação não gerencia categorias
+ * Categorias dos escopos pedidos, na ordem definida pelo ADM. A Comunicação não gerencia categorias
  * (RN08), mas escolhe uma no editor e filtra por ela: quem edita notícia pode ver (E40).
  */
 export async function listarCategorias(
-  escopo: EscopoCategoria,
+  escopos: EscopoCategoria[],
   deps: { quem: QuemDaEquipe },
 ): Promise<{ id: string; nome: string; cor: string }[]> {
   if (!pode(deps.quem, "ver", { tipo: "categoria" })) exigir(deps.quem, "editar", { tipo: "noticia" });
   return banco()
     .select({ id: categoria.id, nome: categoria.nome, cor: categoria.cor })
     .from(categoria)
-    .where(sql`${escopo}::escopo_categoria = any(${categoria.escopos})`)
+    .where(sql`${categoria.escopos} && ${`{${escopos.join(",")}}`}::escopo_categoria[]`)
     .orderBy(asc(categoria.ordem));
 }

@@ -3,28 +3,25 @@ import { forbidden, notFound } from "next/navigation";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { carregarNoticia, versaoDoServidor } from "@/lib/conteudos/carregar";
+import { midiasDaNoticia } from "@/lib/conteudos/validar";
 import { pode } from "@/lib/permissoes";
+import { ehUuid } from "@/lib/uuid";
 
 import { EditorNoticia } from "../editor-noticia";
 import { prepararEditor } from "../preparar-editor";
 
 export const metadata: Metadata = { title: "Editar notícia" };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** Editar notícia de qualquer autor (RF37, RN55, E08). */
 export default async function PaginaEditarNoticia({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const pessoa = await exigirArea("conteudos");
   if (!pode(pessoa.quem, "editar", { tipo: "noticia" })) forbidden();
-  if (!UUID.test(id)) notFound();
+  if (!ehUuid(id)) notFound();
   const noticia = await carregarNoticia(id, { quem: pessoa.quem });
   if (!noticia) notFound();
 
-  const idsDeArquivos = [noticia.dados.capaMidiaId, ...noticia.dados.links.map((l) => l.midiaId)].filter(
-    (m): m is string => !!m,
-  );
-  const { categorias, intervaloMs, limites, arquivos } = await prepararEditor(pessoa.quem, idsDeArquivos);
+  const { categorias, intervaloMs, limites, arquivos } = await prepararEditor(pessoa.quem, midiasDaNoticia(noticia.dados));
 
   return (
     <EditorNoticia

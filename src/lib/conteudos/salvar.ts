@@ -6,9 +6,17 @@ import { atividade, conteudo, conteudoLink, midiaUso, noticia } from "@/lib/db/s
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { lerNoticia, type NoticiaAberta } from "./carregar";
-import type { DadosNoticia } from "./dados";
+import { rotuloDaNoticia, type DadosNoticia } from "./dados";
 import { noticiaNaoEncontrada } from "./erros";
-import { midiasDaNoticia, validarNoticia } from "./validar";
+import { midiasDaNoticia, validarNoticia, type UrlDoArquivo } from "./validar";
+
+export type DepsDoSalvamento = {
+  quem: QuemDaEquipe;
+  /** Uma por vez que o editor abre: a Atividade registra a edição uma vez por sessão (E40). */
+  sessaoEdicao: string;
+  /** Endereço público dos arquivos da Mídia (imagens do corpo). */
+  urlDoArquivo: UrlDoArquivo;
+};
 
 export type ResultadoSalvar =
   | { tipo: "salvo"; id: string; revisao: number; salvoEm: Date }
@@ -21,14 +29,14 @@ export type ResultadoSalvar =
  */
 export async function salvarRascunhoNoticia(
   entrada: { id?: string; revisaoBase?: number; dados: DadosNoticia },
-  deps: { quem: QuemDaEquipe; sessaoEdicao: string },
+  deps: DepsDoSalvamento,
 ): Promise<ResultadoSalvar> {
   const { id } = entrada;
   if (!id) {
     exigir(deps.quem, "criar", { tipo: "noticia" });
     return banco().transaction(async (tx) => {
-      const criada = await criar(tx, await validarNoticia(tx, entrada.dados), deps.quem);
-      await registrar(tx, "noticia.criar", criada.id, entrada.dados.titulo, deps);
+      const criada = await criar(tx, await validarNoticia(tx, entrada.dados, deps.urlDoArquivo), deps.quem);
+      await registrarAtividadeNoticia(tx, "noticia.criar", criada.id, entrada.dados.titulo, deps);
       return criada;
     });
   }
@@ -36,13 +44,13 @@ export async function salvarRascunhoNoticia(
   return banco().transaction(async (tx) => {
     // Trava a linha: dois salvamentos ao mesmo tempo não passam os dois pela conferência da revisão.
     const atual = await travarNoticia(tx, id);
-    const dados = await validarNoticia(tx, entrada.dados);
+    const dados = await validarNoticia(tx, entrada.dados, deps.urlDoArquivo);
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, id))! };
     }
     const salvo = await gravarPorCima(tx, id, dados, deps.quem);
     if (!(await sessaoJaRegistrada(tx, id, deps.sessaoEdicao))) {
-      await registrar(tx, "noticia.editar", id, dados.titulo, deps);
+      await registrarAtividadeNoticia(tx, "noticia.editar", id, dados.titulo, deps);
     }
     return salvo;
   });
@@ -67,12 +75,12 @@ async function sessaoJaRegistrada(tx: Transacao, id: string, sessao: string) {
   return !!linha;
 }
 
-export async function registrar(
+export async function registrarAtividadeNoticia(
   tx: Transacao,
   acao: "noticia.criar" | "noticia.editar" | "noticia.resolver_conflito",
   id: string,
   titulo: string,
-  deps: { quem: QuemDaEquipe; sessaoEdicao: string },
+  deps: Pick<DepsDoSalvamento, "quem" | "sessaoEdicao">,
   detalhe: Record<string, unknown> = {},
 ) {
   await registrarAtividade(tx, {
@@ -84,9 +92,7 @@ export async function registrar(
   });
 }
 
-export function rotuloDaNoticia(titulo: string) {
-  return titulo.trim() || "Notícia sem manchete";
-}
+
 
 /** Trava a linha da notícia até o fim da transação; erro claro se ela não existe mais. */
 export async function travarNoticia(tx: Transacao, id: string) {

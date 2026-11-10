@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogFooter } from "@/components
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { DadosNoticia } from "@/lib/conteudos/dados";
+import { rotuloDaNoticia, type DadosNoticia } from "@/lib/conteudos/dados";
 import type { VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import { horaNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,7 @@ export function ModalSair({
         titulo="Sair sem salvar?"
         descricao={
           <>
-            Há alterações em “{titulo || "Notícia sem manchete"}” que ainda não foram salvas.
+            Há alterações em “{rotuloDaNoticia(titulo)}” que ainda não foram salvas.
           </>
         }
       >

@@ -4,9 +4,16 @@ import { z } from "zod";
 import type { Transacao } from "@/lib/db";
 import { categoria, midia } from "@/lib/db/schema";
 
-import { limparCorpo, midiasDoCorpo } from "./corpo";
+import { limparCorpo, midiasDoCorpo, trocarEnderecosDasImagens } from "./corpo";
 import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type DadosNoticia } from "./dados";
+import { ehEnderecoDaWeb } from "./enderecos";
 import { ErroConteudo } from "./erros";
+
+/** Tamanho máximo do corpo gravado (JSON do Tiptap). Uma notícia longa fica bem abaixo disso. */
+export const LIMITE_CORPO_CARACTERES = 200_000;
+
+/** Endereço público de um arquivo da Mídia, a partir da chave no armazenamento. */
+export type UrlDoArquivo = (chaveR2: string) => string;
 
 const texto = (maximo: number, mensagem: string) => z.string().trim().max(maximo, { error: mensagem });
 
@@ -17,7 +24,7 @@ const link = z.object({
     .string()
     .trim()
     .max(2000)
-    .refine((u) => /^https?:\/\//i.test(u), { error: "O link precisa começar com http:// ou https://." })
+    .refine(ehEnderecoDaWeb, { error: "Confira o endereço do link. Ex.: https://www.planalto.gov.br" })
     .nullable(),
   midiaId: z.uuid().nullable(),
   visivel: z.boolean(),
@@ -46,9 +53,21 @@ const esquema = z.object({
 
 /**
  * Confere os dados vindos da tela (não confiáveis) e devolve a versão limpa. Também confere no
- * banco: a categoria tem de ser de Notícias e as mídias têm de existir.
+ * banco: a categoria tem de ser de Notícias e as mídias têm de existir. O endereço das imagens do
+ * corpo é refeito a partir da Mídia (E40).
  */
-export async function validarNoticia(tx: Transacao, entrada: DadosNoticia): Promise<DadosNoticia> {
+export async function validarNoticia(
+  tx: Transacao,
+  entrada: DadosNoticia,
+  urlDoArquivo: UrlDoArquivo,
+): Promise<DadosNoticia> {
+  if (JSON.stringify(entrada.corpo ?? null).length > LIMITE_CORPO_CARACTERES) {
+    throw new ErroConteudo(
+      "invalido",
+      "O corpo da notícia ficou grande demais para salvar. Divida o texto em duas notícias.",
+      "corpo",
+    );
+  }
   const validado = esquema.safeParse(entrada);
   if (!validado.success) {
     const problema = validado.error.issues[0]!;
@@ -67,12 +86,14 @@ export async function validarNoticia(tx: Transacao, entrada: DadosNoticia): Prom
     }
   }
 
-  const midias = midiasDaNoticia(dados);
-  if (midias.length > 0) {
-    const existentes = await tx.select({ id: midia.id }).from(midia).where(inArray(midia.id, midias));
-    if (new Set(existentes.map((m) => m.id)).size !== new Set(midias).size) {
+  const ids = midiasDaNoticia(dados);
+  if (ids.length > 0) {
+    const existentes = await tx.select({ id: midia.id, chaveR2: midia.chaveR2 }).from(midia).where(inArray(midia.id, ids));
+    if (existentes.length !== ids.length) {
       throw new ErroConteudo("invalido", "Um arquivo escolhido não está mais na Mídia. Escolha outro.", "midia");
     }
+    const enderecos = new Map(existentes.map((m) => [m.id, urlDoArquivo(m.chaveR2)]));
+    dados.corpo = trocarEnderecosDasImagens(dados.corpo, (id) => enderecos.get(id));
   }
   return dados;
 }
