@@ -199,8 +199,9 @@ const esquemaReagendar = z.object({ id: z.uuid(), quando: esquemaQuando });
 const esquemaEdicaoRapida = esquemaRevisao.extend({
   titulo: z.string().max(1000),
   categoriaId: z.uuid().nullable(),
-  situacao: z.enum(["rascunho", "agendado", "publicado"]),
+  situacao: z.enum(["rascunho", "agendado", "publicado", "oculto"]),
   quando: esquemaQuando.nullable(),
+  motivo: z.string().max(2000).optional(),
 });
 
 const DATA_INVALIDA = "Escolha uma data e uma hora válidas.";

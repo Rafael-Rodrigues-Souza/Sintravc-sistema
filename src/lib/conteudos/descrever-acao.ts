@@ -11,11 +11,17 @@ const FRASES: Record<string, string> = {
   "noticia.publicar_agendado": "Publicado na hora agendada",
   "noticia.agendamento_falhou": "A publicação agendada falhou",
   "noticia.cancelar_agendamento": "Agendamento cancelado",
+  "noticia.ocultar": "Ocultado do site",
+  "noticia.mostrar": "De volta ao site",
+  "noticia.arquivar": "Arquivado",
+  "noticia.desfazer_arquivamento": "Arquivamento desfeito",
+  "noticia.restaurar": "Restaurado como rascunho",
 };
 
 export function descreverAcao(acao: string, detalhe: Record<string, unknown>): string {
   const para = typeof detalhe.para === "string" ? new Date(detalhe.para) : null;
   if (acao === "noticia.agendar" && para) return `Agendado para ${dataHoraNaBahia(para)}`;
   if (acao === "noticia.reagendar" && para) return `Reagendado para ${dataHoraNaBahia(para)}`;
+  if (acao === "noticia.restaurar_versao" && typeof detalhe.versao === "number") return `Versão ${detalhe.versao} restaurada como rascunho`;
   return FRASES[acao] ?? "Alteração registrada";
 }

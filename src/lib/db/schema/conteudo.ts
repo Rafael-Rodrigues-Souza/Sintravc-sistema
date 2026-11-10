@@ -45,6 +45,13 @@ export const conteudo = pgTable(
     publicadoEm: dataHora(),
     jaPublicado: boolean().notNull().default(false),
     motivoOculto: text(),
+    /**
+     * Quando foi tirada do site ("Retirado em"). Gravada no ocultar e limpa no mostrar. Não vem do
+     * `atualizado_em`, que muda a cada salvamento da cópia de trabalho (E45).
+     */
+    ocultadoEm: dataHora(),
+    /** O estado de antes do arquivamento, para o "Desfazer" do aviso (E45). Nulo fora do arquivado. */
+    estadoAntesDeArquivar: estadoConteudo(),
     autorId: uuid()
       .notNull()
       .references(() => pessoaEquipe.id),

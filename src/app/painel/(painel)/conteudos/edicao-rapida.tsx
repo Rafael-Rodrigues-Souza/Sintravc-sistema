@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Clock, Eye, FileText, Pencil, Upload } from "lucide-react";
+import { Archive, CalendarDays, Clock, Eye, EyeOff, FileText, Pencil, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -22,6 +22,7 @@ import { camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
 import { acaoPublicarNoticia, acaoSalvarEdicaoRapida } from "./acoes";
+import { ConfirmarAcao, type PedidoDeAcao } from "./ciclo-de-vida";
 import { SeloEstado } from "./selos";
 
 export type NoticiaDaEdicaoRapida = {
@@ -33,13 +34,17 @@ export type NoticiaDaEdicaoRapida = {
   agendadoPara: string | null;
   publicadoEm: string | null;
   temAlteracoesNaoPublicadas: boolean;
+  /** Oculta: o motivo registrado (RN11). */
+  motivoOculto: string | null;
+  /** Quem está vendo pode arquivar (o servidor confere de novo). */
+  podeArquivar: boolean;
   /** Data e hora já preenchidas quando a pessoa escolhe "Agendado": a agendada, ou amanhã às 08h00. */
   sugestaoDeData: { data: string; hora: string };
 };
 
 export type AcaoParaMostrar = { id: string; texto: string; detalhe: string };
 
-type Situacao = "rascunho" | "agendado" | "publicado";
+type Situacao = "rascunho" | "agendado" | "publicado" | "oculto";
 
 const ROTULO_DO_CAMPO: Record<CampoObrigatorio, string> = {
   titulo: "Manchete",
@@ -54,7 +59,8 @@ const SEM_CONEXAO = "Sem conexão com o servidor. Confira a internet e tente de 
 
 /**
  * Edição rápida (RF36; Figma 115:2324, com a correção C3: o exemplo é uma notícia): título,
- * categoria, situação e data sem sair da lista. Oculto e Arquivar chegam no #11; Fixar, no #15.
+ * categoria, situação e data sem sair da lista. Na publicada, a situação é Publicado ou Oculto
+ * (com motivo, RN11); Arquivar fica no rodapé (#11, correção E44). Fixar chega no #15.
  * Fecha com X, Esc ou clique fora; com mudança não salva, pergunta antes.
  */
 export function EdicaoRapida({
@@ -69,7 +75,8 @@ export function EdicaoRapida({
   hrefAoFechar: string;
 }) {
   const router = useRouter();
-  const situacaoInicial: Situacao = noticia.estado === "agendado" ? "agendado" : noticia.estado === "publicado" ? "publicado" : "rascunho";
+  const situacaoInicial: Situacao =
+    noticia.estado === "agendado" || noticia.estado === "publicado" || noticia.estado === "oculto" ? noticia.estado : "rascunho";
   const camposIniciais = noticia.sugestaoDeData;
 
   const [aberto, setAberto] = React.useState(true);
@@ -84,13 +91,18 @@ export function EdicaoRapida({
   const [faltam, setFaltam] = React.useState<CampoObrigatorio[] | null>(null);
   const [conflito, setConflito] = React.useState(false);
   const [comAlteracoes, setComAlteracoes] = React.useState(noticia.temAlteracoesNaoPublicadas);
+  const [motivo, setMotivo] = React.useState("");
+  const [pedido, setPedido] = React.useState<PedidoDeAcao | null>(null);
 
-  const noAr = noticia.estado === "publicado";
+  // Publicada ou oculta: já foi ao ar; a situação é Publicado ou Oculto, e o título vai para a cópia de trabalho (E42).
+  const noAr = noticia.estado === "publicado" || noticia.estado === "oculto";
+  const vaiOcultar = noticia.estado === "publicado" && situacao === "oculto";
   const mudou =
     titulo !== noticia.titulo ||
     categoriaId !== (noticia.categoriaId ?? "") ||
     situacao !== situacaoInicial ||
-    (situacao === "agendado" && (quando.data !== camposIniciais.data || quando.hora !== camposIniciais.hora));
+    (situacao === "agendado" && (quando.data !== camposIniciais.data || quando.hora !== camposIniciais.hora)) ||
+    (vaiOcultar && motivo !== "");
 
   const fechar = () => {
     setAberto(false);
@@ -107,6 +119,11 @@ export function EdicaoRapida({
       setErro({ mensagem: "Escolha a categoria.", campo: "categoriaId" });
       return;
     }
+    if (vaiOcultar && !motivo.trim()) {
+      setErro({ mensagem: "Escreva o motivo para ocultar.", campo: "motivo" });
+      document.getElementById("rapida-motivo")?.focus();
+      return;
+    }
     setSalvando(true);
     const resposta = await acaoSalvarEdicaoRapida({
       id: noticia.id,
@@ -115,6 +132,7 @@ export function EdicaoRapida({
       categoriaId: categoriaId || null,
       situacao,
       quando: situacao === "agendado" ? quando : null,
+      motivo: vaiOcultar ? motivo : undefined,
     }).catch(() => ({ tipo: "erro" as const, mensagem: SEM_CONEXAO, campo: undefined }));
     setSalvando(false);
 
@@ -128,9 +146,13 @@ export function EdicaoRapida({
       toast.success(
         resposta.estado === "agendado"
           ? `Notícia agendada para ${camposEmTexto(quando)}.`
-          : resposta.estado === "publicado"
-            ? "Notícia publicada."
-            : "Alterações salvas.",
+          : resposta.estado === "oculto" && noticia.estado !== "oculto"
+            ? "Notícia oculta do site."
+            : resposta.estado === "publicado" && noticia.estado !== "publicado"
+              ? noticia.estado === "oculto"
+                ? "Notícia de volta ao site."
+                : "Notícia publicada."
+              : "Alterações salvas.",
       );
       fechar();
     } else if (resposta.tipo === "conflito") {
@@ -217,7 +239,7 @@ export function EdicaoRapida({
                 </Alerta>
               ) : null}
               {erro && !erro.campo ? <Alerta tipo="erro" titulo={erro.mensagem} /> : null}
-              {noAr && comAlteracoes ? (
+              {noticia.estado === "publicado" && comAlteracoes ? (
                 <Alerta tipo="informacao" titulo="Há alterações que ainda não estão no site">
                   <div className="flex flex-col items-start gap-2">
                     O site continua mostrando a versão publicada até você publicar as alterações.
@@ -265,10 +287,55 @@ export function EdicaoRapida({
               </div>
 
               {noAr ? (
-                <p className="rounded-[12px] bg-fundo-superficie-alt p-3 texto-pequeno text-texto-secundario">
-                  {noticia.publicadoEm ? `No site desde ${dataHoraNaBahia(new Date(noticia.publicadoEm))}. ` : ""}
-                  Título e categoria só mudam no site quando você publicar as alterações. Para tirar do site, use o editor completo.
-                </p>
+                <fieldset className="flex flex-col gap-2.5">
+                  <legend className="mb-2.5 texto-rotulo text-texto-primario">
+                    Situação no site <span className="text-destaque-vermelho">*</span>
+                  </legend>
+                  <RadioGroup value={situacao} onValueChange={(v) => setSituacao(v as Situacao)} aria-label="Situação no site" className="gap-2.5">
+                    <OpcaoSituacao
+                      valor="publicado"
+                      marcada={situacao === "publicado"}
+                      titulo={noticia.estado === "oculto" ? "Mostrar no site" : "Publicado"}
+                      detalhe={
+                        noticia.estado === "oculto"
+                          ? "Volta ao site como estava quando foi ocultada."
+                          : noticia.publicadoEm
+                            ? `No site desde ${dataHoraNaBahia(new Date(noticia.publicadoEm))}.`
+                            : "Visível no site."
+                      }
+                      icone={<Eye aria-hidden className="size-[18px]" />}
+                    />
+                    <OpcaoSituacao
+                      valor="oculto"
+                      marcada={situacao === "oculto"}
+                      titulo="Oculto"
+                      detalhe="Fora do site, mas guardado aqui. Pode voltar a qualquer momento."
+                      icone={<EyeOff aria-hidden className="size-[18px]" />}
+                    />
+                  </RadioGroup>
+                  {noticia.estado === "oculto" && noticia.motivoOculto ? (
+                    <p className="texto-pequeno text-texto-secundario">Motivo: {noticia.motivoOculto}</p>
+                  ) : null}
+                  {vaiOcultar ? (
+                    <div className="flex flex-col gap-2 pt-1">
+                      <Label htmlFor="rapida-motivo">
+                        Motivo para ocultar <span className="text-destaque-vermelho">*</span>
+                      </Label>
+                      <Textarea
+                        id="rapida-motivo"
+                        value={motivo}
+                        maxLength={500}
+                        placeholder="Ex.: a data da assembleia mudou"
+                        aria-invalid={erroNoCampo("motivo") ? true : undefined}
+                        onChange={(e) => setMotivo(e.target.value)}
+                      />
+                      <p className={erroNoCampo("motivo") ? "texto-pequeno text-status-perigo-texto" : "texto-pequeno text-texto-terciario"}>
+                        {erroNoCampo("motivo") ?? "Fica registrado em Atividade."}
+                      </p>
+                    </div>
+                  ) : null}
+                  <p className="texto-pequeno text-texto-secundario">Título e categoria só mudam no site quando você publicar as alterações.</p>
+                </fieldset>
               ) : (
                 <fieldset className="flex flex-col gap-2.5">
                   <legend className="mb-2.5 texto-rotulo text-texto-primario">
@@ -358,13 +425,26 @@ export function EdicaoRapida({
               ) : null}
             </div>
 
-            <footer className="flex items-center justify-between gap-3 border-t border-borda-padrao bg-fundo-superficie-alt px-6 py-4">
-              <Button asChild variant="secundario">
-                <Link href={hrefEditor}>
-                  <Pencil aria-hidden />
-                  Abrir editor completo
-                </Link>
-              </Button>
+            <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-borda-padrao bg-fundo-superficie-alt px-6 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild variant="secundario">
+                  <Link href={hrefEditor}>
+                    <Pencil aria-hidden />
+                    Abrir editor completo
+                  </Link>
+                </Button>
+                {noticia.podeArquivar ? (
+                  <Button
+                    type="button"
+                    variant="secundario"
+                    disabled={salvando}
+                    onClick={() => setPedido({ acao: "arquivar", alvos: [{ id: noticia.id, titulo: titulo || "Sem título", acoes: ["arquivar"] }] })}
+                  >
+                    <Archive aria-hidden />
+                    Arquivar
+                  </Button>
+                ) : null}
+              </div>
               <Button type="submit" disabled={salvando || !mudou}>
                 {salvando ? "Salvando…" : "Salvar alterações"}
               </Button>
@@ -372,6 +452,15 @@ export function EdicaoRapida({
           </form>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
+
+      <ConfirmarAcao
+        pedido={pedido}
+        aoFechar={() => setPedido(null)}
+        aoConcluir={(_acao, feitos) => {
+          router.refresh();
+          if (feitos.length > 0) fechar();
+        }}
+      />
 
       <AlertDialog open={perguntarAoFechar} onOpenChange={setPerguntarAoFechar}>
         <AlertDialogContent

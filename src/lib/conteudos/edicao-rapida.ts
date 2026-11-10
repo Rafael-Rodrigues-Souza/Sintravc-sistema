@@ -6,14 +6,15 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { agendarNaTransacao, cancelarNaTransacao, reagendarNaTransacao, type DepsDoAgendamento } from "./agendar";
 import { lerNoticia, type NoticiaAberta } from "./carregar";
+import { conferirMotivo, mostrarNaTransacao, ocultarNaTransacao } from "./ciclo-de-vida";
 import { ErroConteudo } from "./erros";
 import { temAlteracoesNaoPublicadas } from "./publicacao";
 import { publicarNaTransacao } from "./publicar";
 import { gravarPorCima, registrarAtividadeNoticia, travarNoticia } from "./salvar";
 import { validarNoticia, type UrlDoArquivo } from "./validar";
 
-/** "Situação no site" da Edição rápida. Oculto chega no #11. */
-export type SituacaoEdicaoRapida = "rascunho" | "agendado" | "publicado";
+/** "Situação no site" da Edição rápida. Oculto só para o que está ou esteve no ar (RN10). */
+export type SituacaoEdicaoRapida = "rascunho" | "agendado" | "publicado" | "oculto";
 
 export type EntradaEdicaoRapida = {
   id: string;
@@ -23,6 +24,8 @@ export type EntradaEdicaoRapida = {
   situacao: SituacaoEdicaoRapida;
   /** Com "agendado": a data e hora (a tela converte do horário da Bahia). */
   para: Date | null;
+  /** Com "oculto", ao tirar do site: o motivo, obrigatório (RN11). */
+  motivo?: string;
 };
 
 export type ResultadoEdicaoRapida =
@@ -52,12 +55,18 @@ export async function salvarEdicaoRapida(
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, entrada.id))! };
     }
-    if (atual.estado === "publicado" && entrada.situacao !== "publicado") {
-      throw new ErroConteudo("invalido", "Para tirar do site, use Ocultar ou Arquivar no editor.", "situacao");
+    const noAr = atual.estado === "publicado" || atual.estado === "oculto";
+    if (atual.estado === "arquivado") {
+      throw new ErroConteudo("invalido", "Esta notícia está arquivada. Restaure como rascunho para editar.");
     }
-    if (atual.estado !== "rascunho" && atual.estado !== "agendado" && atual.estado !== "publicado") {
-      throw new ErroConteudo("invalido", "Esta notícia não pode ser alterada pela Edição rápida. Abra o editor completo.");
+    if (noAr && entrada.situacao !== "publicado" && entrada.situacao !== "oculto") {
+      throw new ErroConteudo("invalido", "O que está no site fica Publicado ou Oculto. Para tirar das listas, use Arquivar.", "situacao");
     }
+    if (!noAr && entrada.situacao === "oculto") {
+      throw new ErroConteudo("invalido", "Só o que está no site pode ser ocultado.", "situacao");
+    }
+    // O motivo é conferido antes de gravar qualquer coisa: sem ele, nem o título muda (CA-US22.1).
+    if (atual.estado === "publicado" && entrada.situacao === "oculto") conferirMotivo(entrada.motivo ?? "");
 
     const noticia = (await lerNoticia(tx, entrada.id))!;
     if (noticia.dados.titulo !== entrada.titulo || noticia.dados.categoriaId !== entrada.categoriaId) {
@@ -73,6 +82,10 @@ export async function salvarEdicaoRapida(
       else if (atual.agendadoPara?.getTime() !== entrada.para.getTime()) await reagendarNaTransacao(tx, atual, entrada.para, deps);
     } else if (entrada.situacao === "rascunho") {
       if (atual.estado === "agendado") await cancelarNaTransacao(tx, atual, deps);
+    } else if (entrada.situacao === "oculto") {
+      if (atual.estado === "publicado") await ocultarNaTransacao(tx, atual, entrada.motivo ?? "", deps);
+    } else if (atual.estado === "oculto") {
+      await mostrarNaTransacao(tx, atual, deps);
     } else if (atual.estado !== "publicado") {
       await publicarNaTransacao(tx, atual, deps);
     }
