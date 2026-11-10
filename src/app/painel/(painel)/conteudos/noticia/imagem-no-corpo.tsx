@@ -9,12 +9,12 @@ import { Campo } from "@/components/ui/campo";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { semTextoAlternativo } from "@/lib/conteudos/corpo";
 import { cn } from "@/lib/utils";
 
 /** Ligado depois que a pessoa tenta publicar: as imagens sem texto alternativo ficam marcadas (CA-US21.3). */
 export const MarcarImagensSemAlt = React.createContext(false);
 
-const vazio = (texto: unknown) => String(texto ?? "").trim() === "";
 
 /**
  * Imagem no corpo da notícia, dentro do editor. Ao clicar nela, aparece "Editar texto alternativo e
@@ -24,7 +24,7 @@ export function ImagemNoCorpo({ node, selected, updateAttributes }: ReactNodeVie
   const marcar = React.useContext(MarcarImagensSemAlt);
   const [editando, setEditando] = React.useState(false);
   const { src, alt, title } = node.attrs as { src: string; alt: string | null; title: string | null };
-  const semAlt = marcar && vazio(alt);
+  const semAlt = marcar && semTextoAlternativo(alt);
   const idAviso = React.useId();
 
   return (
@@ -85,7 +85,7 @@ export function irParaImagemSemAlt(editor: Editor): boolean {
   let posicao: number | null = null;
   editor.state.doc.descendants((no, pos) => {
     if (posicao !== null) return false;
-    if (no.type.name === "image" && vazio(no.attrs.alt)) posicao = pos;
+    if (no.type.name === "image" && semTextoAlternativo(no.attrs.alt)) posicao = pos;
     return true;
   });
   if (posicao === null) return false;

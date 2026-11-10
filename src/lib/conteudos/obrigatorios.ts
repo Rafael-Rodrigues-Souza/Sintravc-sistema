@@ -3,7 +3,7 @@
  * a cobrança é na publicação. A mesma regra roda na tela (card "Antes de publicar") e no servidor.
  * Nada aqui importa código de servidor.
  */
-import { imagensSemAlt, textoDoCorpo } from "./corpo";
+import { imagensSemAlt, semTextoAlternativo, textoDoCorpo } from "./corpo";
 import type { DadosNoticia } from "./dados";
 
 /** `campo` é a chave do campo na tela (a mesma do erro do salvamento). */
@@ -30,7 +30,7 @@ export function faltasParaPublicar(dados: DadosNoticia): Falta[] {
     const quantas = semAlt === 1 ? "1 imagem" : `${semAlt} imagens`;
     faltas.push({ campo: "imagensDoCorpo", rotulo: `Texto alternativo de ${quantas} do corpo` });
   }
-  if (dados.capaMidiaId && vazio(dados.capaAlt)) faltas.push({ campo: "capaAlt", rotulo: "Texto alternativo da capa" });
+  if (dados.capaMidiaId && semTextoAlternativo(dados.capaAlt)) faltas.push({ campo: "capaAlt", rotulo: "Texto alternativo da capa" });
   if (vazio(dados.assinatura)) faltas.push({ campo: "assinatura", rotulo: "Assinatura" });
   if (!dados.categoriaId) faltas.push({ campo: "categoriaId", rotulo: "Categoria" });
   return faltas;
