@@ -776,7 +776,7 @@ export function EditorNoticia({
                 ? `No site desde ${dataHoraNaBahia(new Date(publicacao.publicadoEm))}. O que você muda aqui só vai ao site quando publicar as alterações.`
                 : "Fica como rascunho, fora do site, até alguém publicar."}
             </p>
-            {estado.id ? (
+            {noAr && estado.id ? (
               <div className="flex flex-col gap-1">
                 <Link
                   href={`/painel/pagina-inicial?sugerir=${estado.id}`}
@@ -787,7 +787,25 @@ export function EditorNoticia({
                 </Link>
                 <p className="texto-pequeno text-texto-secundario">Abre a Página inicial com esta notícia já sugerida para um destaque.</p>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex flex-col gap-1">
+                {/* aria-disabled (e não disabled) para continuar focável e a dica ser lida (E13: só o que está no ar vai para a Home). */}
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby="dica-destacar"
+                  onClick={(evento) => evento.preventDefault()}
+                  className="inline-flex cursor-not-allowed items-center gap-2 self-start rounded-sm texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+                >
+                  <Star aria-hidden className="size-4" />
+                  Destacar na Home
+                  <Lock aria-hidden className="size-3.5" />
+                </button>
+                <p id="dica-destacar" className="texto-pequeno text-texto-terciario">
+                  Publique a notícia para destacar na Home
+                </p>
+              </div>
+            )}
           </Cartao>
           <Cartao titulo="Antes de publicar" descricao="Conferido automaticamente enquanto você escreve.">
             <ListaAntesDePublicar dados={dados} />

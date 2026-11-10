@@ -103,7 +103,11 @@ test("CA-US21.3 · faltando obrigatórios, a publicação é impedida e cada cam
   await salvo(page);
   const antes = page.getByRole("region", { name: "Antes de publicar" });
   await expect(antes.getByText(": falta preencher")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Destacar na Home" })).toHaveAttribute("href", `/painel/pagina-inicial?sugerir=${id}`);
+  // Rascunho não vai para a Home: o link fica travado, com a dica.
+  const destacar = page.getByRole("button", { name: "Destacar na Home" });
+  await expect(destacar).toHaveAttribute("aria-disabled", "true");
+  await expect(destacar).toHaveAccessibleDescription("Publique a notícia para destacar na Home");
+  await expect(page.getByRole("link", { name: "Destacar na Home" })).toHaveCount(0);
 });
 
 test("pré-visualizar como no site, trocar para Celular e publicar pela confirmação", async ({ page }) => {
@@ -139,6 +143,8 @@ test("pré-visualizar como no site, trocar para Celular e publicar pela confirma
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator("[data-editor-noticia] > header").getByText("Publicado", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Publicar alterações…" })).toHaveAccessibleDescription(/Nada novo para publicar/);
+  // No ar, "Destacar na Home" vira o link para a Página inicial com a notícia sugerida (E13).
+  await expect(page.getByRole("link", { name: "Destacar na Home" })).toHaveAttribute("href", `/painel/pagina-inicial?sugerir=${id}`);
 
   const noBanco = await situacaoNoBanco(id);
   expect(noBanco).toMatchObject({
