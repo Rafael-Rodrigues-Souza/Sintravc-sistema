@@ -140,7 +140,9 @@ test("Edição rápida: muda título e data sem sair da lista; fechar com mudan�
   await page.getByRole("link", { name: `Edição rápida de “${SEGUNDA}”` }).click();
   const painel = page.getByRole("dialog", { name: "Edição rápida" });
   await expect(painel).toBeVisible();
-  await expect(painel.getByText("Agendado para", { exact: false }).first()).toBeVisible();
+  await expect(painel.getByRole("radio", { name: /Agendado/ })).toBeChecked();
+  // As "Últimas ações" vêm da Atividade, que só o ADM vê (spec §2.3).
+  await expect(painel.getByRole("region", { name: "Últimas ações" })).toHaveCount(0);
 
   // Esc com mudança não salva pergunta antes de fechar.
   await painel.getByLabel("Título").fill(`${SEGUNDA} e vacinação`);
@@ -169,7 +171,7 @@ test("Edição rápida: muda título e data sem sair da lista; fechar com mudan�
 test("Edição rápida: voltar para Rascunho cancela o agendamento", async ({ page }) => {
   await entrar(page, pessoas.com, `/painel/conteudos?editar=${primeiraId}`);
   const painel = page.getByRole("dialog", { name: "Edição rápida" });
-  await expect(painel.getByText(/Agendado para/).first()).toBeVisible();
+  await expect(painel.getByRole("radio", { name: /Agendado/ })).toBeChecked();
   await painel.getByRole("radio", { name: /Rascunho/ }).click();
   await painel.getByRole("button", { name: "Salvar alterações" }).click();
 

@@ -90,9 +90,12 @@ export async function salvarEdicaoRapida(
 
 export type AcaoRecente = { acao: string; quemNome: string | null; quando: Date; detalhe: Record<string, unknown> };
 
-/** "Últimas ações" da Edição rápida: as mais recentes primeiro (id é uuidv7). */
+/**
+ * "Últimas ações" da Edição rápida: as mais recentes primeiro (id é uuidv7). Vêm da Atividade,
+ * que só o ADM vê (spec §2.3): para a Comunicação, o quadro não aparece.
+ */
 export async function ultimasAcoes(id: string, deps: { quem: QuemDaEquipe }, limite = 5): Promise<AcaoRecente[]> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigir(deps.quem, "ver", { tipo: "atividade" });
   const linhas = await banco()
     .select({ acao: atividade.acao, quemNome: pessoaEquipe.nome, quando: atividade.quando, detalhe: atividade.detalhe })
     .from(atividade)

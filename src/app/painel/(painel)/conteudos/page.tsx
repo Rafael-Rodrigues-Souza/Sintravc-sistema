@@ -333,7 +333,11 @@ function lerMes(texto: string | undefined) {
 async function dadosDaEdicaoRapida(id: string, quem: Parameters<typeof carregarNoticia>[1]["quem"]) {
   const noticia = await carregarNoticia(id, { quem });
   if (!noticia || noticia.estado === "arquivado") return null;
-  const [acoes, categorias] = await Promise.all([ultimasAcoes(id, { quem }), listarCategorias(["noticias"], { quem })]);
+  // "Últimas ações" vêm da Atividade, que só o ADM vê (spec §2.3): para os outros, o quadro não aparece.
+  const [acoes, categorias] = await Promise.all([
+    pode(quem, "ver", { tipo: "atividade" }) ? ultimasAcoes(id, { quem }) : [],
+    listarCategorias(["noticias"], { quem }),
+  ]);
   return {
     categorias: categorias.map(({ id: idCategoria, nome }) => ({ id: idCategoria, nome })),
     noticia: {

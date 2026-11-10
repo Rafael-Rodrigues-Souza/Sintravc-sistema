@@ -157,15 +157,22 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
   });
 });
 
-describe("ultimasAcoes (Figma 115:2324, Últimas ações)", () => {
+describe("ultimasAcoes (Figma 115:2324, Últimas ações; a Atividade é só do ADM, spec §2.3)", () => {
   it("as mais recentes primeiro, com quem fez", async () => {
     const quem = await pessoaDaEquipe("COM", "Mariana Souza");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
     await agendarNoticia({ id, revisaoBase: revisao, para: PARA }, { quem, fila: filaEmMemoria().fila, agora: AGORA });
 
-    const acoes = await ultimasAcoes(id, { quem });
+    const acoes = await ultimasAcoes(id, { quem: await pessoaDaEquipe("ADM") });
 
     expect(acoes.map((a) => a.acao)).toEqual(["noticia.agendar", "noticia.criar"]);
     expect(acoes[0]).toMatchObject({ quemNome: "Mariana Souza", detalhe: { para: PARA.toISOString() }, quando: expect.any(Date) });
+  });
+
+  it("a Comunicação não recebe as últimas ações (RNF01)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id } = await rascunhoSalvo(quem, await noticiaCompleta());
+
+    await expect(ultimasAcoes(id, { quem })).rejects.toBeInstanceOf(SemPermissao);
   });
 });
