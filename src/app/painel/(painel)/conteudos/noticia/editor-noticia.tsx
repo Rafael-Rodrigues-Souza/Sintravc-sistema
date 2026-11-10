@@ -364,7 +364,7 @@ export function EditorNoticia({
     if (resposta.tipo === "publicada") {
       setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm });
       setMostrarFaltas(false);
-      toast.success(primeira ? "Notícia publicada. Ela já está no site." : "Alterações publicadas. O site já mostra a nova versão.");
+      toast.success(primeira ? "Notícia publicada." : "Alterações publicadas.");
     } else if (resposta.tipo === "conflito") {
       // Alguém salvou no meio: o salvamento mostra o modal "Há duas versões" (N4).
       fila.alterar(dadosAtuais.current);

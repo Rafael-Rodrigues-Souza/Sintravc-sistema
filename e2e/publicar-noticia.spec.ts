@@ -135,7 +135,7 @@ test("pré-visualizar como no site, trocar para Celular e publicar pela confirma
 
   await page.getByRole("button", { name: "Publicar…" }).click();
   await page.getByRole("dialog", { name: "Publicar notícia?" }).getByRole("button", { name: "Publicar agora" }).click();
-  await expect(page.getByText("Notícia publicada. Ela já está no site.")).toBeVisible();
+  await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator("[data-editor-noticia] > header").getByText("Publicado", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Publicar alterações…" })).toHaveAccessibleDescription(/Nada novo para publicar/);
@@ -176,7 +176,7 @@ test("E42 · editar a publicada: o site só muda ao publicar as alterações, e 
   await page.getByRole("button", { name: "Publicar alterações…" }).click();
   const modal = page.getByRole("dialog", { name: "Publicar alterações?" });
   await modal.getByRole("button", { name: "Publicar alterações" }).click();
-  await expect(page.getByText("Alterações publicadas.")).toBeVisible();
+  await expect(page.getByText("Alterações publicadas.", { exact: true })).toBeVisible();
   await expect(page.getByText("Há alterações que ainda não estão no site")).toHaveCount(0);
 
   expect(await situacaoNoBanco(id)).toMatchObject({ estado: "publicado", versao: 2, versoes: 2 });
