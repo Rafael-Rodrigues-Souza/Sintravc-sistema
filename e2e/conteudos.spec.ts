@@ -150,6 +150,23 @@ test("CA-US21.4 · sair com alteração pendente: Voltar, Descartar e Salvar e s
   expect((await noticiaNoBanco(id))?.titulo).toBe("Salva ao sair");
 });
 
+test("CA-US21.4 · Voltar do navegador com alteração pendente: salva na hora", async ({ page }) => {
+  // Chega ao editor por dentro do painel (navegação do Next), como a pessoa faz.
+  await entrar(page, pessoas.com);
+  await page.getByRole("button", { name: "Criar conteúdo" }).first().click();
+  await page.getByRole("menuitem", { name: /Notícia/ }).click();
+  await manchete(page).fill("Voltar do navegador");
+  await expect(status(page)).toContainText("Salvo automaticamente às");
+  const id = idDaUrl(page);
+
+  // Digita e volta antes do intervalo do salvamento automático.
+  await manchete(page).fill("Voltar do navegador, salva ao sair");
+  await page.goBack();
+  await expect(page).not.toHaveURL(/\/noticia\//);
+
+  await expect.poll(async () => (await noticiaNoBanco(id))?.titulo).toBe("Voltar do navegador, salva ao sair");
+});
+
 test("CA-US21.5 · outra pessoa da Comunicação edita, e a Atividade registra o nome dela", async ({ browser, page }) => {
   await entrar(page, pessoas.com);
   const id = await criarNoticia(page, "Notícia do Carlos");
