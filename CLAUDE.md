@@ -29,6 +29,13 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
    - Sonner nos avisos.
 4. Os critérios de aceitação da história (`docs/criterios-de-aceitacao.md`) são o teste de pronto.
 
+## Conteúdo institucional e jurídico
+
+- Antes de implementar qualquer tela com conteúdo sobre o sindicato (História, linha do tempo, Benefícios, Diretoria, Quem somos) ou texto jurídico (Política de privacidade, Termos de uso, avisos de LGPD), pare e consulte o Rafael sobre o conteúdo antes de planejar.
+- Nunca invente fatos, datas, nomes, números ou textos jurídicos. Onde faltar conteúdo, use um marcador visível do tipo “[Conteúdo a definir pelo sindicato]” e liste no PR o que falta.
+- História: o texto atual já tem base confirmada pelo sindicato e fica como está. Falta só a linha do tempo, cujos marcos (ano e acontecimento) o Rafael vai fornecer.
+- Política de privacidade e Termos de uso dependem do advogado do sindicato (D6 e D9): a tela pode ser montada, mas o texto só entra quando o Rafael entregar a versão aprovada.
+
 ## Regras obrigatórias no código
 
 - **Permissões sempre no servidor** (spec §11 T2; RNF01). Toda *server action* e rota passa pela mesma função `pode(pessoa, acao, recurso)`, que também monta o menu. Esconder o botão não basta. A matriz está no spec §4.
