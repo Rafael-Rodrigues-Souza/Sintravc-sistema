@@ -10,8 +10,10 @@ import type { DadosNoticia } from "./dados";
 export const CAMPOS_OBRIGATORIOS = ["titulo", "lide", "corpo", "imagensDoCorpo", "capaAlt", "assinatura", "categoriaId"] as const;
 export type CampoObrigatorio = (typeof CAMPOS_OBRIGATORIOS)[number];
 
+const CONJUNTO_DOS_OBRIGATORIOS: ReadonlySet<string> = new Set(CAMPOS_OBRIGATORIOS);
+
 export function ehCampoObrigatorio(campo: string): campo is CampoObrigatorio {
-  return (CAMPOS_OBRIGATORIOS as readonly string[]).includes(campo);
+  return CONJUNTO_DOS_OBRIGATORIOS.has(campo);
 }
 export type Falta = { campo: CampoObrigatorio; rotulo: string };
 
