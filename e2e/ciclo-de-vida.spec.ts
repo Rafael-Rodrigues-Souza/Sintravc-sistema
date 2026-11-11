@@ -255,4 +255,26 @@ test("CA-US21.9 · Histórico: 3 versões com quem e quando; restaurar a 1 não 
   await expect(page.getByText("Há alterações que ainda não estão no site")).toBeVisible();
   expect(await noBanco(id)).toMatchObject({ estado: "publicado", versao: 3, lide: "Lide da versão 1." });
   expect((await acoesNaAtividade(id)).at(-1)).toBe("noticia.restaurar_versao");
+
+  // Oculta, com a versão 1 na cópia de trabalho: o aviso de alterações continua (E45).
+  await page.getByRole("button", { name: "Mais ações" }).click();
+  await page.getByRole("menuitem", { name: "Ocultar do site" }).click();
+  const ocultar = page.getByRole("alertdialog", { name: "Ocultar do site?" });
+  await ocultar.getByLabel(/Motivo/).fill("Conferir o lide com o jurídico");
+  await ocultar.getByRole("button", { name: "Ocultar do site" }).click();
+  await expect(page.getByText("Conteúdo oculto do site.")).toBeVisible();
+  await expect(page.getByText("Há alterações que ainda não estão no site")).toBeVisible();
+
+  // No Histórico, a versão 3 vem marcada como a que volta ao site, e restaurar outra avisa que as alterações serão substituídas.
+  await page.getByRole("button", { name: "Mais ações" }).click();
+  await page.getByRole("menuitem", { name: "Histórico de versões" }).click();
+  await expect(versoes).toHaveCount(3);
+  await expect(versoes.nth(0)).toContainText("Volta ao site com “Mostrar no site”.");
+  await expect(versoes.nth(0)).not.toContainText("no site agora");
+  await expect(versoes.nth(0).getByRole("button", { name: "Restaurar como rascunho" })).toHaveCount(0);
+  await versoes.nth(1).getByRole("button", { name: "Restaurar como rascunho" }).click();
+  const restaurar = page.getByRole("alertdialog", { name: "Restaurar a versão 2 como rascunho?" });
+  await expect(restaurar).toContainText("As alterações que ainda não estão no site são substituídas.");
+  await restaurar.getByRole("button", { name: "Cancelar" }).click();
+  expect(await noBanco(id)).toMatchObject({ estado: "oculto", lide: "Lide da versão 1." });
 });

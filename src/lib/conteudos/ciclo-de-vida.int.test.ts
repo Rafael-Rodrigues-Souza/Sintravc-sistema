@@ -386,6 +386,20 @@ describe("restaurarVersao (CA-US21.9, E31, E42)", () => {
     ]);
   });
 
+  it("oculta: nenhuma versão está no site, e a que volta com “Mostrar no site” vem marcada", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const id = await comTresVersoes(quem);
+    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+
+    const versoes = await versoesDaNoticia(id, { quem });
+
+    expect(versoes.map((v) => [v.versao, v.noAr, v.voltaAoSite])).toEqual([
+      [3, false, true],
+      [2, false, false],
+      [1, false, false],
+    ]);
+  });
+
   it("se alguém salvou depois, nada muda e a pessoa vê o conflito", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await comTresVersoes(quem);

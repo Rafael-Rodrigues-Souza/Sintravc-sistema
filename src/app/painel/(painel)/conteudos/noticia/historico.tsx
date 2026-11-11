@@ -116,13 +116,19 @@ export function HistoricoDeVersoes({
                   <li
                     key={v.versao}
                     className={
-                      v.noAr
+                      v.noAr || v.voltaAoSite
                         ? "flex flex-col gap-1.5 rounded-[16px] border border-borda-padrao bg-fundo-superficie-alt p-4"
                         : "flex flex-col gap-1.5 rounded-[16px] border border-borda-padrao p-4"
                     }
                   >
                     <p className="flex flex-wrap items-center gap-2 texto-titulo-card-pequeno text-texto-primario">
                       <span>{v.noAr ? `Versão ${v.versao} · no site agora` : `Versão ${v.versao}`}</span>
+                      {v.voltaAoSite ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-status-aviso-fundo px-2.5 py-1 texto-etiqueta text-status-aviso-texto uppercase">
+                          <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                          Oculto
+                        </span>
+                      ) : null}
                       {v.noAr ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-status-sucesso-fundo px-2.5 py-1 texto-etiqueta text-status-sucesso-texto uppercase">
                           <span aria-hidden className="size-1.5 rounded-full bg-current" />
@@ -133,6 +139,9 @@ export function HistoricoDeVersoes({
                     <p className="texto-pequeno text-texto-secundario">
                       {v.criadoPorNome} · {quandoNaBahia(new Date(v.criadoEm))}
                     </p>
+                    {v.voltaAoSite ? (
+                      <p className="texto-pequeno text-status-aviso-texto">Volta ao site com “Mostrar no site”.</p>
+                    ) : null}
                     <p className="texto-corpo text-texto-primario">{v.resumo}</p>
                     <div className="flex flex-wrap gap-x-5 gap-y-1 pt-1">
                       <Link
@@ -142,7 +151,7 @@ export function HistoricoDeVersoes({
                         <Eye aria-hidden className="size-4" />
                         Ver esta versão
                       </Link>
-                      {v.noAr ? null : (
+                      {v.noAr || v.voltaAoSite ? null : (
                         <button
                           type="button"
                           disabled={restaurando}

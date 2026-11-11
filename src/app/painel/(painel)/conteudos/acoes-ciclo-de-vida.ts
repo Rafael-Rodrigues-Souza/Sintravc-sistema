@@ -152,6 +152,7 @@ export type VersaoNaTela = {
   criadoPorNome: string;
   criadoEm: string;
   noAr: boolean;
+  voltaAoSite: boolean;
   resumo: string;
 };
 
@@ -170,6 +171,7 @@ export async function acaoListarVersoes(entrada: unknown): Promise<{ tipo: "vers
         criadoPorNome: v.criadoPorNome,
         criadoEm: v.criadoEm.toISOString(),
         noAr: v.noAr,
+        voltaAoSite: v.voltaAoSite,
         resumo: v.resumo,
       })),
     };

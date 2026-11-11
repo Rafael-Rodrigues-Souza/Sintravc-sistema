@@ -192,6 +192,8 @@ export type VersaoPublicada = {
   criadoEm: Date;
   /** É a versão que o site mostra agora (a notícia está publicada e esta é a `versao` atual). */
   noAr: boolean;
+  /** A notícia está oculta e esta é a versão que volta com "Mostrar no site" (E45). */
+  voltaAoSite: boolean;
   /** O que mudou em relação à versão anterior (N14). */
   resumo: string;
   dados: DadosNoticia;
@@ -218,6 +220,7 @@ export async function versoesDaNoticia(id: string, deps: { quem: QuemDaEquipe })
       criadoPorNome: nome,
       criadoEm: v.criadoEm,
       noAr: atual?.estado === "publicado" && atual.versao === v.versao,
+      voltaAoSite: atual?.estado === "oculto" && atual.versao === v.versao,
       resumo: resumirMudancas(anterior ? (anterior.v.snapshot as RetratoDaNoticia).dados : null, dados),
       dados,
     };
