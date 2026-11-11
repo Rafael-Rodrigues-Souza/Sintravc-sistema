@@ -249,7 +249,7 @@ test("CA-US22.5 · rascunho de outra pessoa: a Comunicação não vê Excluir; o
   const autora = await browser.newContext();
   const paginaDaAutora = await autora.newPage();
   await entrar(paginaDaAutora, pessoas.com, "/painel/conteudos/noticia/nova");
-  await escrever(paginaDaAutora, titulo);
+  const id = await escrever(paginaDaAutora, titulo);
   await autora.close();
 
   for (const [pessoa, veExcluir] of [
@@ -264,6 +264,14 @@ test("CA-US22.5 · rascunho de outra pessoa: a Comunicação não vê Excluir; o
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem", { name: "Arquivar" })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: "Excluir rascunho" })).toHaveCount(veExcluir ? 1 : 0);
+    await page.keyboard.press("Escape");
+
+    // No editor, o menu de ações segue a mesma regra.
+    await page.goto(`/painel/conteudos/noticia/${id}`);
+    await page.getByRole("button", { name: "Mais ações" }).click();
+    const menuDoEditor = page.getByRole("menu");
+    await expect(menuDoEditor.getByRole("menuitem", { name: "Arquivar" })).toBeVisible();
+    await expect(menuDoEditor.getByRole("menuitem", { name: "Excluir rascunho" })).toHaveCount(veExcluir ? 1 : 0);
     await contexto.close();
   }
 });
