@@ -127,7 +127,7 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
 
 ### 3.2 Conteúdo
 - **Ciclo de vida:** Rascunho → Agendado ou Publicado → Oculto (com motivo) ou Arquivado → restaurar como Rascunho (RN10, RN11). Qualquer estado, menos o arquivado, pode ser arquivado, também em lote, com “Desfazer”; “Mostrar no site” volta a versão que estava no ar (E45).
-- **Sem aprovação.** Ações sensíveis pedem confirmação e vão para a Atividade (RN09).
+- **Sem aprovação.** Ações sensíveis pedem confirmação e vão para a Atividade (RN09). O “Desfazer” do arquivamento não pede confirmação, mas vai para a Atividade (E45).
 - **Exclusão definitiva:** só de rascunho nunca publicado, pelo autor ou pelo ADM (RN54).
 - **Versões:** são guardadas a cada publicação e podem ser restauradas como rascunho, sem tirar a atual do ar (E31, E45).
 - **Editar o que está no ar:** o editor salva uma cópia de trabalho; o site só muda em “Publicar alterações”, e “Descartar alterações” volta a cópia para a versão publicada (E42).
