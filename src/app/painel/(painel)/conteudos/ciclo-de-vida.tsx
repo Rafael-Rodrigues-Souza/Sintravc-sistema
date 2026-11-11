@@ -40,6 +40,12 @@ export type Alvo = { id: string; titulo: string; acoes: AcaoDoMenu[] };
 
 export type PedidoDeAcao = { acao: AcaoDoMenu; alvos: Alvo[] };
 
+/**
+ * Quem executa a ação depois da confirmação. Por padrão, as actions do ciclo de vida; a Edição
+ * rápida passa a sua, que grava título, categoria e situação numa transação só.
+ */
+export type ExecutarAcao = (acao: AcaoDoMenu, ids: string[], motivo: string) => Promise<RespostaLote | RespostaSimples>;
+
 const semConexao = (): { tipo: "erro"; mensagem: string } => ({ tipo: "erro", mensagem: SEM_CONEXAO });
 
 const plural = (n: number, um: string, varios: string) => (n === 1 ? um : varios.replace("N", String(n)));
@@ -53,23 +59,27 @@ export function ConfirmarAcao({
   pedido,
   aoFechar,
   aoConcluir,
+  executar,
 }: {
   pedido: PedidoDeAcao | null;
   aoFechar: () => void;
   aoConcluir: (acao: AcaoDoMenu, feitos: string[], extra?: { motivo?: string }) => void;
+  executar?: ExecutarAcao;
 }) {
   // Cada pedido monta o modal do zero: o motivo e o erro não passam de um pedido para outro.
-  return pedido ? <ModalDaAcao pedido={pedido} aoFechar={aoFechar} aoConcluir={aoConcluir} /> : null;
+  return pedido ? <ModalDaAcao pedido={pedido} aoFechar={aoFechar} aoConcluir={aoConcluir} executar={executar ?? rodar} /> : null;
 }
 
 function ModalDaAcao({
   pedido,
   aoFechar,
   aoConcluir,
+  executar,
 }: {
   pedido: PedidoDeAcao;
   aoFechar: () => void;
   aoConcluir: (acao: AcaoDoMenu, feitos: string[], extra?: { motivo?: string }) => void;
+  executar: ExecutarAcao;
 }) {
   const [enviando, setEnviando] = React.useState(false);
   const [motivo, setMotivo] = React.useState("");
@@ -88,7 +98,7 @@ function ModalDaAcao({
     if (!enviando) aoFechar();
   };
 
-  const executar = async () => {
+  const confirmar = async () => {
     if (elegiveis.length === 0) return;
     const motivoLimpo = motivo.trim();
     if (pedido.acao === "ocultar" && !motivoLimpo) {
@@ -97,7 +107,7 @@ function ModalDaAcao({
       return;
     }
     setEnviando(true);
-    const resposta = await rodar(pedido.acao, ids, motivoLimpo);
+    const resposta = await executar(pedido.acao, ids, motivoLimpo).catch(semConexao);
     setEnviando(false);
     if (resposta.tipo === "erro") {
       if ("campo" in resposta && resposta.campo === "motivo") {
@@ -168,7 +178,7 @@ function ModalDaAcao({
             type="button"
             variant={textos.tom === "perigo" ? "perigo" : undefined}
             disabled={enviando || quantos === 0 || (pedido.acao === "ocultar" && !motivo.trim())}
-            onClick={executar}
+            onClick={confirmar}
           >
             {enviando ? textos.enviando : textos.botao}
           </Button>

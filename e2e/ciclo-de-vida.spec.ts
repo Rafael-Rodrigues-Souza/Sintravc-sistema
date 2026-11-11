@@ -188,6 +188,45 @@ test("CA-US22.1 · ocultar pede motivo: o botão só libera com o motivo escrito
   expect(await noBanco(id)).toMatchObject({ estado: "publicado", motivo_oculto: null, ocultado_em: null, versao: 1 });
 });
 
+test("RN09 · Edição rápida: ocultar e mostrar no site pedem confirmação, com o motivo no modal", async ({ page }) => {
+  await entrar(page, pessoas.com, "/painel/conteudos/noticia/nova");
+  const titulo = `Mutirão de documentos ${MARCA}`;
+  const id = await publicar(page, titulo);
+
+  await page.goto(`/painel/conteudos?busca=${encodeURIComponent(titulo)}`);
+  await page.getByRole("link", { name: `Edição rápida de “${titulo}”` }).click();
+  const painel = page.getByRole("dialog", { name: "Edição rápida" });
+  await painel.getByLabel("Título").fill(`${titulo} (revisado)`);
+  await painel.getByRole("radio", { name: /^Oculto/ }).click();
+  await painel.getByRole("button", { name: "Salvar alterações" }).click();
+
+  // Nada é gravado antes de confirmar; o motivo é obrigatório no modal.
+  const modal = page.getByRole("alertdialog", { name: "Ocultar do site?" });
+  await expect(modal.getByRole("button", { name: "Ocultar do site" })).toBeDisabled();
+  expect((await noBanco(id))!.estado).toBe("publicado");
+  await modal.getByLabel(/Motivo/).fill("Faltou o horário do mutirão");
+  await modal.getByRole("button", { name: "Ocultar do site" }).click();
+
+  await expect(page.getByText("Conteúdo oculto do site.")).toBeVisible();
+  await expect(painel).toHaveCount(0);
+  await expect(linhaDa(page, titulo)).toContainText("Oculto");
+  expect(await noBanco(id)).toMatchObject({ estado: "oculto", motivo_oculto: "Faltou o horário do mutirão" });
+  expect((await acoesNaAtividade(id)).slice(-2)).toEqual(["noticia.editar", "noticia.ocultar"]);
+
+  // De novo na Edição rápida: o título mudado é alteração que ainda não está no site (E45).
+  await page.getByRole("link", { name: /^Edição rápida de “Mutirão de documentos/ }).click();
+  await expect(painel.getByText("Há alterações que ainda não estão no site")).toBeVisible();
+  await expect(painel.getByText("Motivo: Faltou o horário do mutirão")).toBeVisible();
+  await painel.getByRole("radio", { name: /^Mostrar no site/ }).click();
+  await painel.getByRole("button", { name: "Salvar alterações" }).click();
+  const mostrar = page.getByRole("alertdialog", { name: "Mostrar no site de novo?" });
+  await mostrar.getByRole("button", { name: "Mostrar no site" }).click();
+
+  await expect(page.getByText("Conteúdo de volta ao site.")).toBeVisible();
+  expect(await noBanco(id)).toMatchObject({ estado: "publicado", motivo_oculto: null, versao: 1 });
+  expect((await acoesNaAtividade(id)).at(-1)).toBe("noticia.mostrar");
+});
+
 test("CA-US22.3 · a autora exclui o rascunho que nunca foi ao ar, pelo editor", async ({ page }) => {
   await entrar(page, pessoas.com, "/painel/conteudos/noticia/nova");
   const id = await escrever(page, `Rascunho para excluir ${MARCA}`);

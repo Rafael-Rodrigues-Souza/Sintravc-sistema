@@ -17,13 +17,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { LIMITE_MANCHETE } from "@/lib/conteudos/dados";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
-import { MENSAGEM_SEM_MOTIVO, MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
-import { acaoPublicarNoticia, acaoSalvarEdicaoRapida } from "./acoes";
-import { ConfirmarAcao, type PedidoDeAcao } from "./ciclo-de-vida";
+import { acaoPublicarNoticia, acaoSalvarEdicaoRapida, type RespostaEdicaoRapida } from "./acoes";
+import { ConfirmarAcao, type ExecutarAcao, type PedidoDeAcao } from "./ciclo-de-vida";
 import { SeloEstado } from "./selos";
 
 export type NoticiaDaEdicaoRapida = {
@@ -92,18 +91,18 @@ export function EdicaoRapida({
   const [faltam, setFaltam] = React.useState<CampoObrigatorio[] | null>(null);
   const [conflito, setConflito] = React.useState(false);
   const [comAlteracoes, setComAlteracoes] = React.useState(noticia.temAlteracoesNaoPublicadas);
-  const [motivo, setMotivo] = React.useState("");
   const [pedido, setPedido] = React.useState<PedidoDeAcao | null>(null);
 
   // Publicada ou oculta: já foi ao ar; a situação é Publicado ou Oculto, e o título vai para a cópia de trabalho (E42).
   const jaFoiAoAr = noticia.estado === "publicado" || noticia.estado === "oculto";
+  // Ocultar e mostrar no site pedem confirmação, no mesmo modal da lista (RN09); o motivo vai nele.
   const vaiOcultar = noticia.estado === "publicado" && situacao === "oculto";
+  const vaiMostrar = noticia.estado === "oculto" && situacao === "publicado";
   const mudou =
     titulo !== noticia.titulo ||
     categoriaId !== (noticia.categoriaId ?? "") ||
     situacao !== situacaoInicial ||
-    (situacao === "agendado" && (quando.data !== camposIniciais.data || quando.hora !== camposIniciais.hora)) ||
-    (vaiOcultar && motivo !== "");
+    (situacao === "agendado" && (quando.data !== camposIniciais.data || quando.hora !== camposIniciais.hora));
 
   const fechar = () => {
     setAberto(false);
@@ -120,23 +119,12 @@ export function EdicaoRapida({
       setErro({ mensagem: "Escolha a categoria.", campo: "categoriaId" });
       return;
     }
-    if (vaiOcultar && !motivo.trim()) {
-      setErro({ mensagem: MENSAGEM_SEM_MOTIVO, campo: "motivo" });
-      document.getElementById("rapida-motivo")?.focus();
+    if (vaiOcultar || vaiMostrar) {
+      const acao = vaiOcultar ? "ocultar" : "mostrar";
+      setPedido({ acao, alvos: [{ id: noticia.id, titulo: titulo || "Notícia sem manchete", acoes: [acao] }] });
       return;
     }
-    setSalvando(true);
-    const resposta = await acaoSalvarEdicaoRapida({
-      id: noticia.id,
-      revisaoBase: noticia.revisao,
-      titulo,
-      categoriaId: categoriaId || null,
-      situacao,
-      quando: situacao === "agendado" ? quando : null,
-      motivo: vaiOcultar ? motivo : undefined,
-    }).catch(() => ({ tipo: "erro" as const, mensagem: SEM_CONEXAO, campo: undefined }));
-    setSalvando(false);
-
+    const resposta = await enviar();
     if (resposta.tipo === "salva") {
       router.refresh();
       if (resposta.temAlteracoesNaoPublicadas) {
@@ -163,6 +151,38 @@ export function EdicaoRapida({
     } else {
       setErro({ mensagem: resposta.mensagem, campo: resposta.campo });
     }
+  };
+
+  /** Grava título, categoria e situação numa transação só (com o motivo, ao ocultar). */
+  const enviar = async (motivo?: string): Promise<RespostaEdicaoRapida> => {
+    setSalvando(true);
+    const resposta = await acaoSalvarEdicaoRapida({
+      id: noticia.id,
+      revisaoBase: noticia.revisao,
+      titulo,
+      categoriaId: categoriaId || null,
+      situacao,
+      quando: situacao === "agendado" ? quando : null,
+      motivo,
+    }).catch(() => ({ tipo: "erro" as const, mensagem: SEM_CONEXAO, campo: undefined }));
+    setSalvando(false);
+    return resposta;
+  };
+
+  /** Depois da confirmação de ocultar ou mostrar no site: o modal mostra o erro ou o aviso de sucesso. */
+  const executarConfirmado: ExecutarAcao = async (acao, _ids, motivo) => {
+    const resposta = await enviar(acao === "ocultar" ? motivo : undefined);
+    if (resposta.tipo === "salva") return { tipo: "feito" };
+    if (resposta.tipo === "conflito") {
+      setConflito(true);
+      return { tipo: "erro", mensagem: "Alguém salvou esta notícia enquanto você editava. Atualize e tente de novo." };
+    }
+    if (resposta.tipo === "faltam") {
+      setFaltam(resposta.campos);
+      return { tipo: "erro", mensagem: "Faltam itens obrigatórios. Abra o editor completo." };
+    }
+    if (resposta.campo && resposta.campo !== "motivo") setErro({ mensagem: resposta.mensagem, campo: resposta.campo });
+    return { tipo: "erro", mensagem: resposta.mensagem, campo: resposta.campo };
   };
 
   const publicarAlteracoes = async () => {
@@ -321,24 +341,6 @@ export function EdicaoRapida({
                   {noticia.estado === "oculto" && noticia.motivoOculto ? (
                     <p className="texto-pequeno text-texto-secundario">Motivo: {noticia.motivoOculto}</p>
                   ) : null}
-                  {vaiOcultar ? (
-                    <div className="flex flex-col gap-2 pt-1">
-                      <Label htmlFor="rapida-motivo">
-                        Motivo para ocultar <span className="text-destaque-vermelho">*</span>
-                      </Label>
-                      <Textarea
-                        id="rapida-motivo"
-                        value={motivo}
-                        maxLength={MOTIVO_OCULTAR_MAXIMO}
-                        placeholder="Ex.: a data da assembleia mudou"
-                        aria-invalid={erroNoCampo("motivo") ? true : undefined}
-                        onChange={(e) => setMotivo(e.target.value)}
-                      />
-                      <p className={erroNoCampo("motivo") ? "texto-pequeno text-status-perigo-texto" : "texto-pequeno text-texto-terciario"}>
-                        {erroNoCampo("motivo") ?? "Fica registrado em Atividade."}
-                      </p>
-                    </div>
-                  ) : null}
                   <p className="texto-pequeno text-texto-secundario">Título e categoria só mudam no site quando você publicar as alterações.</p>
                 </fieldset>
               ) : (
@@ -461,6 +463,7 @@ export function EdicaoRapida({
       <ConfirmarAcao
         pedido={pedido}
         aoFechar={() => setPedido(null)}
+        executar={pedido?.acao === "arquivar" ? undefined : executarConfirmado}
         aoConcluir={(_acao, feitos) => {
           router.refresh();
           if (feitos.length > 0) fechar();
