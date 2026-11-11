@@ -150,6 +150,17 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
     expect((await atividadesDe(id)).at(-1)).toMatchObject({ acao: "noticia.ocultar", motivo: "Foto sem autorização" });
   });
 
+  it("oculta com título mudado: avisa que há alterações que ainda não estão no site (E45)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+
+    const resultado = await salvarEdicaoRapida(await entrada(id, { titulo: "Título revisado" }), depsDe(quem).deps);
+
+    expect(resultado).toMatchObject({ tipo: "salva", estado: "oculto", temAlteracoesNaoPublicadas: true });
+  });
+
   it("oculta para Publicado: volta ao site (Mostrar no site)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());

@@ -27,7 +27,7 @@ import {
 import { ErroConteudo } from "./erros";
 import { listarConteudos } from "./listar";
 import { temAlteracoesNaoPublicadas } from "./publicacao";
-import { publicarNoticia, versoesDaNoticia } from "./publicar";
+import { descartarAlteracoes, publicarNoticia, versoesDaNoticia } from "./publicar";
 import { executarPublicacaoAgendada } from "./publicar-agendado";
 import { salvarRascunhoNoticia } from "./salvar";
 
@@ -105,6 +105,23 @@ describe("mostrarNoSite (Oculto → Publicado, RN10, E45)", () => {
     expect(temAlteracoesNaoPublicadas(aberta)).toBe(true);
     expect(await versoesDaNoticia(id, { quem })).toHaveLength(1);
     expect((await atividadesDe(id)).at(-1)).toMatchObject({ acao: "noticia.mostrar", atorId: quem.id, detalhe: { versao: 1 } });
+  });
+
+  it("oculta com alteração: o aviso de alterações aparece, e “Descartar alterações” volta a cópia à versão no ar", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const id = await publicada(quem);
+    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+    const oculta = (await carregarNoticia(id, { quem }))!;
+    const salvo = await salvarRascunhoNoticia({ id, revisaoBase: oculta.revisao, dados: { ...oculta.dados, lide: "Outro lide." } }, edicaoDe(quem));
+    if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
+    expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(true);
+
+    const r = await descartarAlteracoes({ id, revisaoBase: salvo.revisao }, { quem });
+
+    expect(r.tipo).toBe("descartada");
+    const depois = (await carregarNoticia(id, { quem }))!;
+    expect(depois).toMatchObject({ estado: "oculto", dados: expect.objectContaining({ lide: oculta.dados.lide }) });
+    expect(temAlteracoesNaoPublicadas(depois)).toBe(false);
   });
 
   it("só o que está oculto pode voltar ao site", async () => {

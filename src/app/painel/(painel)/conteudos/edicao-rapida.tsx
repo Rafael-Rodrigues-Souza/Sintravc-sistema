@@ -240,14 +240,18 @@ export function EdicaoRapida({
                 </Alerta>
               ) : null}
               {erro && !erro.campo ? <Alerta tipo="erro" titulo={erro.mensagem} /> : null}
-              {noticia.estado === "publicado" && comAlteracoes ? (
+              {jaFoiAoAr && comAlteracoes ? (
                 <Alerta tipo="informacao" titulo="Há alterações que ainda não estão no site">
                   <div className="flex flex-col items-start gap-2">
-                    O site continua mostrando a versão publicada até você publicar as alterações.
-                    <Button type="button" size="pequeno" disabled={publicandoAlteracoes || mudou} onClick={() => void publicarAlteracoes()}>
-                      <Upload aria-hidden />
-                      {publicandoAlteracoes ? "Publicando…" : "Publicar alterações"}
-                    </Button>
+                    {noticia.estado === "oculto"
+                      ? "Ao mostrar no site, volta a versão publicada. Depois, publique as alterações."
+                      : "O site continua mostrando a versão publicada até você publicar as alterações."}
+                    {noticia.estado === "publicado" ? (
+                      <Button type="button" size="pequeno" disabled={publicandoAlteracoes || mudou} onClick={() => void publicarAlteracoes()}>
+                        <Upload aria-hidden />
+                        {publicandoAlteracoes ? "Publicando…" : "Publicar alterações"}
+                      </Button>
+                    ) : null}
                   </div>
                 </Alerta>
               ) : null}

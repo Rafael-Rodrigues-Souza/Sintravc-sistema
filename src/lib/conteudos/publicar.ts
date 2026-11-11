@@ -132,7 +132,8 @@ export async function descartarAlteracoes(
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, entrada.id))! };
     }
-    const noAr = atual.estado === "publicado" ? await retratoNoAr(tx, entrada.id) : null;
+    // Publicada ou oculta: a cópia de trabalho volta à versão que foi ao ar (E42, E45).
+    const noAr = atual.estado === "publicado" || atual.estado === "oculto" ? await retratoNoAr(tx, entrada.id) : null;
     if (!noAr) {
       throw new ErroConteudo("invalido", "Esta notícia não está no ar, então não há alterações para descartar.");
     }

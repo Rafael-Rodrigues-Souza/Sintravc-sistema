@@ -359,8 +359,9 @@ export function EditorNoticia({
   // Rascunho com "Agendar" escolhido: o botão do topo agenda em vez de publicar (CA-US21.2).
   const vaiAgendar = !noAr && !agendada && quando === "agendar";
   // Alterações que ainda não estão no site: salvas depois da publicação ou ainda na fila (E42).
+  // Vale também para a oculta: "Mostrar no site" volta a versão publicada, sem elas (E45).
   const comAlteracoes =
-    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (noAr && estado.situacao !== "sincronizado");
+    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || ((noAr || oculta) && estado.situacao !== "sincronizado");
   const faltas = faltasParaPublicar(dados);
   const faltando = mostrarFaltas ? new Set(faltas.map((f) => f.campo)) : new Set<CampoObrigatorio>();
 
@@ -779,7 +780,9 @@ export function EditorNoticia({
           {comAlteracoes ? (
             <Alerta tipo="informacao" titulo="Há alterações que ainda não estão no site">
               <div className="flex flex-col items-start gap-2">
-                O site continua mostrando a versão publicada até você publicar as alterações.
+                {oculta
+                  ? "Ao mostrar no site, volta a versão publicada. Depois, publique as alterações."
+                  : "O site continua mostrando a versão publicada até você publicar as alterações."}
                 <Button
                   type="button"
                   variant="secundario"
