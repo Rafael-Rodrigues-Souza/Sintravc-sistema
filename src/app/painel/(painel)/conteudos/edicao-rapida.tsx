@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { LIMITE_MANCHETE } from "@/lib/conteudos/dados";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
+import { MENSAGEM_SEM_MOTIVO, MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
@@ -120,7 +121,7 @@ export function EdicaoRapida({
       return;
     }
     if (vaiOcultar && !motivo.trim()) {
-      setErro({ mensagem: "Escreva o motivo para ocultar.", campo: "motivo" });
+      setErro({ mensagem: MENSAGEM_SEM_MOTIVO, campo: "motivo" });
       document.getElementById("rapida-motivo")?.focus();
       return;
     }
@@ -324,7 +325,7 @@ export function EdicaoRapida({
                       <Textarea
                         id="rapida-motivo"
                         value={motivo}
-                        maxLength={500}
+                        maxLength={MOTIVO_OCULTAR_MAXIMO}
                         placeholder="Ex.: a data da assembleia mudou"
                         aria-invalid={erroNoCampo("motivo") ? true : undefined}
                         onChange={(e) => setMotivo(e.target.value)}

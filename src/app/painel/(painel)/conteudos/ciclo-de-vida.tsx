@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { AcaoDoMenu } from "@/lib/conteudos/acoes-disponiveis";
+import { MENSAGEM_SEM_MOTIVO, MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 
 import {
   acaoArquivar,
@@ -28,7 +29,6 @@ import {
  * lista (uma ou várias) e ao editor (uma). Toda ação pede confirmação (RN09).
  */
 
-const MOTIVO_MAXIMO = 500;
 const SEM_CONEXAO = "Sem conexão com o servidor. Nada foi alterado. Tente de novo.";
 /** O aviso com "Desfazer" fica mais tempo que os outros (6 s, Figma 118:3448), para dar tempo de clicar. */
 const DURACAO_DO_DESFAZER = 10_000;
@@ -89,7 +89,7 @@ function ModalDaAcao({
     if (elegiveis.length === 0) return;
     const motivoLimpo = motivo.trim();
     if (pedido.acao === "ocultar" && !motivoLimpo) {
-      setErroMotivo("Escreva o motivo para ocultar.");
+      setErroMotivo(MENSAGEM_SEM_MOTIVO);
       campoMotivo.current?.focus();
       return;
     }
@@ -143,7 +143,7 @@ function ModalDaAcao({
               id="motivo-ocultar"
               ref={campoMotivo}
               value={motivo}
-              maxLength={MOTIVO_MAXIMO}
+              maxLength={MOTIVO_OCULTAR_MAXIMO}
               aria-invalid={erroMotivo ? true : undefined}
               aria-describedby="motivo-ocultar-ajuda"
               placeholder="Ex.: a data da assembleia mudou"
@@ -153,7 +153,7 @@ function ModalDaAcao({
               }}
             />
             <p id="motivo-ocultar-ajuda" className={erroMotivo ? "texto-pequeno text-destaque-vermelho" : "texto-pequeno text-texto-terciario"}>
-              {erroMotivo ?? `Fica registrado em Atividade. ${motivo.length}/${MOTIVO_MAXIMO}`}
+              {erroMotivo ?? `Fica registrado em Atividade. ${motivo.length}/${MOTIVO_OCULTAR_MAXIMO}`}
             </p>
           </div>
         ) : null}

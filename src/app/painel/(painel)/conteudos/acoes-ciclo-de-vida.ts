@@ -17,6 +17,7 @@ import {
 } from "@/lib/conteudos/ciclo-de-vida";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
+import { MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import { versoesDaNoticia } from "@/lib/conteudos/publicar";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { pode, SemPermissao } from "@/lib/permissoes";
@@ -59,7 +60,7 @@ function atualizarTelas() {
 /** Ocultar do site (RN11): uma ou várias, com o mesmo motivo. */
 export async function acaoOcultar(entrada: unknown): Promise<RespostaLote> {
   const pessoa = await sessaoDaEquipe();
-  const validado = z.object({ ids: esquemaIds, motivo: z.string().max(2000) }).safeParse(entrada);
+  const validado = z.object({ ids: esquemaIds, motivo: z.string().max(MOTIVO_OCULTAR_MAXIMO) }).safeParse(entrada);
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "ocultar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
   try {

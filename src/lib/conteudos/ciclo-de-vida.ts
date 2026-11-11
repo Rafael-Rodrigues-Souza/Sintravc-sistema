@@ -8,6 +8,7 @@ import type { Fila } from "@/lib/tarefas/fila";
 import { lerNoticia, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import { rotuloDaNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
+import { conferirMotivo } from "./motivo";
 import { gravarPorCima, registrarAtividadeNoticia, travarNoticia } from "./salvar";
 import { validarNoticia, type UrlDoArquivo } from "./validar";
 
@@ -23,8 +24,6 @@ type Linha = typeof conteudo.$inferSelect;
 
 /** Resultado de uma ação em lote: as que mudaram e as que ficaram de fora (com o porquê). */
 export type ResultadoLote = { feitos: string[]; ignorados: { id: string; titulo: string; motivo: string }[] };
-
-export const MOTIVO_OCULTAR_MAXIMO = 500;
 
 /** Ocultar (RN11): só o que está publicado; o motivo é obrigatório e fica na Atividade. */
 export async function ocultarNoticias(entrada: { ids: string[]; motivo: string }, deps: { quem: QuemDaEquipe }): Promise<ResultadoLote> {
@@ -197,15 +196,6 @@ export async function restaurarVersao(
   });
 }
 
-/** O motivo do ocultar, sem espaços nas pontas: obrigatório e com limite (RN11). */
-export function conferirMotivo(motivo: string) {
-  const limpo = motivo.trim();
-  if (!limpo) throw new ErroConteudo("invalido", "Escreva o motivo para ocultar.", "motivo");
-  if (limpo.length > MOTIVO_OCULTAR_MAXIMO) {
-    throw new ErroConteudo("invalido", `O motivo pode ter até ${MOTIVO_OCULTAR_MAXIMO} caracteres.`, "motivo");
-  }
-  return limpo;
-}
 
 /**
  * Aplica a ação a cada notícia, numa transação só. As linhas são travadas na ordem dos ids, para

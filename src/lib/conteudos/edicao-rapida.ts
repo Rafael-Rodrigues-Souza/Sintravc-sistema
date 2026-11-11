@@ -6,7 +6,8 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { agendarNaTransacao, cancelarNaTransacao, reagendarNaTransacao, type DepsDoAgendamento } from "./agendar";
 import { lerNoticia, type NoticiaAberta } from "./carregar";
-import { conferirMotivo, mostrarNaTransacao, ocultarNaTransacao } from "./ciclo-de-vida";
+import { mostrarNaTransacao, ocultarNaTransacao } from "./ciclo-de-vida";
+import { conferirMotivo } from "./motivo";
 import { ErroConteudo } from "./erros";
 import { temAlteracoesNaoPublicadas } from "./publicacao";
 import { publicarNaTransacao } from "./publicar";
