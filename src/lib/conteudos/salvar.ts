@@ -7,7 +7,7 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { lerNoticia, retratoNoAr, type NoticiaAberta } from "./carregar";
 import { rotuloDaNoticia, type DadosNoticia } from "./dados";
-import { ErroConteudo, noticiaNaoEncontrada } from "./erros";
+import { noticiaArquivada, noticiaNaoEncontrada } from "./erros";
 import { midiasDaNoticia, validarNoticia, type UrlDoArquivo } from "./validar";
 
 export type DepsDoSalvamento = {
@@ -45,7 +45,7 @@ export async function salvarRascunhoNoticia(
     // Trava a linha: dois salvamentos ao mesmo tempo não passam os dois pela conferência da revisão.
     const atual = await travarNoticia(tx, id);
     if (atual.estado === "arquivado") {
-      throw new ErroConteudo("invalido", "Esta notícia está arquivada. Restaure como rascunho para editar.");
+      throw noticiaArquivada();
     }
     const dados = await validarNoticia(tx, entrada.dados, deps.urlDoArquivo);
     if (atual.revisao !== entrada.revisaoBase) {
