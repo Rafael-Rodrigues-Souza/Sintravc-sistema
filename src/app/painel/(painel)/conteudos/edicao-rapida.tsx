@@ -96,7 +96,7 @@ export function EdicaoRapida({
   const [pedido, setPedido] = React.useState<PedidoDeAcao | null>(null);
 
   // Publicada ou oculta: já foi ao ar; a situação é Publicado ou Oculto, e o título vai para a cópia de trabalho (E42).
-  const noAr = noticia.estado === "publicado" || noticia.estado === "oculto";
+  const jaFoiAoAr = noticia.estado === "publicado" || noticia.estado === "oculto";
   const vaiOcultar = noticia.estado === "publicado" && situacao === "oculto";
   const mudou =
     titulo !== noticia.titulo ||
@@ -116,7 +116,7 @@ export function EdicaoRapida({
     if (salvando) return;
     setErro(null);
     setFaltam(null);
-    if ((situacao !== "rascunho" || noAr) && !categoriaId) {
+    if ((situacao !== "rascunho" || jaFoiAoAr) && !categoriaId) {
       setErro({ mensagem: "Escolha a categoria.", campo: "categoriaId" });
       return;
     }
@@ -287,7 +287,7 @@ export function EdicaoRapida({
                 {erroNoCampo("categoriaId") ? <p className="texto-pequeno text-status-perigo-texto">{erroNoCampo("categoriaId")}</p> : null}
               </div>
 
-              {noAr ? (
+              {jaFoiAoAr ? (
                 <fieldset className="flex flex-col gap-2.5">
                   <legend className="mb-2.5 texto-rotulo text-texto-primario">
                     Situação no site <span className="text-destaque-vermelho">*</span>
@@ -368,7 +368,7 @@ export function EdicaoRapida({
                 </fieldset>
               )}
 
-              {situacao === "agendado" && !noAr ? (
+              {situacao === "agendado" && !jaFoiAoAr ? (
                 <div className="flex flex-col gap-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-2">

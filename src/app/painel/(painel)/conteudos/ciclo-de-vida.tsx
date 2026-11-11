@@ -30,7 +30,10 @@ import {
  */
 
 const SEM_CONEXAO = "Sem conexão com o servidor. Nada foi alterado. Tente de novo.";
-/** O aviso com "Desfazer" fica mais tempo que os outros (6 s, Figma 118:3448), para dar tempo de clicar. */
+/**
+ * O aviso com "Desfazer" fica 10 s na tela. Os outros avisos somem em 6 s (Figma 118:3448); este fica
+ * mais tempo para dar tempo de clicar (E45).
+ */
 const DURACAO_DO_DESFAZER = 10_000;
 
 export type Alvo = { id: string; titulo: string; acoes: AcaoDoMenu[] };

@@ -8,7 +8,7 @@ import { agendarNaTransacao, cancelarNaTransacao, reagendarNaTransacao, type Dep
 import { lerNoticia, type NoticiaAberta } from "./carregar";
 import { mostrarNaTransacao, ocultarNaTransacao } from "./ciclo-de-vida";
 import { conferirMotivo } from "./motivo";
-import { ErroConteudo } from "./erros";
+import { ErroConteudo, noticiaArquivada } from "./erros";
 import { temAlteracoesNaoPublicadas } from "./publicacao";
 import { publicarNaTransacao } from "./publicar";
 import { gravarPorCima, registrarAtividadeNoticia, travarNoticia } from "./salvar";
@@ -56,14 +56,15 @@ export async function salvarEdicaoRapida(
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, entrada.id))! };
     }
-    const noAr = atual.estado === "publicado" || atual.estado === "oculto";
+    // Publicada ou oculta: já foi ao ar e fica Publicado ou Oculto (o rascunho restaurado do arquivo não conta).
+    const jaFoiAoAr = atual.estado === "publicado" || atual.estado === "oculto";
     if (atual.estado === "arquivado") {
-      throw new ErroConteudo("invalido", "Esta notícia está arquivada. Restaure como rascunho para editar.");
+      throw noticiaArquivada();
     }
-    if (noAr && entrada.situacao !== "publicado" && entrada.situacao !== "oculto") {
+    if (jaFoiAoAr && entrada.situacao !== "publicado" && entrada.situacao !== "oculto") {
       throw new ErroConteudo("invalido", "O que está no site fica Publicado ou Oculto. Para tirar das listas, use Arquivar.", "situacao");
     }
-    if (!noAr && entrada.situacao === "oculto") {
+    if (!jaFoiAoAr && entrada.situacao === "oculto") {
       throw new ErroConteudo("invalido", "Só o que está no site pode ser ocultado.", "situacao");
     }
     // O motivo é conferido antes de gravar qualquer coisa: sem ele, nem o título muda (CA-US22.1).
