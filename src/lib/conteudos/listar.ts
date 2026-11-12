@@ -1,7 +1,8 @@
 import { and, asc, count, desc, eq, ne, sql, type SQL } from "drizzle-orm";
 
 import { banco } from "@/lib/db";
-import { categoria, conteudo, documento, noticia, pessoaEquipe } from "@/lib/db/schema";
+import { categoria, conteudo, conteudoVersao, documento, noticia, pessoaEquipe } from "@/lib/db/schema";
+import type { DatasDoDocumento } from "@/lib/documentos/selo";
 import { exigir, pode, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { exigirEmAlgumTipo } from "./tipo-do-conteudo";
@@ -41,8 +42,12 @@ export type ItemConteudo = {
   jaPublicado: boolean;
   autorId: string;
   atualizadoEm: Date;
-  /** Edital e acordo: as datas do selo de vigência, que é calculado (C2, E46). Nulo na notícia. */
-  datasDoSelo: { dataEvento: Date | null; vigenciaInicio: string | null; vigenciaFim: string | null } | null;
+  /**
+   * Edital e acordo: as datas da versão no ar, para o selo de vigência calculado (C2). O selo é "só
+   * no publicado" (E46): vem do que o site mostra, não da cópia de trabalho. Nulo na notícia e no
+   * documento que nunca foi publicado.
+   */
+  datasNoAr: DatasDoDocumento | null;
 };
 
 /**
@@ -75,14 +80,27 @@ export async function listarConteudos(
     filtros.autorId ? eq(conteudo.autorId, filtros.autorId) : undefined,
     condicaoDaBusca(filtros.busca),
   );
+  // Só as datas do retrato no ar, sem trazer o texto inteiro da versão.
+  const dadosNoAr = sql`${conteudoVersao.snapshot} -> 'dados'`;
   const base = () =>
     banco()
-      .select()
+      .select({
+        conteudo,
+        pessoa_equipe: pessoaEquipe,
+        categoria,
+        datasNoAr: sql<DatasDoDocumento | null>`case when ${conteudo.tipo} <> 'noticia' and ${conteudoVersao.id} is not null then jsonb_build_object(
+          'eventoData', ${dadosNoAr} ->> 'eventoData',
+          'eventoHora', ${dadosNoAr} ->> 'eventoHora',
+          'temVigencia', (${dadosNoAr} ->> 'temVigencia')::boolean,
+          'vigenciaInicio', ${dadosNoAr} ->> 'vigenciaInicio',
+          'vigenciaFim', ${dadosNoAr} ->> 'vigenciaFim') end`,
+      })
       .from(conteudo)
       .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudo.autorId))
       .leftJoin(noticia, eq(noticia.conteudoId, conteudo.id))
       .leftJoin(documento, eq(documento.conteudoId, conteudo.id))
       .leftJoin(categoria, eq(categoria.id, conteudo.categoriaId))
+      .leftJoin(conteudoVersao, and(eq(conteudoVersao.conteudoId, conteudo.id), eq(conteudoVersao.versao, conteudo.versao)))
       .where(onde)
       .$dynamic();
 
@@ -102,7 +120,7 @@ export async function listarConteudos(
 
   return {
     total: contagem?.total ?? 0,
-    itens: linhas.map(({ conteudo: c, pessoa_equipe: autor, categoria: cat, documento: d }) => ({
+    itens: linhas.map(({ conteudo: c, pessoa_equipe: autor, categoria: cat, datasNoAr }) => ({
       id: c.id,
       tipo: c.tipo,
       titulo: c.titulo,
@@ -116,7 +134,7 @@ export async function listarConteudos(
       jaPublicado: c.jaPublicado,
       autorId: c.autorId,
       atualizadoEm: c.atualizadoEm,
-      datasDoSelo: d ? { dataEvento: d.dataEvento, vigenciaInicio: d.vigenciaInicio, vigenciaFim: d.vigenciaFim } : null,
+      datasNoAr,
     })),
   };
 }

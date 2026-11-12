@@ -54,7 +54,7 @@ import {
 } from "@/lib/documentos/dados";
 import { tamanhoDoArquivo } from "@/lib/documentos/cartao";
 import { faltasParaPublicarDocumento, type CampoObrigatorioDocumento } from "@/lib/documentos/obrigatorios";
-import { seloDosDados } from "@/lib/documentos/selo";
+import { ROTULO_DO_SELO, selosDoEditor } from "@/lib/documentos/selo";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +96,8 @@ export type InicioDoDocumento = {
   pdf: PdfNaTela | null;
   /** O PDF da versão no ar (confirmado como oficial); null se nunca foi publicado. */
   pdfNoArId: string | null;
+  /** Os dados da versão no ar (o selo do site vem deles, E46); null se nunca foi publicado. */
+  dadosNoAr: DadosDocumento | null;
 };
 
 type Saida = { tipo: "link"; href: string } | { tipo: "formulario"; formulario: HTMLFormElement };
@@ -164,6 +166,7 @@ export function EditorDocumento({
   const [base, setBase] = React.useState(inicio.dados);
   const [pdf, setPdf] = React.useState<PdfNaTela | null>(inicio.pdf);
   const [pdfNoArId, setPdfNoArId] = React.useState<string | null>(inicio.pdfNoArId);
+  const [dadosNoAr, setDadosNoAr] = React.useState<DadosDocumento | null>(inicio.dadosNoAr);
   const [semTexto, setSemTexto] = React.useState(false);
   const [decidirDepois, setDecidirDepois] = React.useState(false);
   const [resolvendo, setResolvendo] = React.useState(false);
@@ -414,6 +417,7 @@ export function EditorDocumento({
   const tratarResposta = async (resposta: RespostaPublicarDocumento | ReturnType<typeof semConexao>, primeira: boolean) => {
     if (resposta.tipo === "publicado") {
       setPdfNoArId(dadosAtuais.current.pdfMidiaId);
+      setDadosNoAr(dadosAtuais.current);
       setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm, agendadoPara: null, motivoOculto: null });
       setMostrarFaltas(false);
       toast.success(primeira ? "Documento publicado." : "Alterações publicadas.");
@@ -602,7 +606,7 @@ export function EditorDocumento({
   };
   const emConflito = estado.situacao === "conflito" && estado.conflito;
   const vigencia = usaVigencia(tipo, dados);
-  const selo = seloDosDados(tipo, publicacao.estado, dados, new Date());
+  const selos = selosDoEditor({ tipo, estado: publicacao.estado, noAr: dadosNoAr, copia: dados, agora: new Date() });
   const nomeDoTipo = NOME_DO_TIPO[tipo];
   const rotuloPublicar = noAr ? "Publicar alterações…" : vaiAgendar ? "Agendar…" : agendado ? "Publicar agora…" : "Publicar…";
   const dicaPublicar = !conectado
@@ -631,7 +635,12 @@ export function EditorDocumento({
                 {estado.id ? `Editar ${tipo === "edital" ? "edital" : "acordo ou convenção"}` : tipo === "edital" ? "Novo edital" : "Novo acordo ou convenção"}
               </h1>
               <SeloEstado estado={publicacao.estado} />
-              <SeloVigencia selo={selo} />
+              <SeloVigencia selo={selos.noSite} />
+              {selos.mudaAoPublicar ? (
+                <span className="texto-pequeno text-texto-secundario">
+                  Depois de publicar: {selos.depois ? ROTULO_DO_SELO[selos.depois] : "sem selo"}
+                </span>
+              ) : null}
             </div>
             <StatusDoSalvamento estado={estado} temId={!!estado.id} />
           </div>

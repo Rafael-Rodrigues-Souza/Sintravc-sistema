@@ -60,11 +60,30 @@ export function seloDosCampos(
  * O selo a partir dos dados do editor: no edital com “Tem vigência” desligado, as datas de vigência
  * que sobraram na tela não contam (o servidor as limpa ao salvar, E46). No acordo, valem sempre.
  */
-export function seloDosDados(tipo: TipoDocumento, estado: EstadoConteudo, dados: DadosDocumento, agora: Date): SeloDeVigencia | null {
+export type DatasDoDocumento = Pick<DadosDocumento, "eventoData" | "eventoHora" | "temVigencia" | "vigenciaInicio" | "vigenciaFim">;
+
+export function seloDosDados(tipo: TipoDocumento, estado: EstadoConteudo, dados: DatasDoDocumento, agora: Date): SeloDeVigencia | null {
   const vigencia = usaVigencia(tipo, dados);
   return seloDosCampos(
     estado,
     { ...dados, vigenciaInicio: vigencia ? dados.vigenciaInicio : "", vigenciaFim: vigencia ? dados.vigenciaFim : "" },
     agora,
   );
+}
+
+/**
+ * Os selos do editor (E46): o do site vem da versão no ar ("só no publicado"); se as datas da cópia
+ * de trabalho mudam o selo, o editor mostra também o de depois de publicar.
+ */
+export function selosDoEditor(entrada: {
+  tipo: TipoDocumento;
+  estado: EstadoConteudo;
+  noAr: DatasDoDocumento | null;
+  copia: DatasDoDocumento;
+  agora: Date;
+}): { noSite: SeloDeVigencia | null; mudaAoPublicar: boolean; depois: SeloDeVigencia | null } {
+  if (entrada.estado !== "publicado" || !entrada.noAr) return { noSite: null, mudaAoPublicar: false, depois: null };
+  const noSite = seloDosDados(entrada.tipo, "publicado", entrada.noAr, entrada.agora);
+  const depois = seloDosDados(entrada.tipo, "publicado", entrada.copia, entrada.agora);
+  return { noSite, mudaAoPublicar: noSite !== depois, depois };
 }

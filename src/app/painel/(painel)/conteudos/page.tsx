@@ -26,7 +26,7 @@ import {
 } from "@/lib/conteudos/listar";
 import { rotuloDaNoticia } from "@/lib/conteudos/dados";
 import { rotuloDoDocumento } from "@/lib/documentos/dados";
-import { seloDeVigencia } from "@/lib/documentos/selo";
+import { seloDosDados } from "@/lib/documentos/selo";
 import { bahiaEmCampos, dataHoraNaBahia, quandoNaBahia } from "@/lib/datas";
 import { pode, type QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
@@ -404,7 +404,8 @@ function linhaDaTabela(item: ItemConteudo, quem: QuemDaEquipe, hrefRapida: strin
     hrefRapida,
     // Edital e acordo: o mesmo menu, só para o ADM (RN08, E46).
     acoes: acoesDisponiveis(item, quem),
-    seloVigencia: item.datasDoSelo ? seloDeVigencia({ estado: item.estado, ...item.datasDoSelo }, new Date()) : null,
+    // O selo é o do site: vem das datas da versão no ar, não da cópia de trabalho (E46).
+    seloVigencia: item.tipo !== "noticia" && item.datasNoAr ? seloDosDados(item.tipo, item.estado, item.datasNoAr, new Date()) : null,
     somenteVer: item.tipo !== "noticia" && !pode(quem, "editar", { tipo: "documento" }),
   };
 }

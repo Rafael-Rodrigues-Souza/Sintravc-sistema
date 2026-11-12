@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { documentoVazio } from "./dados";
-import { seloDeVigencia, seloDosCampos, seloDosDados } from "./selo";
+import { seloDeVigencia, seloDosCampos, seloDosDados, selosDoEditor } from "./selo";
 
 // 12/11/2026 às 10h00 na Bahia (UTC-3).
 const AGORA = new Date("2026-11-12T13:00:00Z");
@@ -81,5 +81,34 @@ describe("seloDosDados: o selo dos dados do editor respeita “Tem vigência” 
 
   it("acordo: a vigência vale sempre, mesmo com o interruptor desligado", () => {
     expect(seloDosDados("acordo", "publicado", { ...comVigencia, temVigencia: false }, AGORA)).toBe("vigente");
+  });
+});
+
+describe("selosDoEditor: o selo do site e o de depois de publicar (E46)", () => {
+  const noAr = { ...documentoVazio("acordo"), vigenciaInicio: "2026-11-01", vigenciaFim: "2027-10-31" };
+
+  it("publicado e sem mudança nas datas: só o selo do site", () => {
+    expect(selosDoEditor({ tipo: "acordo", estado: "publicado", noAr, copia: noAr, agora: AGORA })).toEqual({
+      noSite: "vigente",
+      mudaAoPublicar: false,
+      depois: "vigente",
+    });
+  });
+
+  it("publicado e a cópia de trabalho muda o selo: mostra os dois", () => {
+    const copia = { ...noAr, vigenciaInicio: "2025-11-01", vigenciaFim: "2026-10-31" };
+    expect(selosDoEditor({ tipo: "acordo", estado: "publicado", noAr, copia, agora: AGORA })).toEqual({
+      noSite: "vigente",
+      mudaAoPublicar: true,
+      depois: "encerrado",
+    });
+  });
+
+  it("fora do ar (rascunho, agendado): sem selo do site e sem comparação", () => {
+    expect(selosDoEditor({ tipo: "acordo", estado: "rascunho", noAr: null, copia: noAr, agora: AGORA })).toEqual({
+      noSite: null,
+      mudaAoPublicar: false,
+      depois: null,
+    });
   });
 });

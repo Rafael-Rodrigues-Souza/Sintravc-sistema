@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import { banco } from "@/lib/db";
 import { categoria, conteudo } from "@/lib/db/schema";
 import { SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
-import { documentoCompleto, documentoSalvo } from "@/testes/documentos";
+import { publicarDocumento } from "@/lib/documentos/publicar";
+import { salvarRascunhoDocumento } from "@/lib/documentos/salvar";
+import { documentoCompleto, documentoSalvo, edicaoDoDocumento } from "@/testes/documentos";
 import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 
 import { noticiaVazia, type DadosNoticia } from "./dados";
@@ -90,19 +92,26 @@ describe("listarConteudos (RF35)", () => {
 });
 
 describe("listarConteudos: documentos oficiais (RF35, RF42, E46)", () => {
-  it("a Comunicação vê editais e acordos na lista, com as datas do selo de vigência", async () => {
+  it("a Comunicação vê editais e acordos na lista, com as datas da versão no ar para o selo (E46)", async () => {
     const adm = await pessoaDaEquipe("ADM");
     const com = await pessoaDaEquipe("COM");
     const dados = await documentoCompleto("acordo", adm, { titulo: `Acordo ${randomUUID()}` });
     const salvo = await documentoSalvo(adm, "acordo", dados);
+    const rascunho = await listarConteudos({ tipo: "acordo", busca: dados.titulo }, { quem: com });
+    expect(rascunho.itens).toEqual([expect.objectContaining({ id: salvo.id, tipo: "acordo", datasNoAr: null })]);
+
+    await publicarDocumento({ id: salvo.id, revisaoBase: 1, confirmoOficial: true }, { quem: adm });
+    // A cópia de trabalho muda as datas, mas o site (e o selo da lista) continua com as publicadas.
+    await salvarRascunhoDocumento(
+      { id: salvo.id, tipo: "acordo", revisaoBase: 1, dados: { ...dados, vigenciaInicio: "2025-05-01", vigenciaFim: "2026-04-30" } },
+      edicaoDoDocumento(adm),
+    );
 
     const { itens } = await listarConteudos({ tipo: "acordo", busca: dados.titulo }, { quem: com });
-
     expect(itens).toEqual([
       expect.objectContaining({
         id: salvo.id,
-        tipo: "acordo",
-        datasDoSelo: { dataEvento: null, vigenciaInicio: "2026-05-01", vigenciaFim: "2027-04-30" },
+        datasNoAr: { eventoData: "", eventoHora: "", temVigencia: true, vigenciaInicio: "2026-05-01", vigenciaFim: "2027-04-30" },
       }),
     ]);
   });

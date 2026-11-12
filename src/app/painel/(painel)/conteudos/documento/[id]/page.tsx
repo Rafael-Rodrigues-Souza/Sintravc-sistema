@@ -74,6 +74,7 @@ export default async function PaginaDocumento({ params }: { params: Promise<{ id
         },
         pdf: documento.pdf,
         pdfNoArId: publicada?.pdf?.id ?? null,
+        dadosNoAr: publicada?.dados ?? null,
       }}
       categorias={categorias}
       intervaloMs={intervaloMs}
