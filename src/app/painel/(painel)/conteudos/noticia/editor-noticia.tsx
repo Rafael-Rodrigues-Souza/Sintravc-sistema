@@ -7,7 +7,9 @@ import {
   Cloud,
   CloudOff,
   Eye,
+  History,
   ImageIcon,
+  MoreHorizontal,
   LoaderCircle,
   Clock,
   Lock,
@@ -32,13 +34,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { acoesDisponiveis, type AcaoDoMenu } from "@/lib/conteudos/acoes-disponiveis";
 import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type ArquivoConhecido, type DadosNoticia } from "@/lib/conteudos/dados";
 import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
-import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
+import { jaFoiAoAr, temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { bahiaEmCampos, camposEmTexto, dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
+import type { QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
 import {
@@ -50,10 +54,13 @@ import {
   acaoResolverConflito,
   acaoSalvarRascunho,
 } from "../acoes";
+import { acaoRestaurarVersao } from "../acoes-ciclo-de-vida";
+import { ConfirmarAcao, MenuDeAcoes, type PedidoDeAcao } from "../ciclo-de-vida";
 import { SeloEstado } from "../selos";
 import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
 import { FontesEAnexos } from "./fontes-anexos";
+import { HistoricoDeVersoes } from "./historico";
 import { irParaImagemSemAlt } from "./imagem-no-corpo";
 import { ModalCancelarAgendamento, ModalConflito, ModalDescartarAlteracoes, ModalPublicar, ModalSair } from "./modais";
 import { SeletorDeMidia } from "./seletor-midia";
@@ -67,13 +74,24 @@ export type InicioDoEditor = {
   publicadoEm: string | null;
   /** Notícia agendada: quando entra no ar sozinha (E44). */
   agendadoPara: string | null;
+  /** Já foi ao ar alguma vez: não pode ser excluída (RN54). */
+  jaPublicado: boolean;
+  autorId: string | null;
+  /** Oculta: por que saiu do site (RN11). */
+  motivoOculto: string | null;
   dados: DadosNoticia;
   salvoEm: string | null;
   servidor: VersaoServidor | null;
 };
 
 type Saida = { tipo: "link"; href: string } | { tipo: "formulario"; formulario: HTMLFormElement };
-type Publicacao = { estado: EstadoConteudo; revisaoPublicada: number | null; publicadoEm: string | null; agendadoPara: string | null };
+type Publicacao = {
+  estado: EstadoConteudo;
+  revisaoPublicada: number | null;
+  publicadoEm: string | null;
+  agendadoPara: string | null;
+  motivoOculto: string | null;
+};
 type CamposDaData = { data: string; hora: string };
 
 /** Sugestão ao escolher "Agendar": amanhã às 08h00, no horário da Bahia. */
@@ -110,6 +128,7 @@ const MENSAGEM_DO_CAMPO: Partial<Record<CampoObrigatorio, string>> = {
  */
 export function EditorNoticia({
   pessoaId,
+  quem,
   inicio,
   categorias,
   arquivosIniciais,
@@ -117,6 +136,8 @@ export function EditorNoticia({
   limites,
 }: {
   pessoaId: string;
+  /** Quem está editando: monta o menu de ações (o servidor confere de novo, RNF01). */
+  quem: QuemDaEquipe;
   inicio: InicioDoEditor;
   categorias: { id: string; nome: string }[];
   arquivosIniciais: Record<string, ArquivoConhecido>;
@@ -314,6 +335,7 @@ export function EditorNoticia({
     revisaoPublicada: inicio.revisaoPublicada,
     publicadoEm: inicio.publicadoEm,
     agendadoPara: inicio.agendadoPara,
+    motivoOculto: inicio.motivoOculto,
   });
   const [quando, setQuando] = React.useState<"agora" | "agendar">(inicio.agendadoPara ? "agendar" : "agora");
   const [campos, setCampos] = React.useState<CamposDaData>(() =>
@@ -333,11 +355,13 @@ export function EditorNoticia({
 
   const noAr = publicacao.estado === "publicado";
   const agendada = publicacao.estado === "agendado";
+  const oculta = publicacao.estado === "oculto";
   // Rascunho com "Agendar" escolhido: o botão do topo agenda em vez de publicar (CA-US21.2).
   const vaiAgendar = !noAr && !agendada && quando === "agendar";
   // Alterações que ainda não estão no site: salvas depois da publicação ou ainda na fila (E42).
+  // Vale também para a oculta: "Mostrar no site" volta a versão publicada, sem elas (E45).
   const comAlteracoes =
-    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (noAr && estado.situacao !== "sincronizado");
+    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (jaFoiAoAr(publicacao.estado) && estado.situacao !== "sincronizado");
   const faltas = faltasParaPublicar(dados);
   const faltando = mostrarFaltas ? new Set(faltas.map((f) => f.campo)) : new Set<CampoObrigatorio>();
 
@@ -470,7 +494,13 @@ export function EditorNoticia({
     setPublicando(false);
     setConfirmar(false);
     if (resposta.tipo === "publicada") {
-      setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm, agendadoPara: null });
+      setPublicacao({
+        estado: "publicado",
+        revisaoPublicada: resposta.revisaoPublicada,
+        publicadoEm: resposta.publicadoEm,
+        agendadoPara: null,
+        motivoOculto: null,
+      });
       setMostrarFaltas(false);
       toast.success(primeira ? "Notícia publicada." : "Alterações publicadas.");
     } else if (resposta.tipo === "conflito") {
@@ -545,6 +575,72 @@ export function EditorNoticia({
     }
   };
 
+  // --- Ciclo de vida (RF40, US22) e Histórico de versões (N14, E31) -----------------------
+  const [pedido, setPedido] = React.useState<PedidoDeAcao | null>(null);
+  const [historicoAberto, setHistoricoAberto] = React.useState(false);
+  const [restaurandoVersao, setRestaurandoVersao] = React.useState(false);
+  const jaPublicado = inicio.jaPublicado || publicacao.revisaoPublicada !== null;
+  const acoesDoMenu: AcaoDoMenu[] =
+    estado.id && inicio.autorId ? acoesDisponiveis({ estado: publicacao.estado, jaPublicado, autorId: inicio.autorId }, quem) : [];
+
+  /** Salva o pendente antes da ação: oculta, arquiva ou exclui o que a pessoa está vendo. */
+  const pedirAcao = async (acao: AcaoDoMenu) => {
+    await fila.salvarAgora();
+    const depois = fila.estado();
+    if (!depois.id) return;
+    if (depois.situacao !== "sincronizado" && acao !== "excluir") {
+      toast.error("Salve o texto antes: há alterações que ainda não chegaram ao servidor.", { duration: Infinity, closeButton: true });
+      return;
+    }
+    setPedido({ acao, alvos: [{ id: depois.id, titulo: dadosAtuais.current.titulo || "Notícia sem manchete", acoes: acoesDoMenu }] });
+  };
+
+  const sairParaLista = () => {
+    liberarSaida.current = true;
+    router.push("/painel/conteudos");
+  };
+
+  const aoConcluirAcao = (acao: AcaoDoMenu, feitos: string[], extra?: { motivo?: string }) => {
+    if (feitos.length === 0) return;
+    if (acao === "ocultar") setPublicacao((atual) => ({ ...atual, estado: "oculto", motivoOculto: extra?.motivo ?? null }));
+    else if (acao === "mostrar") setPublicacao((atual) => ({ ...atual, estado: "publicado", motivoOculto: null }));
+    else if (acao === "arquivar") sairParaLista();
+    else if (acao === "excluir") {
+      // Apaga a cópia guardada neste computador e para o salvamento automático (a notícia não existe mais).
+      fila.descartar();
+      sairParaLista();
+    }
+  };
+
+  /** "Restaurar como rascunho" no Histórico (CA-US21.9): a versão vira a cópia de trabalho. */
+  const restaurarVersao = async (versao: number): Promise<boolean> => {
+    setRestaurandoVersao(true);
+    await fila.salvarAgora();
+    const { id, revisao, situacao } = fila.estado();
+    if (!id || situacao !== "sincronizado") {
+      setRestaurandoVersao(false);
+      toast.error("Salve o texto antes de restaurar uma versão.", { duration: Infinity, closeButton: true });
+      return false;
+    }
+    const resposta = await acaoRestaurarVersao({ id, versao, revisaoBase: revisao }, sessaoEdicao).catch(semConexao);
+    setRestaurandoVersao(false);
+    if (resposta.tipo === "restaurada") {
+      dadosAtuais.current = resposta.dados;
+      setDados(resposta.dados);
+      setBase(resposta.dados);
+      fila.conflitoResolvido({ tipo: "salvo", id, revisao: resposta.revisao, salvoEm: resposta.salvoEm });
+      toast.success(`Versão ${versao} restaurada como rascunho. O site continua igual até você publicar.`);
+      return true;
+    }
+    if (resposta.tipo === "conflito") {
+      setHistoricoAberto(false);
+      await mostrarConflito();
+      return false;
+    }
+    toast.error(resposta.mensagem, { duration: Infinity, closeButton: true });
+    return false;
+  };
+
   const erroDoCampo = (campo: keyof DadosNoticia) => {
     if (estado.erro?.campo === campo) return estado.erro.mensagem;
     return ehCampoObrigatorio(campo) && faltando.has(campo) ? MENSAGEM_DO_CAMPO[campo] : undefined;
@@ -555,9 +651,11 @@ export function EditorNoticia({
   const rotuloPublicar = noAr ? "Publicar alterações…" : vaiAgendar ? "Agendar…" : agendada ? "Publicar agora…" : "Publicar…";
   const dicaPublicar = !conectado
     ? DICA_SEM_INTERNET
-    : noAr && !comAlteracoes
-      ? "Nada novo para publicar: o site já mostra esta versão"
-      : null;
+    : oculta
+      ? "Notícia oculta: mostre no site antes de publicar alterações"
+      : noAr && !comAlteracoes
+        ? "Nada novo para publicar: o site já mostra esta versão"
+        : null;
 
   return (
     <div data-editor-noticia className="flex flex-1 flex-col">
@@ -595,7 +693,7 @@ export function EditorNoticia({
             <BotaoTravado rotulo="Pré-visualizar" dica="Escreva a notícia para pré-visualizar" icone={<Eye aria-hidden />} />
           )}
           <Button type="button" variant="secundario" size="pequeno" onClick={() => void fila.salvarAgora()}>
-            {noAr ? "Salvar" : "Salvar rascunho"}
+            {jaFoiAoAr(publicacao.estado) ? "Salvar" : "Salvar rascunho"}
           </Button>
           {dicaPublicar ? (
             <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} />
@@ -611,6 +709,17 @@ export function EditorNoticia({
               {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
             </Button>
           )}
+          {estado.id ? (
+            <MenuDeAcoes
+              acoes={acoesDoMenu}
+              aoPedir={(acao) => void pedirAcao(acao)}
+              extras={[{ rotulo: "Histórico de versões", icone: History, aoSelecionar: () => setHistoricoAberto(true) }]}
+            >
+              <Button type="button" variant="secundario" size="pequeno" aria-label="Mais ações" className="px-3 has-[>svg]:pl-3">
+                <MoreHorizontal aria-hidden />
+              </Button>
+            </MenuDeAcoes>
+          ) : null}
         </div>
       </header>
 
@@ -638,6 +747,20 @@ export function EditorNoticia({
               </ul>
             </Alerta>
           ) : null}
+          {oculta ? (
+            <Alerta tipo="aviso" titulo="Esta notícia está fora do site">
+              <div className="flex flex-col items-start gap-2">
+                {publicacao.motivoOculto ? `Motivo: ${publicacao.motivoOculto}` : "Ela foi ocultada."} Você pode continuar editando: as
+                mudanças ficam guardadas aqui.
+                {acoesDoMenu.includes("mostrar") ? (
+                  <Button type="button" variant="secundario" size="pequeno" disabled={!conectado} onClick={() => void pedirAcao("mostrar")}>
+                    <Eye aria-hidden />
+                    Mostrar no site
+                  </Button>
+                ) : null}
+              </div>
+            </Alerta>
+          ) : null}
           {agendada && publicacao.agendadoPara ? (
             <Alerta tipo="informacao" titulo={`Agendada para ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}`}>
               <div className="flex flex-col items-start gap-2">
@@ -657,7 +780,9 @@ export function EditorNoticia({
           {comAlteracoes ? (
             <Alerta tipo="informacao" titulo="Há alterações que ainda não estão no site">
               <div className="flex flex-col items-start gap-2">
-                O site continua mostrando a versão publicada até você publicar as alterações.
+                {oculta
+                  ? "Ao mostrar no site, volta a versão publicada. Depois, publique as alterações."
+                  : "O site continua mostrando a versão publicada até você publicar as alterações."}
                 <Button
                   type="button"
                   variant="secundario"
@@ -1010,6 +1135,17 @@ export function EditorNoticia({
         aoVoltar={() => setConfirmarDescarte(false)}
         aoConfirmar={() => void descartarAlteracoes()}
       />
+      <ConfirmarAcao pedido={pedido} aoFechar={() => setPedido(null)} aoConcluir={aoConcluirAcao} />
+      {estado.id ? (
+        <HistoricoDeVersoes
+          id={estado.id}
+          aberto={historicoAberto}
+          comAlteracoes={comAlteracoes}
+          restaurando={restaurandoVersao}
+          aoFechar={() => setHistoricoAberto(false)}
+          aoRestaurar={restaurarVersao}
+        />
+      ) : null}
       {emConflito ? (
         <ModalConflito
           aberto={!decidirDepois}

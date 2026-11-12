@@ -12,6 +12,7 @@ import { salvarEdicaoRapida } from "@/lib/conteudos/edicao-rapida";
 import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
+import { MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import type { RespostaEnvio } from "@/lib/conteudos/fila-rascunho";
 import { descartarAlteracoes, ErroFaltamCampos, publicarNoticia } from "@/lib/conteudos/publicar";
@@ -199,8 +200,9 @@ const esquemaReagendar = z.object({ id: z.uuid(), quando: esquemaQuando });
 const esquemaEdicaoRapida = esquemaRevisao.extend({
   titulo: z.string().max(1000),
   categoriaId: z.uuid().nullable(),
-  situacao: z.enum(["rascunho", "agendado", "publicado"]),
+  situacao: z.enum(["rascunho", "agendado", "publicado", "oculto"]),
   quando: esquemaQuando.nullable(),
+  motivo: z.string().max(MOTIVO_OCULTAR_MAXIMO).optional(),
 });
 
 const DATA_INVALIDA = "Escolha uma data e uma hora válidas.";

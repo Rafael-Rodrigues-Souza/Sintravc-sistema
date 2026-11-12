@@ -8,7 +8,9 @@ import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } fr
 import type { DadosNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
 import { faltasParaPublicar, type CampoObrigatorio } from "./obrigatorios";
+import { jaFoiAoAr } from "./publicacao";
 import { gravarPorCima, gravarUsos, registrarAtividadeNoticia, travarNoticia } from "./salvar";
+import { resumirMudancas } from "./versoes";
 
 export type DepsDaPublicacao = {
   quem: QuemDaEquipe;
@@ -131,7 +133,8 @@ export async function descartarAlteracoes(
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, entrada.id))! };
     }
-    const noAr = atual.estado === "publicado" ? await retratoNoAr(tx, entrada.id) : null;
+    // Publicada ou oculta: a cópia de trabalho volta à versão que foi ao ar (E42, E45).
+    const noAr = jaFoiAoAr(atual.estado) ? await retratoNoAr(tx, entrada.id) : null;
     if (!noAr) {
       throw new ErroConteudo("invalido", "Esta notícia não está no ar, então não há alterações para descartar.");
     }
@@ -183,22 +186,44 @@ async function slugLivre(tx: Transacao, titulo: string) {
   for (let n = 2; ; n++) if (!usados.has(`${base}-${n}`)) return `${base}-${n}`;
 }
 
-export type VersaoPublicada = { versao: number; criadoPor: string; criadoPorNome: string; criadoEm: Date; dados: DadosNoticia };
+export type VersaoPublicada = {
+  versao: number;
+  criadoPor: string;
+  criadoPorNome: string;
+  criadoEm: Date;
+  /** É a versão que o site mostra agora (a notícia está publicada e esta é a `versao` atual). */
+  noAr: boolean;
+  /** A notícia está oculta e esta é a versão que volta com "Mostrar no site" (E45). */
+  voltaAoSite: boolean;
+  /** O que mudou em relação à versão anterior (N14). */
+  resumo: string;
+  dados: DadosNoticia;
+};
 
-/** Versões publicadas da notícia, da mais nova para a mais antiga (E31). */
+/** Versões publicadas da notícia, da mais nova para a mais antiga (E31, N14). */
 export async function versoesDaNoticia(id: string, deps: { quem: QuemDaEquipe }): Promise<VersaoPublicada[]> {
   exigir(deps.quem, "ver_versoes", { tipo: "noticia" });
-  const linhas = await banco()
-    .select({ v: conteudoVersao, nome: pessoaEquipe.nome })
-    .from(conteudoVersao)
-    .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudoVersao.criadoPor))
-    .where(eq(conteudoVersao.conteudoId, id))
-    .orderBy(desc(conteudoVersao.versao));
-  return linhas.map(({ v, nome }) => ({
-    versao: v.versao,
-    criadoPor: v.criadoPor,
-    criadoPorNome: nome,
-    criadoEm: v.criadoEm,
-    dados: (v.snapshot as RetratoDaNoticia).dados,
-  }));
+  const [linhas, [atual]] = await Promise.all([
+    banco()
+      .select({ v: conteudoVersao, nome: pessoaEquipe.nome })
+      .from(conteudoVersao)
+      .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudoVersao.criadoPor))
+      .where(eq(conteudoVersao.conteudoId, id))
+      .orderBy(desc(conteudoVersao.versao)),
+    banco().select({ estado: conteudo.estado, versao: conteudo.versao }).from(conteudo).where(eq(conteudo.id, id)),
+  ]);
+  return linhas.map(({ v, nome }, i) => {
+    const dados = (v.snapshot as RetratoDaNoticia).dados;
+    const anterior = linhas[i + 1];
+    return {
+      versao: v.versao,
+      criadoPor: v.criadoPor,
+      criadoPorNome: nome,
+      criadoEm: v.criadoEm,
+      noAr: atual?.estado === "publicado" && atual.versao === v.versao,
+      voltaAoSite: atual?.estado === "oculto" && atual.versao === v.versao,
+      resumo: resumirMudancas(anterior ? (anterior.v.snapshot as RetratoDaNoticia).dados : null, dados),
+      dados,
+    };
+  });
 }

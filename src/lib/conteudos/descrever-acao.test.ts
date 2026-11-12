@@ -19,6 +19,15 @@ describe("descreverAcao: as Últimas ações da Edição rápida (Figma 115:2324
     expect(descreverAcao("noticia.cancelar_agendamento", {})).toBe("Agendamento cancelado");
   });
 
+  it("ciclo de vida (#11): ocultar, mostrar, arquivar, desfazer, restaurar e versões", () => {
+    expect(descreverAcao("noticia.ocultar", {})).toBe("Ocultado do site");
+    expect(descreverAcao("noticia.mostrar", { versao: 2 })).toBe("De volta ao site");
+    expect(descreverAcao("noticia.arquivar", { estado_anterior: "publicado" })).toBe("Arquivado");
+    expect(descreverAcao("noticia.desfazer_arquivamento", { estado: "publicado" })).toBe("Arquivamento desfeito");
+    expect(descreverAcao("noticia.restaurar", {})).toBe("Restaurado como rascunho");
+    expect(descreverAcao("noticia.restaurar_versao", { versao: 1 })).toBe("Versão 1 restaurada como rascunho");
+  });
+
   it("ação desconhecida não quebra a tela", () => {
     expect(descreverAcao("noticia.algo_novo", {})).toBe("Alteração registrada");
   });

@@ -39,19 +39,20 @@ describe("registrarAtividade", () => {
         ator: { tipo: "pessoa", id: "0190f0c4-0000-7000-8000-000000000001" },
         acao: "noticia.ocultar",
         area: "conteudos",
-        alvo: { tipo: "noticia", id: "42", rotulo: "Assembleia geral" },
+        alvo: { tipo: "noticia", id: "alvo-do-teste-de-registro", rotulo: "Assembleia geral" },
         detalhe: { de: "publicado", para: "oculto" },
         motivo: "Informação errada",
       }),
     );
 
-    const [registro] = await buscarPorAcao("noticia.ocultar");
+    // Pelo alvo, que é só deste teste: outros arquivos também registram "noticia.ocultar" no mesmo banco.
+    const [registro] = await banco().select().from(atividade).where(eq(atividade.alvoId, "alvo-do-teste-de-registro"));
     expect(registro).toMatchObject({
       atorTipo: "pessoa",
       atorId: "0190f0c4-0000-7000-8000-000000000001",
       area: "conteudos",
       alvoTipo: "noticia",
-      alvoId: "42",
+      alvoId: "alvo-do-teste-de-registro",
       alvoRotulo: "Assembleia geral",
       detalhe: { de: "publicado", para: "oculto" },
       motivo: "Informação errada",

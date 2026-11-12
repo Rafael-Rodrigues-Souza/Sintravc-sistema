@@ -19,7 +19,21 @@ export default async function PaginaNovaNoticia() {
   return (
     <EditorNoticia
       pessoaId={pessoa.id}
-      inicio={{ id: null, revisao: 0, estado: "rascunho", revisaoPublicada: null, publicadoEm: null, agendadoPara: null, dados: noticiaVazia(), salvoEm: null, servidor: null }}
+      quem={pessoa.quem}
+      inicio={{
+        id: null,
+        revisao: 0,
+        estado: "rascunho",
+        revisaoPublicada: null,
+        publicadoEm: null,
+        agendadoPara: null,
+        jaPublicado: false,
+        autorId: pessoa.id,
+        motivoOculto: null,
+        dados: noticiaVazia(),
+        salvoEm: null,
+        servidor: null,
+      }}
       categorias={categorias}
       arquivosIniciais={arquivos}
       intervaloMs={intervaloMs}

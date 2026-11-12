@@ -7,7 +7,7 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { lerNoticia, retratoNoAr, type NoticiaAberta } from "./carregar";
 import { rotuloDaNoticia, type DadosNoticia } from "./dados";
-import { noticiaNaoEncontrada } from "./erros";
+import { noticiaArquivada, noticiaNaoEncontrada } from "./erros";
 import { midiasDaNoticia, validarNoticia, type UrlDoArquivo } from "./validar";
 
 export type DepsDoSalvamento = {
@@ -44,6 +44,9 @@ export async function salvarRascunhoNoticia(
   return banco().transaction(async (tx) => {
     // Trava a linha: dois salvamentos ao mesmo tempo não passam os dois pela conferência da revisão.
     const atual = await travarNoticia(tx, id);
+    if (atual.estado === "arquivado") {
+      throw noticiaArquivada();
+    }
     const dados = await validarNoticia(tx, entrada.dados, deps.urlDoArquivo);
     if (atual.revisao !== entrada.revisaoBase) {
       return { tipo: "conflito", servidor: (await lerNoticia(tx, id))! };
@@ -84,7 +87,14 @@ export type AcaoDaNoticia =
   | "noticia.descartar_alteracoes"
   | "noticia.agendar"
   | "noticia.reagendar"
-  | "noticia.cancelar_agendamento";
+  | "noticia.cancelar_agendamento"
+  | "noticia.ocultar"
+  | "noticia.mostrar"
+  | "noticia.arquivar"
+  | "noticia.desfazer_arquivamento"
+  | "noticia.restaurar"
+  | "noticia.restaurar_versao"
+  | "noticia.excluir";
 
 export async function registrarAtividadeNoticia(
   tx: Transacao,
@@ -93,6 +103,7 @@ export async function registrarAtividadeNoticia(
   titulo: string,
   deps: { quem: QuemDaEquipe; sessaoEdicao?: string },
   detalhe: Record<string, unknown> = {},
+  motivo?: string,
 ) {
   await registrarAtividade(tx, {
     ator: { tipo: "pessoa", id: deps.quem.id },
@@ -100,6 +111,7 @@ export async function registrarAtividadeNoticia(
     area: "conteudos",
     alvo: { tipo: "noticia", id, rotulo: rotuloDaNoticia(titulo) },
     detalhe: deps.sessaoEdicao ? { ...detalhe, sessao: deps.sessaoEdicao } : detalhe,
+    motivo,
   });
 }
 

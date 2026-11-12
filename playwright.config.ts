@@ -59,6 +59,8 @@ export default defineConfig({
     url: `${URL_BASE}/`,
     timeout: 240_000,
     reuseExistingServer: false,
-    env: { ...ambienteE2E, NEXT_TELEMETRY_DISABLED: "1" },
+    // DATABASE_URL_E2E: aqui o DATABASE_URL já é o do e2e; sem ela, o apagar-banco.ts calcularia
+    // "sintravc_e2e_e2e" e deixaria o banco da rodada anterior de pé (a fila ligaria nele).
+    env: { ...ambienteE2E, DATABASE_URL_E2E: BANCO_E2E, NEXT_TELEMETRY_DISABLED: "1" },
   },
 });

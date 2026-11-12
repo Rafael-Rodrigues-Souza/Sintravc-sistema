@@ -13,5 +13,9 @@ export class ErroConteudo extends Error {
   }
 }
 
+/** A notícia arquivada não se edita (RN10, E45): primeiro, restaurar como rascunho. */
+export const noticiaArquivada = () =>
+  new ErroConteudo("invalido", "Esta notícia está arquivada. Restaure como rascunho para editar.");
+
 export const noticiaNaoEncontrada = () =>
   new ErroConteudo("nao_encontrada", "Esta notícia não existe mais. Volte para Conteúdos e atualize a lista.");

@@ -18,6 +18,8 @@ export type FiltrosConteudos = {
   autorId?: string;
   busca?: string;
   pagina?: number;
+  /** Aba Arquivados (RF35): só os arquivados. Sem ela, os arquivados ficam fora (RN10). */
+  arquivados?: boolean;
 };
 
 export type ItemConteudo = {
@@ -30,6 +32,12 @@ export type ItemConteudo = {
   publicadoEm: Date | null;
   /** Agendado: quando entra no ar sozinho (E44). */
   agendadoPara: Date | null;
+  /** Oculto: desde quando está fora do site e por quê (E45). */
+  ocultadoEm: Date | null;
+  motivoOculto: string | null;
+  /** Para o menu de ações: excluir só o rascunho nunca publicado, do autor ou pelo ADM (RN54). */
+  jaPublicado: boolean;
+  autorId: string;
   atualizadoEm: Date;
 };
 
@@ -44,7 +52,7 @@ function condicaoDaBusca(busca: string | undefined): SQL | undefined {
 
 /**
  * Lista de Conteúdos (RF35): da alteração mais recente para a mais antiga, com filtros, busca e
- * páginas. Arquivados ficam fora (aba própria, #11).
+ * páginas. Os arquivados ficam fora das listas (RN10) e têm aba própria (`arquivados`).
  */
 export async function listarConteudos(
   filtros: FiltrosConteudos,
@@ -53,7 +61,7 @@ export async function listarConteudos(
   exigir(deps.quem, "ver", { tipo: "noticia" });
   const pagina = Math.max(1, filtros.pagina ?? 1);
   const onde = and(
-    ne(conteudo.estado, "arquivado"),
+    filtros.arquivados ? eq(conteudo.estado, "arquivado") : ne(conteudo.estado, "arquivado"),
     filtros.tipo ? eq(conteudo.tipo, filtros.tipo) : undefined,
     filtros.estado ? eq(conteudo.estado, filtros.estado) : undefined,
     filtros.categoriaId ? eq(conteudo.categoriaId, filtros.categoriaId) : undefined,
@@ -94,22 +102,31 @@ export async function listarConteudos(
       autorNome: autor.nome,
       publicadoEm: c.publicadoEm,
       agendadoPara: c.agendadoPara,
+      ocultadoEm: c.ocultadoEm,
+      motivoOculto: c.motivoOculto,
+      jaPublicado: c.jaPublicado,
+      autorId: c.autorId,
       atualizadoEm: c.atualizadoEm,
     })),
   };
 }
 
-/** Quantos conteúdos de cada tipo (sem arquivados), para as abas da lista. */
-export async function contarConteudosPorTipo(deps: { quem: QuemDaEquipe }): Promise<Record<TipoConteudo | "todos", number>> {
+/** Quantos conteúdos de cada tipo (sem arquivados), e quantos arquivados, para as abas da lista. */
+export async function contarConteudosPorTipo(
+  deps: { quem: QuemDaEquipe },
+): Promise<Record<TipoConteudo | "todos" | "arquivados", number>> {
   exigir(deps.quem, "ver", { tipo: "noticia" });
   const linhas = await banco()
-    .select({ tipo: conteudo.tipo, total: count() })
+    .select({ tipo: conteudo.tipo, arquivado: sql<boolean>`${conteudo.estado} = 'arquivado'`, total: count() })
     .from(conteudo)
-    .where(ne(conteudo.estado, "arquivado"))
-    .groupBy(conteudo.tipo);
-  const porTipo = { todos: 0, noticia: 0, edital: 0, acordo: 0 };
-  for (const { tipo, total } of linhas) {
-    porTipo[tipo] = total;
+    .groupBy(conteudo.tipo, sql`${conteudo.estado} = 'arquivado'`);
+  const porTipo = { todos: 0, noticia: 0, edital: 0, acordo: 0, arquivados: 0 };
+  for (const { tipo, arquivado, total } of linhas) {
+    if (arquivado) {
+      porTipo.arquivados += total;
+      continue;
+    }
+    porTipo[tipo] += total;
     porTipo.todos += total;
   }
   return porTipo;

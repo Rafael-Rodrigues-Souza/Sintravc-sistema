@@ -9,6 +9,8 @@ import { atividadesDe, idDaCategoria, noticiaCompleta, rascunhoSalvo } from "@/t
 import { agendarNoticia } from "./agendar";
 import { carregarNoticia, retratoNoAr } from "./carregar";
 import { salvarEdicaoRapida, ultimasAcoes, type EntradaEdicaoRapida } from "./edicao-rapida";
+import { ocultarNoticias } from "./ciclo-de-vida";
+import { ErroConteudo } from "./erros";
 import { ErroFaltamCampos, publicarNoticia } from "./publicar";
 
 const AGORA = new Date("2026-11-02T12:00:00Z");
@@ -29,8 +31,10 @@ async function entrada(id: string, mudancas: Partial<EntradaEdicaoRapida> = {}):
     revisaoBase: atual.revisao,
     titulo: atual.dados.titulo,
     categoriaId: atual.dados.categoriaId,
-    situacao: atual.estado === "agendado" ? "agendado" : atual.estado === "publicado" ? "publicado" : "rascunho",
+    situacao:
+      atual.estado === "agendado" || atual.estado === "publicado" || atual.estado === "oculto" ? atual.estado : "rascunho",
     para: atual.agendadoPara,
+    motivo: atual.motivoOculto ?? "",
     ...mudancas,
   };
 }
@@ -118,6 +122,55 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
     expect(resultado).toMatchObject({ tipo: "salva", estado: "publicado", temAlteracoesNaoPublicadas: true });
     expect((await carregarNoticia(id, { quem }))!.dados.titulo).toBe("Título só na cópia");
     expect((await retratoNoAr(banco(), id))!.dados.titulo).toBe(TITULO_ORIGINAL);
+  });
+
+  it("publicada para Oculto sem motivo: não grava nada, nem o título (CA-US22.1)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+
+    const erro = await salvarEdicaoRapida(await entrada(id, { titulo: "Outro título", situacao: "oculto", motivo: "  " }), depsDe(quem).deps).catch(
+      (e) => e,
+    );
+
+    expect(erro).toBeInstanceOf(ErroConteudo);
+    expect(erro).toMatchObject({ campo: "motivo" });
+    expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "publicado", dados: expect.objectContaining({ titulo: TITULO_ORIGINAL }) });
+  });
+
+  it("publicada para Oculto com motivo: sai do site e a Atividade guarda o motivo (E44, #11)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+
+    const resultado = await salvarEdicaoRapida(await entrada(id, { situacao: "oculto", motivo: "Foto sem autorização" }), depsDe(quem).deps);
+
+    expect(resultado).toMatchObject({ tipo: "salva", estado: "oculto" });
+    expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "oculto", motivoOculto: "Foto sem autorização" });
+    expect((await atividadesDe(id)).at(-1)).toMatchObject({ acao: "noticia.ocultar", motivo: "Foto sem autorização" });
+  });
+
+  it("oculta com título mudado: avisa que há alterações que ainda não estão no site (E45)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+
+    const resultado = await salvarEdicaoRapida(await entrada(id, { titulo: "Título revisado" }), depsDe(quem).deps);
+
+    expect(resultado).toMatchObject({ tipo: "salva", estado: "oculto", temAlteracoesNaoPublicadas: true });
+  });
+
+  it("oculta para Publicado: volta ao site (Mostrar no site)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+
+    const resultado = await salvarEdicaoRapida(await entrada(id, { situacao: "publicado" }), depsDe(quem).deps);
+
+    expect(resultado).toMatchObject({ tipo: "salva", estado: "publicado" });
+    expect((await atividadesDe(id)).at(-1)).toMatchObject({ acao: "noticia.mostrar" });
   });
 
   it("sem mudança no título nem na categoria, não sobe a revisão nem registra edição", async () => {
