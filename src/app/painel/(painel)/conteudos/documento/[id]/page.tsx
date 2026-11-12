@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { forbidden, notFound } from "next/navigation";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
-import { carregarDocumento } from "@/lib/documentos/carregar";
+import { carregarDocumento, versaoPublicadaDoDocumento } from "@/lib/documentos/carregar";
 import { pode } from "@/lib/permissoes";
 import { ehUuid } from "@/lib/uuid";
 
@@ -24,12 +24,14 @@ export default async function PaginaDocumento({ params }: { params: Promise<{ id
   if (!ehUuid(id)) notFound();
   const documento = await carregarDocumento(id, { quem: pessoa.quem });
   if (!documento) notFound();
+  const publicada = await versaoPublicadaDoDocumento(id, { quem: pessoa.quem });
 
   if (!pode(pessoa.quem, "editar", { tipo: "documento" })) {
-    const categoria = documento.dados.categoriaId
-      ? (await prepararEditorDocumento(pessoa.quem).catch(() => null))?.categorias.find((c) => c.id === documento.dados.categoriaId)?.nome
+    const categoriaId = publicada?.dados.categoriaId;
+    const categoria = categoriaId
+      ? (await prepararEditorDocumento(pessoa.quem).catch(() => null))?.categorias.find((c) => c.id === categoriaId)?.nome
       : undefined;
-    return <DocumentoSoLeitura documento={documento} categoria={categoria ?? null} />;
+    return <DocumentoSoLeitura documento={documento} publicada={publicada} categoria={categoria ?? null} />;
   }
 
   // Arquivado não se edita (o servidor também recusa): só restaurar como rascunho (RN10).
@@ -71,6 +73,7 @@ export default async function PaginaDocumento({ params }: { params: Promise<{ id
           salvoEm: documento.atualizadoEm.toISOString(),
         },
         pdf: documento.pdf,
+        pdfNoArId: publicada?.pdf?.id ?? null,
       }}
       categorias={categorias}
       intervaloMs={intervaloMs}

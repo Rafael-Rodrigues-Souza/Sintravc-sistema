@@ -94,6 +94,8 @@ export type InicioDoDocumento = {
   salvoEm: string | null;
   servidor: VersaoServidor<DadosDocumento> | null;
   pdf: PdfNaTela | null;
+  /** O PDF da versão no ar (confirmado como oficial); null se nunca foi publicado. */
+  pdfNoArId: string | null;
 };
 
 type Saida = { tipo: "link"; href: string } | { tipo: "formulario"; formulario: HTMLFormElement };
@@ -161,6 +163,7 @@ export function EditorDocumento({
   const [dados, setDados] = React.useState(inicio.dados);
   const [base, setBase] = React.useState(inicio.dados);
   const [pdf, setPdf] = React.useState<PdfNaTela | null>(inicio.pdf);
+  const [pdfNoArId, setPdfNoArId] = React.useState<string | null>(inicio.pdfNoArId);
   const [semTexto, setSemTexto] = React.useState(false);
   const [decidirDepois, setDecidirDepois] = React.useState(false);
   const [resolvendo, setResolvendo] = React.useState(false);
@@ -410,6 +413,7 @@ export function EditorDocumento({
 
   const tratarResposta = async (resposta: RespostaPublicarDocumento | ReturnType<typeof semConexao>, primeira: boolean) => {
     if (resposta.tipo === "publicado") {
+      setPdfNoArId(dadosAtuais.current.pdfMidiaId);
       setPublicacao({ estado: "publicado", revisaoPublicada: resposta.revisaoPublicada, publicadoEm: resposta.publicadoEm, agendadoPara: null, motivoOculto: null });
       setMostrarFaltas(false);
       toast.success(primeira ? "Documento publicado." : "Alterações publicadas.");
@@ -854,6 +858,13 @@ export function EditorDocumento({
               erro={erroDoCampo("pdfMidiaId")}
               aoEnviar={aoEnviarPdf}
             />
+            {pdf && pdf.id !== pdfNoArId ? (
+              <Alerta tipo="aviso" titulo="Este PDF ainda não foi publicado como oficial">
+                {pdfNoArId
+                  ? "O site e a Comunicação continuam com o PDF publicado até você publicar as alterações e confirmar que este é a versão oficial e assinada."
+                  : "Ele vai para o site quando você publicar e confirmar que é a versão oficial e assinada. Até lá, só o Administrador geral vê."}
+              </Alerta>
+            ) : null}
             {semTexto ? (
               <Alerta tipo="aviso" titulo="Não encontramos texto neste PDF">
                 Ele pode ser uma imagem escaneada. Digite abaixo as palavras principais, para a busca do site achar o documento.

@@ -15,7 +15,7 @@ const texto = (status: number, corpo: string) =>
  * GET /painel/documentos/[id]/pdf: o PDF oficial no painel (RF42, E46). Na Mídia, o PDF é gravado
  * para baixar (`attachment`, E39); aqui o painel escolhe: "Visualizar" abre no navegador (`inline`)
  * e "Baixar PDF" baixa com o nome do arquivo. Confere a sessão e a permissão a cada pedido (RNF01):
- * a Comunicação vê e baixa; o PDF de uma versão antiga, só quem vê o histórico.
+ * a Comunicação vê e baixa só o PDF publicado; o da cópia de trabalho e o de uma versão antiga, só o ADM.
  */
 export async function tratarPdfDoDocumento(
   request: Request,
@@ -31,10 +31,14 @@ export async function tratarPdfDoDocumento(
   }
 
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pedido.id)) return texto(404, "Este documento não existe.");
+  // O PDF da cópia de trabalho ainda não foi confirmado como oficial: só quem edita (o ADM) vê.
+  // Quem só vê e baixa (a COM) recebe o da versão publicada (RN12, E46).
   const pdfMidiaId =
     pedido.versao !== undefined
       ? (await retratoDoDocumento(banco(), pedido.id, pedido.versao))?.dados.pdfMidiaId
-      : (await lerDocumento(banco(), pedido.id))?.dados.pdfMidiaId;
+      : pode(pessoa.quem, "editar", { tipo: "documento" })
+        ? (await lerDocumento(banco(), pedido.id))?.dados.pdfMidiaId
+        : (await retratoDoDocumento(banco(), pedido.id))?.dados.pdfMidiaId;
   if (!pdfMidiaId) return texto(404, "Este documento não tem PDF.");
 
   const [arquivo] = await banco()

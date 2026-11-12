@@ -129,3 +129,24 @@ export async function retratoDoDocumento(
     );
   return linha ? (linha.snapshot as RetratoDoDocumento) : null;
 }
+
+/**
+ * A versão que está no ar, com o PDF dela (RF42, RN12, E46): é o que a Comunicação vê e baixa. O
+ * PDF da cópia de trabalho ainda não foi confirmado como oficial e fica só com o ADM. Null se o
+ * documento nunca foi publicado.
+ */
+export async function versaoPublicadaDoDocumento(
+  id: string,
+  deps: { quem: QuemDaEquipe },
+): Promise<{ dados: DadosDocumento; pdf: PdfDoDocumento | null } | null> {
+  exigir(deps.quem, "ver", { tipo: "documento" });
+  const retrato = await retratoDoDocumento(banco(), id);
+  if (!retrato) return null;
+  const [pdf] = retrato.dados.pdfMidiaId
+    ? await banco()
+        .select({ id: midia.id, nomeArquivo: midia.nomeArquivo, bytes: midia.bytes, paginas: midia.paginas })
+        .from(midia)
+        .where(eq(midia.id, retrato.dados.pdfMidiaId))
+    : [];
+  return { dados: retrato.dados, pdf: pdf ?? null };
+}

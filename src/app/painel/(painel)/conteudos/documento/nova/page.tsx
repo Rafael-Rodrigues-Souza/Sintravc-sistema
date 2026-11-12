@@ -37,6 +37,7 @@ export default async function PaginaNovoDocumento({ searchParams }: { searchPara
         salvoEm: null,
         servidor: null,
         pdf: null,
+        pdfNoArId: null,
       }}
       categorias={categorias}
       intervaloMs={intervaloMs}

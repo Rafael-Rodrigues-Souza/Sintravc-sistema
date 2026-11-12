@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { dataHoraNaBahia } from "@/lib/datas";
-import type { DocumentoAberto } from "@/lib/documentos/carregar";
+import type { DocumentoAberto, PdfDoDocumento } from "@/lib/documentos/carregar";
 import { tamanhoDoArquivo } from "@/lib/documentos/cartao";
-import { NOME_DO_TIPO, ROTULO_DO_SUBTIPO, rotuloDoDocumento, usaVigencia } from "@/lib/documentos/dados";
+import { NOME_DO_TIPO, ROTULO_DO_SUBTIPO, rotuloDoDocumento, usaVigencia, type DadosDocumento } from "@/lib/documentos/dados";
 import { seloDosCampos } from "@/lib/documentos/selo";
 
 import { SeloEstado, SeloVigencia } from "../selos";
@@ -14,11 +14,24 @@ import { SeloEstado, SeloVigencia } from "../selos";
 const dia = (valor: string) => (valor ? valor.split("-").reverse().join("/") : "");
 
 /**
- * Documento oficial para quem só vê e baixa, a Comunicação (RF42, CA-US23.2): os dados e o PDF, sem
- * editar, substituir nem remover. As ações também são negadas no servidor (RN08, RNF01).
+ * Documento oficial para quem só vê e baixa, a Comunicação (RF42, CA-US23.2): os dados e o PDF da
+ * versão publicada, sem editar, substituir nem remover. O que o ADM ainda não publicou (inclusive um
+ * PDF novo, não confirmado como oficial) não aparece aqui (RN12, E46). As ações também são negadas
+ * no servidor (RN08, RNF01).
  */
-export function DocumentoSoLeitura({ documento, categoria }: { documento: DocumentoAberto; categoria: string | null }) {
-  const { dados, tipo, pdf } = documento;
+export function DocumentoSoLeitura({
+  documento,
+  publicada,
+  categoria,
+}: {
+  documento: DocumentoAberto;
+  /** A versão no ar; null se o documento nunca foi publicado. */
+  publicada: { dados: DadosDocumento; pdf: PdfDoDocumento | null } | null;
+  categoria: string | null;
+}) {
+  const { tipo } = documento;
+  const dados = publicada?.dados ?? documento.dados;
+  const pdf = publicada?.pdf ?? null;
   const linhas: [string, string][] = [
     ["Número ou identificação", dados.numero],
     [tipo === "edital" ? "Tipo de edital" : "Tipo de acordo", dados.subtipo ? ROTULO_DO_SUBTIPO[dados.subtipo] : ""],
@@ -51,7 +64,7 @@ export function DocumentoSoLeitura({ documento, categoria }: { documento: Docume
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate texto-titulo-card text-texto-primario">{rotuloDoDocumento(tipo, dados.titulo)}</h1>
             <SeloEstado estado={documento.estado} />
-            <SeloVigencia selo={seloDosCampos(documento.estado, dados, new Date())} />
+            {publicada ? <SeloVigencia selo={seloDosCampos(documento.estado, dados, new Date())} /> : null}
           </div>
           <p className="texto-pequeno text-texto-secundario">{NOME_DO_TIPO[tipo]}</p>
         </div>
@@ -60,6 +73,12 @@ export function DocumentoSoLeitura({ documento, categoria }: { documento: Docume
       <Alerta tipo="informacao" titulo="Você pode ver e baixar este documento">
         Só o Administrador geral edita, substitui ou remove documentos oficiais.
       </Alerta>
+
+      {publicada ? null : (
+        <Alerta tipo="aviso" titulo="Este documento ainda não foi publicado">
+          O PDF e os dados aparecem aqui quando o Administrador geral publicar e confirmar que é a versão oficial e assinada.
+        </Alerta>
+      )}
 
       <section aria-labelledby="titulo-arquivo" className="flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-5 sm:p-6">
         <h2 id="titulo-arquivo" className="texto-titulo-card text-texto-primario">
@@ -93,10 +112,11 @@ export function DocumentoSoLeitura({ documento, categoria }: { documento: Docume
             </div>
           </div>
         ) : (
-          <p className="texto-pequeno text-texto-secundario">Este documento ainda não tem PDF.</p>
+          <p className="texto-pequeno text-texto-secundario">Ainda não há PDF publicado.</p>
         )}
       </section>
 
+      {publicada ? (
       <section aria-labelledby="titulo-dados" className="flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-5 sm:p-6">
         <h2 id="titulo-dados" className="texto-titulo-card text-texto-primario">
           Dados do documento
@@ -113,6 +133,7 @@ export function DocumentoSoLeitura({ documento, categoria }: { documento: Docume
           <p className="texto-pequeno text-texto-terciario">No site desde {dataHoraNaBahia(documento.publicadoEm)}.</p>
         ) : null}
       </section>
+      ) : null}
     </div>
   );
 }
