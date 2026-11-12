@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { agendarNoticia, cancelarAgendamento, reagendarNoticia } from "@/lib/conteudos/agendar";
+import { agendarNoticia, cancelarAgendamento, reagendarConteudo } from "@/lib/conteudos/agendar";
 import { carregarNoticia } from "@/lib/conteudos/carregar";
 import { salvarRascunhoNoticia } from "@/lib/conteudos/salvar";
 import { banco } from "@/lib/db";
@@ -74,7 +74,7 @@ describe("fila real (pg-boss): a notícia agendada entra no ar sozinha (CA-US21.
     await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: trabalhador.fila });
     await cancelarAgendamento({ id }, { quem });
     await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: trabalhador.fila });
-    await reagendarNoticia({ id, para: outraHora }, { quem, fila: trabalhador.fila });
+    await reagendarConteudo({ id, para: outraHora }, { quem, fila: trabalhador.fila });
 
     const daNoticia = (await trabalhador.pedidosPendentes()).filter((p) => p.conteudoId === id);
     expect(daNoticia.map((p) => p.para).sort()).toEqual([para.toISOString(), outraHora.toISOString()]);

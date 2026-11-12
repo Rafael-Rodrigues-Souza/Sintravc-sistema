@@ -5,7 +5,7 @@ import { filaEmMemoria } from "@/lib/tarefas/fila";
 import { pessoaDaEquipe } from "@/testes/equipe";
 import { atividadesDe, noticiaCompleta, rascunhoSalvo } from "@/testes/noticias";
 
-import { agendarNoticia, cancelarAgendamento, reagendarNoticia } from "./agendar";
+import { agendarNoticia, cancelarAgendamento, reagendarConteudo } from "./agendar";
 import { carregarNoticia } from "./carregar";
 import { ErroConteudo } from "./erros";
 import { ErroFaltamCampos, publicarNoticia } from "./publicar";
@@ -104,7 +104,7 @@ async function agendada(quem: Awaited<ReturnType<typeof pessoaDaEquipe>>) {
   return { id, revisao: (await carregarNoticia(id, { quem }))!.revisao };
 }
 
-describe("reagendarNoticia (arrastar no calendário, Edição rápida)", () => {
+describe("reagendarConteudo (arrastar no calendário, Edição rápida)", () => {
   it("muda a data, registra a anterior e a nova na Atividade e põe um pedido novo na fila", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id } = await agendada(quem);
@@ -112,7 +112,7 @@ describe("reagendarNoticia (arrastar no calendário, Edição rápida)", () => {
     const { fila, pedidos } = filaEmMemoria();
     const cincoDeNovembro = new Date("2026-11-05T11:00:00Z");
 
-    const resultado = await reagendarNoticia({ id, para: cincoDeNovembro }, { quem: outra, fila, agora: AGORA });
+    const resultado = await reagendarConteudo({ id, para: cincoDeNovembro }, { quem: outra, fila, agora: AGORA });
 
     expect(resultado).toEqual({ tipo: "agendada", para: cincoDeNovembro });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "agendado", agendadoPara: cincoDeNovembro, agendadoPor: outra.id });
@@ -128,12 +128,12 @@ describe("reagendarNoticia (arrastar no calendário, Edição rápida)", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id } = await rascunhoSalvo(quem, await noticiaCompleta());
     const { fila } = filaEmMemoria();
-    await expect(reagendarNoticia({ id, para: TRES_DE_NOVEMBRO_8H }, { quem, fila, agora: AGORA })).rejects.toMatchObject({
+    await expect(reagendarConteudo({ id, para: TRES_DE_NOVEMBRO_8H }, { quem, fila, agora: AGORA })).rejects.toMatchObject({
       codigo: "invalido",
     });
 
     const ag = await agendada(quem);
-    await expect(reagendarNoticia({ id: ag.id, para: AGORA }, { quem, fila, agora: AGORA })).rejects.toMatchObject({
+    await expect(reagendarConteudo({ id: ag.id, para: AGORA }, { quem, fila, agora: AGORA })).rejects.toMatchObject({
       campo: "agendadoPara",
     });
   });

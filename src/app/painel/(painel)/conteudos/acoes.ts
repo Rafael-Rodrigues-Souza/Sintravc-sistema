@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
-import { agendarNoticia, cancelarAgendamento, reagendarNoticia } from "@/lib/conteudos/agendar";
+import { agendarNoticia, cancelarAgendamento, reagendarConteudo } from "@/lib/conteudos/agendar";
 import { versaoDoServidor } from "@/lib/conteudos/carregar";
 import { salvarEdicaoRapida } from "@/lib/conteudos/edicao-rapida";
 import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
@@ -263,7 +263,7 @@ export async function acaoReagendar(entrada: unknown): Promise<RespostaAgendar> 
   if ("erro" in instante) return instante.erro;
   const { para } = instante;
   try {
-    const r = await reagendarNoticia({ id: validado.data.id, para }, { quem: pessoa.quem, fila: await filaDoSistema() });
+    const r = await reagendarConteudo({ id: validado.data.id, para }, { quem: pessoa.quem, fila: await filaDoSistema() });
     revalidatePath("/painel/conteudos");
     return { tipo: "agendada", para: r.para.toISOString() };
   } catch (erro) {

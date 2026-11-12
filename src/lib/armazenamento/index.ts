@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, NoSuchKey, PutObjectCommand, S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
 
 import { lerEnvArmazenamento, type EnvArmazenamento } from "@/lib/env";
 
@@ -39,13 +39,15 @@ export type Arquivo = {
   /** Content-Type gravado no objeto. Na Mídia, sempre o formato detectado pelos bytes (E39). */
   tipo: string;
   /** Com `attachment`, o navegador baixa o arquivo com este nome em vez de abri-lo no site (E39). */
-  disposicao?: { tipo: "attachment"; nome: string };
+  disposicao?: { tipo: "attachment" | "inline"; nome: string };
 };
 
 /** O que a Mídia precisa do armazenamento. A versão real é `armazenamentoS3`; os testes usam uma em memória. */
 export type Armazenamento = {
   enviar(arquivo: Arquivo): Promise<{ chave: string; url: string }>;
   apagar(chave: string): Promise<void>;
+  /** Lê o arquivo (ex.: o PDF do documento servido pelo painel, que confere a permissão). Null se não existe. */
+  ler(chave: string): Promise<ReadableStream<Uint8Array> | null>;
 };
 
 /**
@@ -82,4 +84,16 @@ export async function apagarArquivo(chave: string) {
   await obterCliente(env).send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: chave }));
 }
 
-export const armazenamentoS3: Armazenamento = { enviar: enviarArquivo, apagar: apagarArquivo };
+/** Lê um arquivo do bucket como fluxo, sem carregar tudo na memória. */
+export async function lerArquivo(chave: string): Promise<ReadableStream<Uint8Array> | null> {
+  const env = lerEnvArmazenamento();
+  try {
+    const resposta = await obterCliente(env).send(new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: chave }));
+    return resposta.Body ? resposta.Body.transformToWebStream() : null;
+  } catch (erro) {
+    if (erro instanceof NoSuchKey) return null;
+    throw erro;
+  }
+}
+
+export const armazenamentoS3: Armazenamento = { enviar: enviarArquivo, apagar: apagarArquivo, ler: lerArquivo };

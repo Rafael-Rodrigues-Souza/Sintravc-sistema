@@ -8,6 +8,7 @@ import {
   registrarAtividadeConteudo,
   travarConteudo,
 } from "@/lib/conteudos/tipo-do-conteudo";
+import { ErroConteudo } from "@/lib/conteudos/erros";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { lerDocumento, retratoDoDocumento, type DocumentoAberto } from "./carregar";
@@ -56,6 +57,7 @@ export async function salvarRascunhoDocumento(
       if (atual.revisao !== entrada.revisaoBase) {
         return { tipo: "conflito", servidor: (await lerDocumento(tx, id))! };
       }
+      if (atual.estado === "agendado") await conferirPdfDoAgendado(tx, id, dados);
       const salvo = await gravarDocumentoPorCima(tx, id, tipo, dados, deps.quem);
       if (!(await sessaoJaRegistrada(tx, id, deps.sessaoEdicao))) {
         await registrarAtividadeConteudo(tx, { id, tipo, titulo: dados.titulo }, "editar", deps);
@@ -63,6 +65,21 @@ export async function salvarRascunhoDocumento(
       return salvo;
     }),
   );
+}
+
+/**
+ * O PDF confirmado como oficial ao agendar vai ao ar na hora marcada (RN12, E46). Trocar o PDF de um
+ * documento agendado pediria nova confirmação; por isso a troca espera o cancelamento do agendamento.
+ */
+async function conferirPdfDoAgendado(tx: Transacao, id: string, dados: DadosDocumento) {
+  const [linha] = await tx.select({ pdf: documento.pdfMidiaId }).from(documento).where(eq(documento.conteudoId, id));
+  if (linha && linha.pdf !== dados.pdfMidiaId) {
+    throw new ErroConteudo(
+      "invalido",
+      "Para trocar o PDF, cancele o agendamento antes. Ao agendar de novo, você confirma o PDF novo.",
+      "pdfMidiaId",
+    );
+  }
 }
 
 /** Dois salvamentos ao mesmo tempo com o mesmo número: o índice único do banco segura o segundo. */

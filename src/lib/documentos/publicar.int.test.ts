@@ -50,7 +50,9 @@ describe("publicarDocumento (CA-US23.1, RN12, E46)", () => {
 
     const r = await publicarDocumento({ id: salvo.id, revisaoBase: 1, confirmoOficial: true }, { quem: adm });
 
-    expect(r).toMatchObject({ tipo: "publicado", versao: 1, slug: "edital-de-convocacao-assembleia-geral" });
+    expect(r).toMatchObject({ tipo: "publicado", versao: 1 });
+    // Endereço a partir do título; outro edital com o mesmo título ganha “-2”, “-3”…
+    expect((r as { slug: string }).slug).toMatch(/^edital-de-convocacao-assembleia-geral(-\d+)?$/);
     expect(await carregarDocumento(salvo.id, { quem: adm })).toMatchObject({
       estado: "publicado",
       versao: 1,
