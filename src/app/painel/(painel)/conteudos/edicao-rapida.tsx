@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { LIMITE_MANCHETE } from "@/lib/conteudos/dados";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
+import { jaFoiAoAr } from "@/lib/conteudos/publicacao";
 import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
@@ -94,7 +95,7 @@ export function EdicaoRapida({
   const [pedido, setPedido] = React.useState<PedidoDeAcao | null>(null);
 
   // Publicada ou oculta: já foi ao ar; a situação é Publicado ou Oculto, e o título vai para a cópia de trabalho (E42).
-  const jaFoiAoAr = noticia.estado === "publicado" || noticia.estado === "oculto";
+  const foiAoAr = jaFoiAoAr(noticia.estado);
   // Ocultar e mostrar no site pedem confirmação, no mesmo modal da lista (RN09); o motivo vai nele.
   const vaiOcultar = noticia.estado === "publicado" && situacao === "oculto";
   const vaiMostrar = noticia.estado === "oculto" && situacao === "publicado";
@@ -115,7 +116,7 @@ export function EdicaoRapida({
     if (salvando) return;
     setErro(null);
     setFaltam(null);
-    if ((situacao !== "rascunho" || jaFoiAoAr) && !categoriaId) {
+    if ((situacao !== "rascunho" || foiAoAr) && !categoriaId) {
       setErro({ mensagem: "Escolha a categoria.", campo: "categoriaId" });
       return;
     }
@@ -260,7 +261,7 @@ export function EdicaoRapida({
                 </Alerta>
               ) : null}
               {erro && !erro.campo ? <Alerta tipo="erro" titulo={erro.mensagem} /> : null}
-              {jaFoiAoAr && comAlteracoes ? (
+              {foiAoAr && comAlteracoes ? (
                 <Alerta tipo="informacao" titulo="Há alterações que ainda não estão no site">
                   <div className="flex flex-col items-start gap-2">
                     {noticia.estado === "oculto"
@@ -311,7 +312,7 @@ export function EdicaoRapida({
                 {erroNoCampo("categoriaId") ? <p className="texto-pequeno text-status-perigo-texto">{erroNoCampo("categoriaId")}</p> : null}
               </div>
 
-              {jaFoiAoAr ? (
+              {foiAoAr ? (
                 <fieldset className="flex flex-col gap-2.5">
                   <legend className="mb-2.5 texto-rotulo text-texto-primario">
                     Situação no site <span className="text-destaque-vermelho">*</span>
@@ -374,7 +375,7 @@ export function EdicaoRapida({
                 </fieldset>
               )}
 
-              {situacao === "agendado" && !jaFoiAoAr ? (
+              {situacao === "agendado" && !foiAoAr ? (
                 <div className="flex flex-col gap-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-2">

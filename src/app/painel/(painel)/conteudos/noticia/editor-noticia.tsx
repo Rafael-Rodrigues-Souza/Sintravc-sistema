@@ -40,7 +40,7 @@ import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type EstadoDaFila, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
-import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
+import { jaFoiAoAr, temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { bahiaEmCampos, camposEmTexto, dataHoraNaBahia, horaNaBahia } from "@/lib/datas";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
@@ -361,7 +361,7 @@ export function EditorNoticia({
   // Alterações que ainda não estão no site: salvas depois da publicação ou ainda na fila (E42).
   // Vale também para a oculta: "Mostrar no site" volta a versão publicada, sem elas (E45).
   const comAlteracoes =
-    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || ((noAr || oculta) && estado.situacao !== "sincronizado");
+    temAlteracoesNaoPublicadas({ ...publicacao, revisao: estado.revisao }) || (jaFoiAoAr(publicacao.estado) && estado.situacao !== "sincronizado");
   const faltas = faltasParaPublicar(dados);
   const faltando = mostrarFaltas ? new Set(faltas.map((f) => f.campo)) : new Set<CampoObrigatorio>();
 
@@ -693,7 +693,7 @@ export function EditorNoticia({
             <BotaoTravado rotulo="Pré-visualizar" dica="Escreva a notícia para pré-visualizar" icone={<Eye aria-hidden />} />
           )}
           <Button type="button" variant="secundario" size="pequeno" onClick={() => void fila.salvarAgora()}>
-            {noAr || oculta ? "Salvar" : "Salvar rascunho"}
+            {jaFoiAoAr(publicacao.estado) ? "Salvar" : "Salvar rascunho"}
           </Button>
           {dicaPublicar ? (
             <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} />

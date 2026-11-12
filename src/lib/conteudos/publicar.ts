@@ -8,6 +8,7 @@ import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } fr
 import type { DadosNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
 import { faltasParaPublicar, type CampoObrigatorio } from "./obrigatorios";
+import { jaFoiAoAr } from "./publicacao";
 import { gravarPorCima, gravarUsos, registrarAtividadeNoticia, travarNoticia } from "./salvar";
 import { resumirMudancas } from "./versoes";
 
@@ -133,7 +134,7 @@ export async function descartarAlteracoes(
       return { tipo: "conflito", servidor: (await lerNoticia(tx, entrada.id))! };
     }
     // Publicada ou oculta: a cópia de trabalho volta à versão que foi ao ar (E42, E45).
-    const noAr = atual.estado === "publicado" || atual.estado === "oculto" ? await retratoNoAr(tx, entrada.id) : null;
+    const noAr = jaFoiAoAr(atual.estado) ? await retratoNoAr(tx, entrada.id) : null;
     if (!noAr) {
       throw new ErroConteudo("invalido", "Esta notícia não está no ar, então não há alterações para descartar.");
     }
