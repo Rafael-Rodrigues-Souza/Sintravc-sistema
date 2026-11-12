@@ -1,8 +1,10 @@
 import { and, asc, count, desc, eq, ne, sql, type SQL } from "drizzle-orm";
 
 import { banco } from "@/lib/db";
-import { categoria, conteudo, noticia, pessoaEquipe } from "@/lib/db/schema";
+import { categoria, conteudo, documento, noticia, pessoaEquipe } from "@/lib/db/schema";
 import { exigir, pode, type QuemDaEquipe } from "@/lib/permissoes";
+
+import { exigirEmAlgumTipo } from "./tipo-do-conteudo";
 
 export type TipoConteudo = (typeof conteudo.$inferSelect)["tipo"];
 export type EstadoConteudo = (typeof conteudo.$inferSelect)["estado"];
@@ -39,14 +41,19 @@ export type ItemConteudo = {
   jaPublicado: boolean;
   autorId: string;
   atualizadoEm: Date;
+  /** Edital e acordo: as datas do selo de vigência, que é calculado (C2, E46). Nulo na notícia. */
+  datasDoSelo: { dataEvento: Date | null; vigenciaInicio: string | null; vigenciaFim: string | null } | null;
 };
 
-/** Busca na manchete, no nome do autor e nas palavras-chave, sem diferença de acento nem de maiúsculas. */
+/**
+ * Busca no título, no nome do autor, nas palavras-chave da notícia e no número do documento, sem
+ * diferença de acento nem de maiúsculas.
+ */
 function condicaoDaBusca(busca: string | undefined): SQL | undefined {
   const termo = busca?.trim();
   if (!termo) return undefined;
   const padrao = `%${termo.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const campo = sql`unaccent(concat_ws(' ', ${conteudo.titulo}, ${pessoaEquipe.nome}, array_to_string(${noticia.palavrasChave}, ' ')))`;
+  const campo = sql`unaccent(concat_ws(' ', ${conteudo.titulo}, ${pessoaEquipe.nome}, array_to_string(${noticia.palavrasChave}, ' '), ${documento.numero}))`;
   return sql`${campo} ilike unaccent(${padrao})`;
 }
 
@@ -58,7 +65,7 @@ export async function listarConteudos(
   filtros: FiltrosConteudos,
   deps: { quem: QuemDaEquipe },
 ): Promise<{ itens: ItemConteudo[]; total: number }> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigirEmAlgumTipo(deps.quem, "ver");
   const pagina = Math.max(1, filtros.pagina ?? 1);
   const onde = and(
     filtros.arquivados ? eq(conteudo.estado, "arquivado") : ne(conteudo.estado, "arquivado"),
@@ -74,6 +81,7 @@ export async function listarConteudos(
       .from(conteudo)
       .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudo.autorId))
       .leftJoin(noticia, eq(noticia.conteudoId, conteudo.id))
+      .leftJoin(documento, eq(documento.conteudoId, conteudo.id))
       .leftJoin(categoria, eq(categoria.id, conteudo.categoriaId))
       .where(onde)
       .$dynamic();
@@ -88,12 +96,13 @@ export async function listarConteudos(
       .from(conteudo)
       .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudo.autorId))
       .leftJoin(noticia, eq(noticia.conteudoId, conteudo.id))
+      .leftJoin(documento, eq(documento.conteudoId, conteudo.id))
       .where(onde),
   ]);
 
   return {
     total: contagem?.total ?? 0,
-    itens: linhas.map(({ conteudo: c, pessoa_equipe: autor, categoria: cat }) => ({
+    itens: linhas.map(({ conteudo: c, pessoa_equipe: autor, categoria: cat, documento: d }) => ({
       id: c.id,
       tipo: c.tipo,
       titulo: c.titulo,
@@ -107,6 +116,7 @@ export async function listarConteudos(
       jaPublicado: c.jaPublicado,
       autorId: c.autorId,
       atualizadoEm: c.atualizadoEm,
+      datasDoSelo: d ? { dataEvento: d.dataEvento, vigenciaInicio: d.vigenciaInicio, vigenciaFim: d.vigenciaFim } : null,
     })),
   };
 }
@@ -115,7 +125,7 @@ export async function listarConteudos(
 export async function contarConteudosPorTipo(
   deps: { quem: QuemDaEquipe },
 ): Promise<Record<TipoConteudo | "todos" | "arquivados", number>> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigirEmAlgumTipo(deps.quem, "ver");
   const linhas = await banco()
     .select({ tipo: conteudo.tipo, arquivado: sql<boolean>`${conteudo.estado} = 'arquivado'`, total: count() })
     .from(conteudo)
@@ -134,7 +144,7 @@ export async function contarConteudosPorTipo(
 
 /** Quem já escreveu conteúdo, para o filtro de autor. */
 export async function listarAutores(deps: { quem: QuemDaEquipe }): Promise<{ id: string; nome: string }[]> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigirEmAlgumTipo(deps.quem, "ver");
   return banco()
     .selectDistinct({ id: pessoaEquipe.id, nome: pessoaEquipe.nome })
     .from(conteudo)

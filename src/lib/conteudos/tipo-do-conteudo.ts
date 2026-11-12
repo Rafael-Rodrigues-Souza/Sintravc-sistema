@@ -9,7 +9,7 @@ import { registrarAtividade } from "@/lib/atividade";
 import type { Transacao } from "@/lib/db";
 import { conteudo } from "@/lib/db/schema";
 import { rotuloDoDocumento } from "@/lib/documentos/dados";
-import { pode, SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
+import type { QuemDaEquipe } from "@/lib/permissoes";
 
 import { rotuloDaNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
@@ -17,36 +17,7 @@ import { ErroConteudo } from "./erros";
 export type TipoDeConteudo = (typeof conteudo.$inferSelect)["tipo"];
 export type LinhaDoConteudo = typeof conteudo.$inferSelect;
 
-/** Ações que notícia e documento têm em comum (spec §4). */
-export type AcaoDoConteudo =
-  | "ver"
-  | "editar"
-  | "publicar"
-  | "agendar"
-  | "ocultar"
-  | "arquivar"
-  | "restaurar"
-  | "excluir"
-  | "ver_versoes"
-  | "restaurar_versao";
-
-type DadosDaPermissao = Pick<LinhaDoConteudo, "tipo" | "autorId" | "jaPublicado">;
-
-/** pode() com o recurso de cada tipo: edital e acordo são "documento", só do ADM (RN08). */
-export function podeNoConteudo(quem: QuemDaEquipe, acao: AcaoDoConteudo, linha: DadosDaPermissao): boolean {
-  return linha.tipo === "noticia"
-    ? pode(quem, acao, { tipo: "noticia", autorId: linha.autorId, jaPublicado: linha.jaPublicado })
-    : pode(quem, acao, { tipo: "documento", jaPublicado: linha.jaPublicado });
-}
-
-export function exigirNoConteudo(quem: QuemDaEquipe, acao: AcaoDoConteudo, linha: DadosDaPermissao): void {
-  if (!podeNoConteudo(quem, acao, linha)) throw new SemPermissao(acao, linha.tipo === "noticia" ? "noticia" : "documento");
-}
-
-/** Nega se a pessoa não pode fazer a ação em nenhum tipo (antes de saber quais itens vêm). */
-export function exigirEmAlgumTipo(quem: QuemDaEquipe, acao: Exclude<AcaoDoConteudo, "excluir">): void {
-  if (!pode(quem, acao, { tipo: "noticia" }) && !pode(quem, acao, { tipo: "documento" })) throw new SemPermissao(acao, "noticia");
-}
+export { exigirEmAlgumTipo, exigirNoConteudo, podeNoConteudo, type AcaoDoConteudo } from "./permissao-do-conteudo";
 
 /** Prefixo da ação na Atividade e dono na `midia_uso`: "noticia" ou "documento". */
 export function familiaDo(tipo: TipoDeConteudo): "noticia" | "documento" {

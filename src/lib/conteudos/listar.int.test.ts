@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { banco } from "@/lib/db";
 import { categoria, conteudo } from "@/lib/db/schema";
 import { SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
+import { documentoCompleto, documentoSalvo } from "@/testes/documentos";
 import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 
 import { noticiaVazia, type DadosNoticia } from "./dados";
@@ -85,6 +86,33 @@ describe("listarConteudos (RF35)", () => {
 
   it("o Atendimento não vê a lista", async () => {
     await expect(listarConteudos({}, { quem: await pessoaDaEquipe("ATD") })).rejects.toBeInstanceOf(SemPermissao);
+  });
+});
+
+describe("listarConteudos: documentos oficiais (RF35, RF42, E46)", () => {
+  it("a Comunicação vê editais e acordos na lista, com as datas do selo de vigência", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const com = await pessoaDaEquipe("COM");
+    const dados = await documentoCompleto("acordo", adm, { titulo: `Acordo ${randomUUID()}` });
+    const salvo = await documentoSalvo(adm, "acordo", dados);
+
+    const { itens } = await listarConteudos({ tipo: "acordo", busca: dados.titulo }, { quem: com });
+
+    expect(itens).toEqual([
+      expect.objectContaining({
+        id: salvo.id,
+        tipo: "acordo",
+        datasDoSelo: { dataEvento: null, vigenciaInicio: "2026-05-01", vigenciaFim: "2027-04-30" },
+      }),
+    ]);
+  });
+
+  it("a busca também acha pelo número do documento", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const dados = await documentoCompleto("edital", adm);
+    const salvo = await documentoSalvo(adm, "edital", dados);
+    const { itens } = await listarConteudos({ busca: dados.numero.toUpperCase() }, { quem: adm });
+    expect(itens.map((i) => i.id)).toEqual([salvo.id]);
   });
 });
 
