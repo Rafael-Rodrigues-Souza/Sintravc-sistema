@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { LIMITE_MANCHETE } from "@/lib/conteudos/dados";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
+import { conferirEdicaoRapida } from "@/lib/conteudos/conferir-edicao-rapida";
 import { jaFoiAoAr } from "@/lib/conteudos/publicacao";
 import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
@@ -116,8 +117,11 @@ export function EdicaoRapida({
     if (salvando) return;
     setErro(null);
     setFaltam(null);
-    if ((situacao !== "rascunho" || foiAoAr) && !categoriaId) {
-      setErro({ mensagem: "Escolha a categoria.", campo: "categoriaId" });
+    // Os campos são conferidos antes de salvar e antes de abrir a confirmação: o erro fica no campo (E23).
+    const erroDoCampo = conferirEdicaoRapida({ titulo, categoriaId, situacao, estado: noticia.estado });
+    if (erroDoCampo) {
+      setErro(erroDoCampo);
+      document.getElementById(erroDoCampo.campo === "titulo" ? "rapida-titulo" : "rapida-categoria")?.focus();
       return;
     }
     if (vaiOcultar || vaiMostrar) {
@@ -170,20 +174,18 @@ export function EdicaoRapida({
     return resposta;
   };
 
-  /** Depois da confirmação de ocultar ou mostrar no site: o modal mostra o erro ou o aviso de sucesso. */
+  /**
+   * Depois da confirmação de ocultar ou mostrar no site. O erro do motivo volta para o modal; os
+   * outros ficam só no formulário (Alerta ou campo, E23), e o modal fecha sem outro aviso.
+   */
   const executarConfirmado: ExecutarAcao = async (acao, _ids, motivo) => {
     const resposta = await enviar(acao === "ocultar" ? motivo : undefined);
     if (resposta.tipo === "salva") return { tipo: "feito" };
-    if (resposta.tipo === "conflito") {
-      setConflito(true);
-      return { tipo: "erro", mensagem: "Alguém salvou esta notícia enquanto você editava. Atualize e tente de novo." };
-    }
-    if (resposta.tipo === "faltam") {
-      setFaltam(resposta.campos);
-      return { tipo: "erro", mensagem: "Faltam itens obrigatórios. Abra o editor completo." };
-    }
-    if (resposta.campo && resposta.campo !== "motivo") setErro({ mensagem: resposta.mensagem, campo: resposta.campo });
-    return { tipo: "erro", mensagem: resposta.mensagem, campo: resposta.campo };
+    if (resposta.tipo === "erro" && resposta.campo === "motivo") return { tipo: "erro", mensagem: resposta.mensagem, campo: "motivo" };
+    if (resposta.tipo === "conflito") setConflito(true);
+    else if (resposta.tipo === "faltam") setFaltam(resposta.campos);
+    else setErro({ mensagem: resposta.mensagem, campo: resposta.campo });
+    return { tipo: "erro_no_formulario" };
   };
 
   const publicarAlteracoes = async () => {

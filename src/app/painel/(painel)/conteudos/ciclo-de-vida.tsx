@@ -44,7 +44,14 @@ export type PedidoDeAcao = { acao: AcaoDoMenu; alvos: Alvo[] };
  * Quem executa a ação depois da confirmação. Por padrão, as actions do ciclo de vida; a Edição
  * rápida passa a sua, que grava título, categoria e situação numa transação só.
  */
-export type ExecutarAcao = (acao: AcaoDoMenu, ids: string[], motivo: string) => Promise<RespostaLote | RespostaSimples>;
+export type ExecutarAcao = (
+  acao: AcaoDoMenu,
+  ids: string[],
+  motivo: string,
+) => Promise<RespostaLote | RespostaSimples | ErroJaNoFormulario>;
+
+/** Quem executou já mostrou o erro no próprio formulário (E23): o modal só fecha, sem outro aviso. */
+export type ErroJaNoFormulario = { tipo: "erro_no_formulario" };
 
 const semConexao = (): { tipo: "erro"; mensagem: string } => ({ tipo: "erro", mensagem: SEM_CONEXAO });
 
@@ -107,8 +114,13 @@ function ModalDaAcao({
       return;
     }
     setEnviando(true);
-    const resposta = await executar(pedido.acao, ids, motivoLimpo).catch(semConexao);
+    const resposta = await executar(pedido.acao, ids, motivoLimpo);
     setEnviando(false);
+    if (resposta.tipo === "erro_no_formulario") {
+      aoFechar();
+      aoConcluir(pedido.acao, []);
+      return;
+    }
     if (resposta.tipo === "erro") {
       if ("campo" in resposta && resposta.campo === "motivo") {
         setErroMotivo(resposta.mensagem);

@@ -198,6 +198,16 @@ test("RN09 · Edição rápida: ocultar e mostrar no site pedem confirmação, c
   const painel = page.getByRole("dialog", { name: "Edição rápida" });
   await painel.getByLabel("Título").fill(`${titulo} (revisado)`);
   await painel.getByRole("radio", { name: /^Oculto/ }).click();
+
+  // Campo com erro: a confirmação nem abre, e o erro fica no campo, sem aviso solto (E23).
+  await painel.getByLabel(/Categoria/).selectOption({ label: "Escolha a categoria" });
+  await painel.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(painel.getByText("Escolha a categoria.")).toBeVisible();
+  await expect(painel.getByLabel(/Categoria/)).toBeFocused();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+
+  await painel.getByLabel(/Categoria/).selectOption({ label: "Jurídico" });
   await painel.getByRole("button", { name: "Salvar alterações" }).click();
 
   // Nada é gravado antes de confirmar; o motivo é obrigatório no modal.
