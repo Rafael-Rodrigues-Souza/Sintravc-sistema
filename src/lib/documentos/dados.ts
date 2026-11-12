@@ -3,6 +3,7 @@
  * servidor, no navegador (rascunho guardado sem internet, E02) e na tela. Nada aqui importa código
  * de servidor.
  */
+import { bahiaParaUtc } from "@/lib/datas";
 
 export const LIMITE_TITULO_DOCUMENTO = 160;
 export const LIMITE_NUMERO = 60;
@@ -81,4 +82,9 @@ export function usaVigencia(tipo: TipoDocumento, dados: Pick<DadosDocumento, "te
 /** Como o documento aparece em listas, na Atividade e na Mídia quando ainda não tem título. */
 export function rotuloDoDocumento(tipo: TipoDocumento, titulo: string): string {
   return titulo.trim() || (tipo === "edital" ? "Edital sem título" : "Acordo sem título");
+}
+
+/** A data e a hora do evento ou prazo, digitadas no horário da Bahia, como instante em UTC (RNF06). */
+export function instanteDoEvento(campos: Pick<DadosDocumento, "eventoData" | "eventoHora">): Date | null {
+  return campos.eventoData && campos.eventoHora ? bahiaParaUtc(campos.eventoData, campos.eventoHora) : null;
 }

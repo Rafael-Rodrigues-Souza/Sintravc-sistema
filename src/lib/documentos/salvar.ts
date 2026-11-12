@@ -1,7 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { banco, type Transacao } from "@/lib/db";
-import { bahiaParaUtc } from "@/lib/datas";
 import { atividade, conteudo, documento, midiaUso } from "@/lib/db/schema";
 import {
   conteudoArquivado,
@@ -13,7 +12,7 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { lerDocumento, retratoDoDocumento, type DocumentoAberto } from "./carregar";
 import { normalizarNumero } from "./conferir";
-import type { DadosDocumento, TipoDocumento } from "./dados";
+import { instanteDoEvento, type DadosDocumento, type TipoDocumento } from "./dados";
 import { numeroRepetido, validarDocumento } from "./validar";
 
 export type DepsDoSalvamentoDocumento = {
@@ -157,7 +156,7 @@ function colunasDoDocumento(tipo: TipoDocumento, dados: DadosDocumento) {
     numeroNormalizado: normalizarNumero(dados.numero),
     subtipo: dados.subtipo,
     dataDocumento: dados.dataDocumento || null,
-    dataEvento: dados.eventoData && dados.eventoHora ? bahiaParaUtc(dados.eventoData, dados.eventoHora) : null,
+    dataEvento: instanteDoEvento(dados),
     temVigencia: dados.temVigencia,
     vigenciaInicio: dados.vigenciaInicio || null,
     vigenciaFim: dados.vigenciaFim || null,
