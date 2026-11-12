@@ -7,7 +7,7 @@ import { dataHoraNaBahia } from "@/lib/datas";
 import type { DocumentoAberto, PdfDoDocumento } from "@/lib/documentos/carregar";
 import { tamanhoDoArquivo } from "@/lib/documentos/cartao";
 import { NOME_DO_TIPO, ROTULO_DO_SUBTIPO, rotuloDoDocumento, usaVigencia, type DadosDocumento } from "@/lib/documentos/dados";
-import { seloDosCampos } from "@/lib/documentos/selo";
+import { seloDosDados } from "@/lib/documentos/selo";
 
 import { SeloEstado, SeloVigencia } from "../selos";
 
@@ -64,7 +64,7 @@ export function DocumentoSoLeitura({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate texto-titulo-card text-texto-primario">{rotuloDoDocumento(tipo, dados.titulo)}</h1>
             <SeloEstado estado={documento.estado} />
-            {publicada ? <SeloVigencia selo={seloDosCampos(documento.estado, dados, new Date())} /> : null}
+            {publicada ? <SeloVigencia selo={seloDosDados(tipo, documento.estado, dados, new Date())} /> : null}
           </div>
           <p className="texto-pequeno text-texto-secundario">{NOME_DO_TIPO[tipo]}</p>
         </div>

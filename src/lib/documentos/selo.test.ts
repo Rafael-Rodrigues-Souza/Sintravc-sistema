@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { seloDeVigencia, seloDosCampos } from "./selo";
+import { documentoVazio } from "./dados";
+import { seloDeVigencia, seloDosCampos, seloDosDados } from "./selo";
 
 // 12/11/2026 às 10h00 na Bahia (UTC-3).
 const AGORA = new Date("2026-11-12T13:00:00Z");
@@ -67,5 +68,18 @@ describe("seloDosCampos: o selo a partir dos campos da tela (horário da Bahia)"
 
   it("campos vazios não contam", () => {
     expect(seloDosCampos("publicado", { eventoData: "", eventoHora: "", vigenciaInicio: "", vigenciaFim: "" }, AGORA)).toBeNull();
+  });
+});
+
+describe("seloDosDados: o selo dos dados do editor respeita “Tem vigência” (E46)", () => {
+  const comVigencia = { ...documentoVazio("edital"), vigenciaInicio: "2026-11-01", vigenciaFim: "2027-10-31" };
+
+  it("edital com o interruptor desligado: as datas de vigência que sobraram na tela não contam", () => {
+    expect(seloDosDados("edital", "publicado", { ...comVigencia, temVigencia: false }, AGORA)).toBeNull();
+    expect(seloDosDados("edital", "publicado", { ...comVigencia, temVigencia: true }, AGORA)).toBe("vigente");
+  });
+
+  it("acordo: a vigência vale sempre, mesmo com o interruptor desligado", () => {
+    expect(seloDosDados("acordo", "publicado", { ...comVigencia, temVigencia: false }, AGORA)).toBe("vigente");
   });
 });

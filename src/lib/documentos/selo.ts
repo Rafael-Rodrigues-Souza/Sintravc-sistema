@@ -7,7 +7,7 @@ import { bahiaEmCampos } from "@/lib/datas";
 
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 
-import { instanteDoEvento } from "./dados";
+import { instanteDoEvento, usaVigencia, type DadosDocumento, type TipoDocumento } from "./dados";
 
 export type SeloDeVigencia = "prazo" | "vigente" | "encerrado";
 
@@ -52,6 +52,19 @@ export function seloDosCampos(
       vigenciaInicio: campos.vigenciaInicio || null,
       vigenciaFim: campos.vigenciaFim || null,
     },
+    agora,
+  );
+}
+
+/**
+ * O selo a partir dos dados do editor: no edital com “Tem vigência” desligado, as datas de vigência
+ * que sobraram na tela não contam (o servidor as limpa ao salvar, E46). No acordo, valem sempre.
+ */
+export function seloDosDados(tipo: TipoDocumento, estado: EstadoConteudo, dados: DadosDocumento, agora: Date): SeloDeVigencia | null {
+  const vigencia = usaVigencia(tipo, dados);
+  return seloDosCampos(
+    estado,
+    { ...dados, vigenciaInicio: vigencia ? dados.vigenciaInicio : "", vigenciaFim: vigencia ? dados.vigenciaFim : "" },
     agora,
   );
 }

@@ -54,7 +54,7 @@ import {
 } from "@/lib/documentos/dados";
 import { tamanhoDoArquivo } from "@/lib/documentos/cartao";
 import { faltasParaPublicarDocumento, type CampoObrigatorioDocumento } from "@/lib/documentos/obrigatorios";
-import { seloDosCampos } from "@/lib/documentos/selo";
+import { seloDosDados } from "@/lib/documentos/selo";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
@@ -602,7 +602,7 @@ export function EditorDocumento({
   };
   const emConflito = estado.situacao === "conflito" && estado.conflito;
   const vigencia = usaVigencia(tipo, dados);
-  const selo = seloDosCampos(publicacao.estado, dados, new Date());
+  const selo = seloDosDados(tipo, publicacao.estado, dados, new Date());
   const nomeDoTipo = NOME_DO_TIPO[tipo];
   const rotuloPublicar = noAr ? "Publicar alterações…" : vaiAgendar ? "Agendar…" : agendado ? "Publicar agora…" : "Publicar…";
   const dicaPublicar = !conectado

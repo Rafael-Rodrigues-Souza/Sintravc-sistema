@@ -6,7 +6,7 @@ import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { dataNaBahia } from "@/lib/datas";
 
 import { rotuloDoDocumento, type DadosDocumento, type SubtipoDocumento, type TipoDocumento } from "./dados";
-import { ROTULO_DO_SELO, seloDosCampos } from "./selo";
+import { ROTULO_DO_SELO, seloDosDados } from "./selo";
 
 export type DocumentoNoCartao = {
   /** "Edital de convocação", "CCT · Convenção coletiva de trabalho"… */
@@ -55,7 +55,7 @@ export function cartaoDoDocumento(entrada: {
   agora: Date;
 }): DocumentoNoCartao {
   const { tipo, dados } = entrada;
-  const selo = seloDosCampos(entrada.estado, dados, entrada.agora);
+  const selo = seloDosDados(tipo, entrada.estado, dados, entrada.agora);
   return {
     etiqueta: dados.subtipo ? ETIQUETA[dados.subtipo] : tipo === "edital" ? "Edital" : "Acordo ou convenção",
     selo: selo ? { rotulo: ROTULO_DO_SELO[selo], tom: selo } : null,
