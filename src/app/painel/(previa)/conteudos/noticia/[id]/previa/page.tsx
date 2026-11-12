@@ -9,7 +9,7 @@ import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
 import { listarCategorias } from "@/lib/conteudos/listar";
 import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { versoesDaNoticia } from "@/lib/conteudos/publicar";
-import { quandoNaBahia } from "@/lib/datas";
+import { seloDaPrevia } from "@/lib/conteudos/selo-da-previa";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { detalharMidia } from "@/lib/midia/listar";
 import { pode } from "@/lib/permissoes";
@@ -80,15 +80,7 @@ export default async function PaginaPrevia({
     <MolduraPrevia
       id={id}
       dados={dados}
-      selo={
-        versao
-          ? `Versão ${versao.versao} · ${versao.noAr ? "no site agora" : `publicada em ${quandoNaBahia(versao.criadoEm)}`}`
-          : !publicada
-            ? "Prévia · ainda não publicada"
-            : comAlteracoes
-              ? "Prévia · alterações não publicadas"
-              : "Prévia · igual ao site"
-      }
+      selo={seloDaPrevia({ estado: noticia.estado, comAlteracoes, versao })}
       rotuloPublicar={
         versao || noticia.estado === "arquivado" || noticia.estado === "oculto" || !pode(pessoa.quem, "publicar", { tipo: "noticia" })
           ? null
