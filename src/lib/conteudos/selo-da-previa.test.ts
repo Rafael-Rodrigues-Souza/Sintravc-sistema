@@ -16,6 +16,13 @@ describe("seloDaPrevia (RF39, E42, E45)", () => {
     expect(seloDaPrevia({ estado: "oculto", comAlteracoes: true })).toBe("Prévia · oculta, com alterações não publicadas");
   });
 
+  it("arquivada: diz que está arquivada; “ainda não publicada” só se nunca foi ao ar", () => {
+    expect(seloDaPrevia({ estado: "arquivado", jaPublicado: true, comAlteracoes: false })).toBe("Prévia · arquivada, fora do site");
+    expect(seloDaPrevia({ estado: "arquivado", jaPublicado: false, comAlteracoes: false })).toBe(
+      "Prévia · arquivada, ainda não publicada",
+    );
+  });
+
   it("versão: no site agora, a que volta com “Mostrar no site” ou uma antiga", () => {
     expect(seloDaPrevia({ estado: "publicado", comAlteracoes: false, versao: { versao: 3, noAr: true, voltaAoSite: false, criadoEm: QUANDO } })).toBe(
       "Versão 3 · no site agora",

@@ -10,13 +10,20 @@ import { jaFoiAoAr } from "./publicacao";
 
 export type VersaoNaPrevia = { versao: number; noAr: boolean; voltaAoSite: boolean; criadoEm: Date };
 
-export function seloDaPrevia(entrada: { estado: EstadoConteudo; comAlteracoes: boolean; versao?: VersaoNaPrevia }): string {
+export function seloDaPrevia(entrada: {
+  estado: EstadoConteudo;
+  comAlteracoes: boolean;
+  /** Já foi ao ar alguma vez (só muda o selo da arquivada). */
+  jaPublicado?: boolean;
+  versao?: VersaoNaPrevia;
+}): string {
   const { estado, comAlteracoes, versao } = entrada;
   if (versao) {
     if (versao.noAr) return `Versão ${versao.versao} · no site agora`;
     if (versao.voltaAoSite) return `Versão ${versao.versao} · volta ao site com “Mostrar no site”`;
     return `Versão ${versao.versao} · publicada em ${quandoNaBahia(versao.criadoEm)}`;
   }
+  if (estado === "arquivado") return entrada.jaPublicado ? "Prévia · arquivada, fora do site" : "Prévia · arquivada, ainda não publicada";
   if (!jaFoiAoAr(estado)) return "Prévia · ainda não publicada";
   if (estado === "oculto") return comAlteracoes ? "Prévia · oculta, com alterações não publicadas" : "Prévia · oculta, fora do site";
   return comAlteracoes ? "Prévia · alterações não publicadas" : "Prévia · igual ao site";

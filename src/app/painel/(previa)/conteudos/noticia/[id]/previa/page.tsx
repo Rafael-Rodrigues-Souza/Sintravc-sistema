@@ -80,7 +80,7 @@ export default async function PaginaPrevia({
     <MolduraPrevia
       id={id}
       dados={dados}
-      selo={seloDaPrevia({ estado: noticia.estado, comAlteracoes, versao })}
+      selo={seloDaPrevia({ estado: noticia.estado, comAlteracoes, jaPublicado: noticia.jaPublicado, versao })}
       rotuloPublicar={
         versao || noticia.estado === "arquivado" || noticia.estado === "oculto" || !pode(pessoa.quem, "publicar", { tipo: "noticia" })
           ? null
