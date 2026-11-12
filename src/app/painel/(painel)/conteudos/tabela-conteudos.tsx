@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, EyeOff, FileText, FolderClosed, MoreHorizontal, Pencil, Scale, SlidersHorizontal } from "lucide-react";
+import { Archive, Eye, EyeOff, FileText, FolderClosed, MoreHorizontal, Pencil, Scale, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AcaoDoMenu } from "@/lib/conteudos/acoes-disponiveis";
 import type { EstadoConteudo, TipoConteudo } from "@/lib/conteudos/listar";
+import type { SeloDeVigencia } from "@/lib/documentos/selo";
 import { cn } from "@/lib/utils";
 
 import { ConfirmarAcao, MenuDeAcoes, type Alvo, type PedidoDeAcao } from "./ciclo-de-vida";
-import { SeloCategoria, SeloEstado } from "./selos";
+import { SeloCategoria, SeloEstado, SeloVigencia } from "./selos";
 
 /** Uma linha da lista, já com os textos prontos (datas no horário da Bahia, feitas no servidor). */
 export type LinhaDaTabela = {
@@ -29,6 +30,10 @@ export type LinhaDaTabela = {
   hrefRapida: string | null;
   /** O que o menu ⋯ oferece (acoesDisponiveis, conferido de novo no servidor). */
   acoes: AcaoDoMenu[];
+  /** Edital e acordo: selo calculado pelas datas, separado do estado (C2, E46). */
+  seloVigencia?: SeloDeVigencia | null;
+  /** Quem só vê o documento (Comunicação, RF42): "Abrir" em vez de "Editar". */
+  somenteVer?: boolean;
 };
 
 const NOME_DO_TIPO: Record<TipoConteudo, { rotulo: string; icone: typeof FileText }> = {
@@ -214,7 +219,10 @@ function Linha({
         </span>
       </td>
       <td className="md:px-3 md:py-4">
-        <SeloEstado estado={linha.estado} />
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <SeloEstado estado={linha.estado} />
+          <SeloVigencia selo={linha.seloVigencia ?? null} />
+        </span>
       </td>
       <td className="hidden texto-pequeno text-texto-secundario md:px-3 md:py-4 xl:table-cell">{linha.noSite}</td>
       <td className="texto-pequeno text-texto-secundario md:px-3 md:py-4">
@@ -229,8 +237,8 @@ function Linha({
             </Link>
           ) : null}
           {linha.hrefEditor && linha.estado !== "arquivado" ? (
-            <Link href={linha.hrefEditor} aria-label={`Editar “${linha.titulo}”`} className={BOTAO_ICONE}>
-              <Pencil aria-hidden className="size-[18px]" />
+            <Link href={linha.hrefEditor} aria-label={`${linha.somenteVer ? "Abrir" : "Editar"} “${linha.titulo}”`} className={BOTAO_ICONE}>
+              {linha.somenteVer ? <Eye aria-hidden className="size-[18px]" /> : <Pencil aria-hidden className="size-[18px]" />}
             </Link>
           ) : null}
           {linha.acoes.length > 0 ? (

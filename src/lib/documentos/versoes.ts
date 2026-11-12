@@ -9,33 +9,17 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
 import { lerDocumento, retratoDoDocumento, type DocumentoAberto, type RetratoDoDocumento } from "./carregar";
 import type { DadosDocumento, TipoDocumento } from "./dados";
+import { partesDiferentes } from "./diferencas";
 import { TIPOS_DE_DOCUMENTO } from "./publicar";
 import { gravarDocumentoPorCima, type DepsDoSalvamentoDocumento, type ResultadoSalvarDocumento } from "./salvar";
 import { validarDocumento } from "./validar";
 
 type Deps = { quem: QuemDaEquipe; sessaoEdicao?: string };
 
-/** As partes do documento, na ordem do editor, para o resumo de cada versão (N14). */
-const PARTES: { nome: string; campos: (keyof DadosDocumento)[] }[] = [
-  { nome: "título", campos: ["titulo"] },
-  { nome: "número", campos: ["numero"] },
-  { nome: "tipo", campos: ["subtipo"] },
-  { nome: "datas", campos: ["dataDocumento", "eventoData", "eventoHora"] },
-  { nome: "vigência", campos: ["temVigencia", "vigenciaInicio", "vigenciaFim"] },
-  { nome: "abrangência", campos: ["abrangencia"] },
-  { nome: "partes signatárias", campos: ["partesSignatarias"] },
-  { nome: "resumo", campos: ["resumo"] },
-  { nome: "PDF oficial", campos: ["pdfMidiaId"] },
-  { nome: "texto pesquisável", campos: ["textoPesquisavel"] },
-  { nome: "categoria", campos: ["categoriaId"] },
-];
-
 export function resumirMudancasDoDocumento(anterior: DadosDocumento | null, atual: DadosDocumento): string {
   if (!anterior) return "Primeira publicação.";
-  const mudou = PARTES.filter(({ campos }) => campos.some((c) => JSON.stringify(anterior[c]) !== JSON.stringify(atual[c]))).map((p) => p.nome);
-  if (mudou.length === 0) return "Sem mudanças.";
-  const lista = mudou.length === 1 ? mudou[0] : `${mudou.slice(0, -1).join(", ")} e ${mudou.at(-1)}`;
-  return `Mudou: ${lista}.`;
+  const lista = partesDiferentes(anterior, atual);
+  return lista === "nada" ? "Sem mudanças." : `Mudou: ${lista}.`;
 }
 
 export type VersaoDoDocumento = {

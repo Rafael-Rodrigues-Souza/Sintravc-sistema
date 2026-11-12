@@ -3,7 +3,7 @@
  * documento continua publicado quando o selo vira “Encerrado”. Os dias de vigência são comparados
  * com o dia de hoje no horário da Bahia (RNF06). Puro.
  */
-import { bahiaEmCampos } from "@/lib/datas";
+import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
 
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 
@@ -35,4 +35,21 @@ export function seloDeVigencia(doc: DatasDoSelo, agora: Date): SeloDeVigencia | 
   }
   if (doc.dataEvento) return "encerrado";
   return null;
+}
+
+/** O selo a partir dos campos da tela ("AAAA-MM-DD", "HH:mm" no horário da Bahia; "" quando vazio). */
+export function seloDosCampos(
+  estado: EstadoConteudo,
+  campos: { eventoData: string; eventoHora: string; vigenciaInicio: string; vigenciaFim: string },
+  agora: Date,
+): SeloDeVigencia | null {
+  return seloDeVigencia(
+    {
+      estado,
+      dataEvento: campos.eventoData && campos.eventoHora ? bahiaParaUtc(campos.eventoData, campos.eventoHora) : null,
+      vigenciaInicio: campos.vigenciaInicio || null,
+      vigenciaFim: campos.vigenciaFim || null,
+    },
+    agora,
+  );
 }

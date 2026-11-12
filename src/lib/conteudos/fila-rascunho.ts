@@ -10,29 +10,29 @@
  */
 import type { DadosNoticia } from "./dados";
 
-export type VersaoServidor = { revisao: number; dados: DadosNoticia; salvoPorNome: string; salvoEm: string };
+export type VersaoServidor<D = DadosNoticia> = { revisao: number; dados: D; salvoPorNome: string; salvoEm: string };
 
-export type PedidoEnvio = { id?: string; revisaoBase?: number; dados: DadosNoticia };
+export type PedidoEnvio<D = DadosNoticia> = { id?: string; revisaoBase?: number; dados: D };
 
-export type RespostaEnvio =
+export type RespostaEnvio<D = DadosNoticia> =
   | { tipo: "salvo"; id: string; revisao: number; salvoEm: string }
-  | { tipo: "conflito"; servidor: VersaoServidor }
+  | { tipo: "conflito"; servidor: VersaoServidor<D> }
   | { tipo: "sem_conexao" }
   | { tipo: "erro"; mensagem: string; campo?: string };
 
 export type Situacao = "sincronizado" | "pendente" | "salvando" | "sem_internet" | "conflito" | "erro";
 
-export type EstadoDaFila = {
+export type EstadoDaFila<D = DadosNoticia> = {
   situacao: Situacao;
   id: string | null;
   revisao: number;
   salvoEm: string | null;
   erro?: { mensagem: string; campo?: string };
-  conflito?: { minha: DadosNoticia; servidor: VersaoServidor };
+  conflito?: { minha: D; servidor: VersaoServidor<D> };
 };
 
 /** O que fica no navegador para cada (pessoa, notícia). */
-type Registro = { dados: DadosNoticia; revisaoBase: number; guardadoEm: string; pendente: boolean };
+type Registro<D> = { dados: D; revisaoBase: number; guardadoEm: string; pendente: boolean };
 
 export type Armazem = {
   ler(chave: string): string | null;
@@ -42,45 +42,52 @@ export type Armazem = {
 };
 
 const PREFIXO = "sintravc:rascunho:";
-const chaveDo = (pessoaId: string, id: string | null) => `${PREFIXO}${pessoaId}:noticia:${id ?? "nova"}`;
+/** `tipo` separa o rascunho da notícia (“noticia”) do documento (“documento”, e “edital-nova”/“acordo-nova” antes do 1º salvamento). */
+const chaveDo = (pessoaId: string, tipo: string, id: string | null, nova: string) => `${PREFIXO}${pessoaId}:${tipo}:${id ?? nova}`;
 
-export type Retomada =
+export type Retomada<D = DadosNoticia> =
   | { tipo: "nada" }
-  | { tipo: "retomada"; dados: DadosNoticia; guardadoEm: string }
-  | { tipo: "conflito"; minha: DadosNoticia; guardadoEm: string };
+  | { tipo: "retomada"; dados: D; guardadoEm: string }
+  | { tipo: "conflito"; minha: D; guardadoEm: string };
 
-export function criarFilaDoRascunho(opcoes: {
+export function criarFilaDoRascunho<D = DadosNoticia>(opcoes: {
   pessoaId: string;
   id: string | null;
   revisao: number;
   /** Quando a versão aberta foi salva no servidor (para o "Salvo às" logo ao abrir). */
   salvoEm?: string | null;
   intervaloMs: number;
-  enviar: (pedido: PedidoEnvio) => Promise<RespostaEnvio>;
+  enviar: (pedido: PedidoEnvio<D>) => Promise<RespostaEnvio<D>>;
   online: () => boolean;
   armazem: Armazem;
   /** A versão que a tela carregou do servidor (para mostrar no conflito ao retomar). */
-  versaoServidor?: VersaoServidor;
+  versaoServidor?: VersaoServidor<D>;
+  /** Parte da chave no navegador: "noticia" (padrão) ou "documento". */
+  tipo?: string;
+  /** Como a chave chama o rascunho ainda não salvo: "nova" (padrão), "edital-nova"… */
+  nova?: string;
 }) {
   const { pessoaId, armazem } = opcoes;
-  let estado: EstadoDaFila = { situacao: "sincronizado", id: opcoes.id, revisao: opcoes.revisao, salvoEm: opcoes.salvoEm ?? null };
-  let dados: DadosNoticia | null = null;
+  let estado: EstadoDaFila<D> = { situacao: "sincronizado", id: opcoes.id, revisao: opcoes.revisao, salvoEm: opcoes.salvoEm ?? null };
+  let dados: D | null = null;
   let mudanca = 0;
   let mudancaNoServidor = 0;
   let relogio: ReturnType<typeof setTimeout> | null = null;
   let enviando: Promise<void> | null = null;
   const ouvintes = new Set<() => void>();
 
-  const mudar = (novo: Partial<EstadoDaFila>) => {
+  const mudar = (novo: Partial<EstadoDaFila<D>>) => {
     estado = { ...estado, ...novo };
     for (const ouvinte of ouvintes) ouvinte();
   };
   const pendente = () => mudanca !== mudancaNoServidor;
-  const chave = () => chaveDo(pessoaId, estado.id);
+  const tipoDaChave = opcoes.tipo ?? "noticia";
+  const nova = opcoes.nova ?? "nova";
+  const chave = () => chaveDo(pessoaId, tipoDaChave, estado.id, nova);
 
   const guardar = () => {
     if (!dados) return;
-    const registro: Registro = { dados, revisaoBase: estado.revisao, guardadoEm: new Date().toISOString(), pendente: true };
+    const registro: Registro<D> = { dados, revisaoBase: estado.revisao, guardadoEm: new Date().toISOString(), pendente: true };
     try {
       armazem.gravar(chave(), JSON.stringify(registro));
     } catch {
@@ -116,10 +123,10 @@ export function criarFilaDoRascunho(opcoes: {
     }
     const enviada = mudanca;
     const chaveAntes = chave();
-    const pedido: PedidoEnvio = estado.id ? { id: estado.id, revisaoBase: estado.revisao, dados } : { dados };
+    const pedido: PedidoEnvio<D> = estado.id ? { id: estado.id, revisaoBase: estado.revisao, dados } : { dados };
     mudar({ situacao: "salvando" });
     enviando = (async () => {
-      let resposta: RespostaEnvio;
+      let resposta: RespostaEnvio<D>;
       try {
         resposta = await opcoes.enviar(pedido);
       } catch {
@@ -129,7 +136,7 @@ export function criarFilaDoRascunho(opcoes: {
       }
       if (resposta.tipo === "salvo") {
         mudancaNoServidor = enviada;
-        if (chaveAntes !== chaveDo(pessoaId, resposta.id)) apagarCopia(chaveAntes);
+        if (chaveAntes !== chaveDo(pessoaId, tipoDaChave, resposta.id, nova)) apagarCopia(chaveAntes);
         mudar({ id: resposta.id, revisao: resposta.revisao, salvoEm: resposta.salvoEm, erro: undefined });
         if (pendente()) {
           guardar();
@@ -163,7 +170,7 @@ export function criarFilaDoRascunho(opcoes: {
     temPendencia: () => pendente(),
 
     /** A pessoa mudou algum campo. */
-    alterar(novos: DadosNoticia) {
+    alterar(novos: D) {
       dados = novos;
       mudanca += 1;
       guardar();
@@ -181,11 +188,11 @@ export function criarFilaDoRascunho(opcoes: {
     conexaoVoltou: () => enviarPendente(),
 
     /** Ao abrir o editor: há uma cópia desta pessoa guardada neste navegador? */
-    retomar(): Retomada {
-      let registro: Registro | null = null;
+    retomar(): Retomada<D> {
+      let registro: Registro<D> | null = null;
       try {
         const texto = armazem.ler(chave());
-        registro = texto ? (JSON.parse(texto) as Registro) : null;
+        registro = texto ? (JSON.parse(texto) as Registro<D>) : null;
       } catch {
         registro = null;
       }
@@ -204,7 +211,7 @@ export function criarFilaDoRascunho(opcoes: {
     },
 
     /** O modal de conflito gravou a escolha no servidor: segue da revisão devolvida. */
-    conflitoResolvido(resposta: Extract<RespostaEnvio, { tipo: "salvo" }>) {
+    conflitoResolvido(resposta: Extract<RespostaEnvio<D>, { tipo: "salvo" }>) {
       mudancaNoServidor = mudanca;
       apagarCopia();
       mudar({
@@ -217,7 +224,7 @@ export function criarFilaDoRascunho(opcoes: {
     },
 
     /** Alguém salvou de novo enquanto a pessoa escolhia: o modal passa a comparar com a versão mais nova. */
-    conflitoAtualizado(servidor: VersaoServidor) {
+    conflitoAtualizado(servidor: VersaoServidor<D>) {
       if (!dados) return;
       mudar({ situacao: "conflito", conflito: { minha: estado.conflito?.minha ?? dados, servidor } });
     },
@@ -237,7 +244,7 @@ export function criarFilaDoRascunho(opcoes: {
   };
 }
 
-export type FilaDoRascunho = ReturnType<typeof criarFilaDoRascunho>;
+export type FilaDoRascunho<D = DadosNoticia> = ReturnType<typeof criarFilaDoRascunho<D>>;
 
 /**
  * No "Sair" do painel: apaga as cópias desta pessoa que já chegaram ao servidor. As pendentes ficam,
@@ -247,7 +254,7 @@ export function limparAoSair(armazem: Armazem, pessoaId: string) {
   for (const chave of armazem.chaves()) {
     if (!chave.startsWith(`${PREFIXO}${pessoaId}:`)) continue;
     try {
-      const registro = JSON.parse(armazem.ler(chave) ?? "null") as Registro | null;
+      const registro = JSON.parse(armazem.ler(chave) ?? "null") as Registro<unknown> | null;
       if (!registro?.pendente) armazem.apagar(chave);
     } catch {
       armazem.apagar(chave);

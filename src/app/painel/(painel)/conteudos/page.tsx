@@ -25,6 +25,8 @@ import {
   type TipoConteudo,
 } from "@/lib/conteudos/listar";
 import { rotuloDaNoticia } from "@/lib/conteudos/dados";
+import { rotuloDoDocumento } from "@/lib/documentos/dados";
+import { seloDeVigencia } from "@/lib/documentos/selo";
 import { bahiaEmCampos, dataHoraNaBahia, quandoNaBahia } from "@/lib/datas";
 import { pode, type QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
@@ -391,17 +393,19 @@ function linhaDaTabela(item: ItemConteudo, quem: QuemDaEquipe, hrefRapida: strin
   return {
     id: item.id,
     tipo: item.tipo,
-    titulo: rotuloDaNoticia(item.titulo),
+    titulo: item.tipo === "noticia" ? rotuloDaNoticia(item.titulo) : rotuloDoDocumento(item.tipo, item.titulo),
     semTitulo: !item.titulo,
     estado: item.estado,
     categoria: item.categoria,
     autorNome: item.autorNome,
     noSite: textoNoSite(item),
     atualizado: quandoNaBahia(item.atualizadoEm),
-    hrefEditor: item.tipo === "noticia" ? `/painel/conteudos/noticia/${item.id}` : null,
+    hrefEditor: `/painel/conteudos/${item.tipo === "noticia" ? "noticia" : "documento"}/${item.id}`,
     hrefRapida,
-    // Editais e acordos ganham o menu com o editor de documentos (#12).
-    acoes: item.tipo === "noticia" ? acoesDisponiveis(item, quem) : [],
+    // Edital e acordo: o mesmo menu, só para o ADM (RN08, E46).
+    acoes: acoesDisponiveis(item, quem),
+    seloVigencia: item.datasDoSelo ? seloDeVigencia({ estado: item.estado, ...item.datasDoSelo }, new Date()) : null,
+    somenteVer: item.tipo !== "noticia" && !pode(quem, "editar", { tipo: "documento" }),
   };
 }
 

@@ -284,13 +284,15 @@ test("computador compartilhado: o rascunho guardado de uma pessoa não aparece p
   expect((await noticiaNoBanco(id))?.titulo).toBe("Alteração só do Carlos");
 });
 
-test("menu Criar: o Administrador geral vê os documentos como “Disponível em breve”", async ({ page }) => {
+test("menu Criar: o Administrador geral abre o editor de edital e de acordo (#12)", async ({ page }) => {
   await entrar(page, pessoas.adm);
   await expect(page.getByText("Editais e acordos coletivos: só o Administrador geral publica")).toBeHidden();
   await page.getByRole("button", { name: "Criar conteúdo" }).first().click();
   const menu = page.getByRole("menu");
   await expect(menu.getByText("Só Administrador geral")).toBeHidden();
-  await expect(menu.getByRole("menuitem", { name: /Edital/ })).toContainText("Disponível em breve");
+  await menu.getByRole("menuitem", { name: /Acordo ou convenção/ }).click();
+  await expect(page).toHaveURL(/\/painel\/conteudos\/documento\/nova\?tipo=acordo$/);
+  await expect(page.getByRole("heading", { name: "Novo acordo ou convenção", level: 1 })).toBeVisible();
 });
 
 test("o Atendimento não abre o editor (403)", async ({ page }) => {

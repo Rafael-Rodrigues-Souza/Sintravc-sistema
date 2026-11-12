@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { forbidden, notFound } from "next/navigation";
 
+import { ListaAntesDePublicar } from "@/components/painel/antes-de-publicar";
 import { NoticiaAberta, type NoticiaParaLer } from "@/components/site/noticia-aberta";
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
@@ -78,8 +79,8 @@ export default async function PaginaPrevia({
 
   return (
     <MolduraPrevia
-      id={id}
-      dados={dados}
+      editor={`/painel/conteudos/noticia/${id}`}
+      antesDePublicar={<ListaAntesDePublicar dados={dados} />}
       selo={seloDaPrevia({ estado: noticia.estado, comAlteracoes, jaPublicado: noticia.jaPublicado, versao })}
       rotuloPublicar={
         versao || noticia.estado === "arquivado" || noticia.estado === "oculto" || !pode(pessoa.quem, "publicar", { tipo: "noticia" })

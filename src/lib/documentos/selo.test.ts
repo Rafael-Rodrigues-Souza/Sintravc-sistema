@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { seloDeVigencia } from "./selo";
+import { seloDeVigencia, seloDosCampos } from "./selo";
 
 // 12/11/2026 às 10h00 na Bahia (UTC-3).
 const AGORA = new Date("2026-11-12T13:00:00Z");
@@ -56,5 +56,16 @@ describe("seloDeVigencia (C2, E46)", () => {
     for (const estado of ["rascunho", "agendado", "oculto", "arquivado"] as const) {
       expect(seloDeVigencia({ estado, ...vencido }, AGORA)).toBeNull();
     }
+  });
+});
+
+describe("seloDosCampos: o selo a partir dos campos da tela (horário da Bahia)", () => {
+  it("o prazo digitado como 12/11 às 19h00 ainda não passou às 10h", () => {
+    const campos = { eventoData: "2026-11-12", eventoHora: "19:00", vigenciaInicio: "", vigenciaFim: "" };
+    expect(seloDosCampos("publicado", campos, AGORA)).toBe("prazo");
+  });
+
+  it("campos vazios não contam", () => {
+    expect(seloDosCampos("publicado", { eventoData: "", eventoHora: "", vigenciaInicio: "", vigenciaFim: "" }, AGORA)).toBeNull();
   });
 });

@@ -24,14 +24,14 @@ import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
 
 /**
- * Ciclo de vida da notícia (RF40, US22, E45) e Histórico de versões (N14, E31). Cada action
+ * Ciclo de vida do conteúdo, notícia ou documento (RF40, US22, E45, E46) e Histórico de versões (N14, E31). Cada action
  * confere a sessão, o formato e a permissão; o domínio confere de novo, com os dados da notícia
  * (RNF01). As mensagens vão direto para o aviso (Sonner) ou para o campo.
  */
 
 const PEDIDO_INVALIDO = "A tela mandou dados incompletos. Atualize a página e tente de novo.";
 const FALHOU = "Não foi possível concluir agora. Tente de novo em alguns minutos.";
-const SEM_PERMISSAO = "Seu perfil não pode fazer isso com esta notícia.";
+const SEM_PERMISSAO = "Seu perfil não pode fazer isso com este conteúdo.";
 
 const esquemaIds = z.array(z.uuid()).min(1).max(100);
 const esquemaId = z.object({ id: z.uuid() });
