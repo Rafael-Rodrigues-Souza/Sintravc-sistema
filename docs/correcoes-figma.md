@@ -79,6 +79,11 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | N16 | Mídia (116:2727) · arrastando arquivos: camada sobre a área de conteúdo, com borda tracejada e “Solte os arquivos para enviar”. O código já tem a camada (borda `destaque/azul`, ícone de enviar); falta o desenho, no claro e no escuro. | US27, RF48 | 1 | ☐ |
 
 ## Ignorados (dados de exemplo)
+| E46 | Editor · Documento oficial (114:1972) | “Dentro do limite de 20 MB”. | Limite de 10 MB (R7, E39). | R7 | ☐ |
+| E46 | Editor · Documento oficial (114:1972) | Interruptor “Avisar na página inicial · selo Novo por 7 dias”. | Sai do editor. O selo “Novo” é automático na página Documentos (`documento.novo_dias`). | E46 | ☐ |
+| E46 | Editor · Documento oficial (114:1972) | “+ Adicionar anexo complementar”. | Sai: o documento tem só o PDF oficial. | RN12, RN13 | ☐ |
+| E46 | Editor · Documento oficial (114:1972) | Tipo de edital “Convocação de assembleia”. | Rótulos do spec: Convocação, Eleição, Prestação de contas, Outros. | spec §2.2 | ☐ |
+| E46 | Editor · Acordo ou convenção (sem frame) | Não existe. | Segue o 114:1972, com o cartão “Abrangência e partes” e a vigência sempre pedida. | RF41 | ☐ |
 
 Não afetam regras e não precisam de correção no Figma:
 
