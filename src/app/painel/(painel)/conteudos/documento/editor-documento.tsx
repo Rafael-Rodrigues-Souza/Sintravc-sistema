@@ -860,6 +860,7 @@ export function EditorDocumento({
           <Cartao titulo="Arquivo oficial (PDF)" descricao="É o documento que o visitante baixa. Use sempre a versão assinada.">
             <EnvioDoPdf
               pdf={pdf}
+              documentoId={estado.id}
               idDoDocumento={pdfSincronizado ? estado.id : null}
               conectado={conectado}
               limiteBytes={limiteBytes}
@@ -1236,6 +1237,7 @@ type RespostaDoEnvio = PdfNaTela & { texto: string; temTexto: boolean };
  */
 function EnvioDoPdf({
   pdf,
+  documentoId,
   idDoDocumento,
   conectado,
   limiteBytes,
@@ -1244,6 +1246,8 @@ function EnvioDoPdf({
   aoEnviar,
 }: {
   pdf: PdfNaTela | null;
+  /** O documento já salvo (ou null, se é novo). */
+  documentoId: string | null;
   /** Só com o documento salvo: "Visualizar" abre o PDF que está no servidor. */
   idDoDocumento: string | null;
   conectado: boolean;
@@ -1265,6 +1269,8 @@ function EnvioDoPdf({
     }
     const corpo = new FormData();
     corpo.set("arquivo", arquivo);
+    // Com o documento salvo, o servidor sabe se é o primeiro PDF ("criar") ou uma troca ("substituir").
+    if (documentoId) corpo.set("documentoId", documentoId);
     const pedido = new XMLHttpRequest();
     pedido.open("POST", "/api/documentos/pdf");
     pedido.responseType = "json";

@@ -5,15 +5,18 @@ import { banco } from "@/lib/db";
 import { midia } from "@/lib/db/schema";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { imagem, pdf, pdfComTexto } from "@/testes/arquivos/gerar";
+import { documentoCompleto, documentoSalvo } from "@/testes/documentos";
+import { pessoaDaEquipe } from "@/testes/equipe";
 import { sessaoDe } from "@/testes/sessao";
 
 import { tratarEnvioDoPdf } from "./rota-envio-pdf";
 
 const URL_SITE = "http://localhost:3000";
 
-function pedido(opcoes: { cookie?: string; arquivo?: File; contentLength?: string }) {
+function pedido(opcoes: { cookie?: string; arquivo?: File; contentLength?: string; documentoId?: string }) {
   const corpo = new FormData();
   if (opcoes.arquivo) corpo.set("arquivo", opcoes.arquivo);
+  if (opcoes.documentoId) corpo.set("documentoId", opcoes.documentoId);
   const cabecalhos = new Headers({ origin: URL_SITE });
   if (opcoes.cookie) cabecalhos.set("cookie", opcoes.cookie);
   const request = new Request(`${URL_SITE}/api/documentos/pdf`, { method: "POST", headers: cabecalhos, body: corpo });
@@ -81,5 +84,26 @@ describe("POST /api/documentos/pdf (P3, RN12, E46)", () => {
       urlSite: URL_SITE,
     });
     expect(resposta.status).toBe(413);
+  });
+
+  it("documento que já tem PDF: a troca (substituir) passa para o ADM e é recusada para a COM", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const salvo = await documentoSalvo(adm, "edital", await documentoCompleto("edital", adm));
+    const doAdm = await tratarEnvioDoPdf(pedido({ cookie: await sessaoDe("ADM"), arquivo: undefined, documentoId: salvo.id }), { urlSite: URL_SITE });
+    expect(doAdm.status).toBe(400); // passou pela permissão; só faltou o arquivo
+    const daCom = await tratarEnvioDoPdf(pedido({ cookie: await sessaoDe("COM"), arquivo: arquivo(await pdf(1), "x.pdf"), documentoId: salvo.id }), {
+      urlSite: URL_SITE,
+    });
+    expect(daCom.status).toBe(403);
+  });
+
+  it("ADM troca o PDF de um documento que já tem PDF: 201", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const salvo = await documentoSalvo(adm, "edital", await documentoCompleto("edital", adm));
+    const resposta = await tratarEnvioDoPdf(
+      pedido({ cookie: await sessaoDe("ADM"), arquivo: arquivo(await pdfComTexto(["Assinado"]), "assinado.pdf"), documentoId: salvo.id }),
+      { urlSite: URL_SITE, armazenamento: armazenamentoEmMemoria().armazenamento },
+    );
+    expect(resposta.status).toBe(201);
   });
 });

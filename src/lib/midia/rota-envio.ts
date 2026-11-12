@@ -20,7 +20,7 @@ export async function receberEnvio(
   request: Request,
   deps: { urlSite: string; agora?: Date },
   permissao: { pode: (quem: QuemDaEquipe) => boolean; recusa: string },
-): Promise<Response | { quem: QuemDaEquipe; arquivo: File }> {
+): Promise<Response | { quem: QuemDaEquipe; arquivo: File; formulario: FormData }> {
   if (request.headers.get("origin") !== new URL(deps.urlSite).origin) {
     return json(403, { erro: "Envio recusado. Abra o painel pelo endereço oficial e tente de novo." });
   }
@@ -37,12 +37,10 @@ export async function receberEnvio(
     return json(413, { erro: erroDeTamanho(limites.tamanhoMaximoBytes).message });
   }
 
-  const arquivo = await request
-    .formData()
-    .then((dados) => dados.get("arquivo"))
-    .catch(() => null);
-  if (!(arquivo instanceof File)) return json(400, { erro: "Escolha um arquivo para enviar." });
-  return { quem: pessoa.quem, arquivo };
+  const formulario = await request.formData().catch(() => null);
+  const arquivo = formulario?.get("arquivo");
+  if (!formulario || !(arquivo instanceof File)) return json(400, { erro: "Escolha um arquivo para enviar." });
+  return { quem: pessoa.quem, arquivo, formulario };
 }
 
 /** Resposta de erro esperado do envio (formato, tamanho), ou null se o erro é outro. */

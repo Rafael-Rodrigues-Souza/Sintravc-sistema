@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 import type { Armazenamento } from "@/lib/armazenamento";
 import { banco } from "@/lib/db";
@@ -8,6 +9,8 @@ import { receberEnvio, respostaDoErroDeEnvio } from "@/lib/midia/rota-envio";
 import { lerParametro } from "@/lib/parametros";
 import { pode } from "@/lib/permissoes";
 
+import { lerDocumento } from "./carregar";
+import { acaoDoEnvioDoPdf } from "./envio-do-pdf";
 import { extrairTextoDoPdf, type TextoExtraido } from "./extrair-texto";
 
 const SO_ADM = "Só o Administrador geral envia documentos oficiais.";
@@ -28,11 +31,18 @@ export async function tratarEnvioDoPdf(
   request: Request,
   deps: { urlSite: string; armazenamento?: Armazenamento; agora?: Date },
 ): Promise<Response> {
+  // Antes de ler o arquivo: quem não pode criar nem substituir documento já é recusado.
   const recebido = await receberEnvio(request, deps, {
-    pode: (quem) => pode(quem, "substituir", { tipo: "documento" }),
+    pode: (quem) => pode(quem, "criar", { tipo: "documento" }) || pode(quem, "substituir", { tipo: "documento" }),
     recusa: SO_ADM,
   });
   if (recebido instanceof Response) return recebido;
+  // O primeiro PDF do documento é "criar"; trocar o que já existe é "substituir" (RN08).
+  const documentoId = z.uuid().safeParse(recebido.formulario.get("documentoId"));
+  const atual = documentoId.success ? await lerDocumento(banco(), documentoId.data) : null;
+  if (!pode(recebido.quem, acaoDoEnvioDoPdf(atual ? atual.dados : null), { tipo: "documento" })) {
+    return Response.json({ erro: SO_ADM }, { status: 403 });
+  }
 
   try {
     const bytes = new Uint8Array(await recebido.arquivo.arrayBuffer());
