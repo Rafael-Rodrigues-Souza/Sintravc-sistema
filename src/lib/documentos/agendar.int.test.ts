@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { cancelarAgendamento, reagendarConteudo } from "@/lib/conteudos/agendar";
+import { itensDoCalendario } from "@/lib/conteudos/calendario";
 import { executarPublicacaoAgendada } from "@/lib/conteudos/publicar-agendado";
 import { SemPermissao } from "@/lib/permissoes";
 import { filaEmMemoria } from "@/lib/tarefas/fila";
@@ -101,5 +102,31 @@ describe("agendarDocumento (RF41, RN12, E44, E46)", () => {
     await cancelarAgendamento({ id: salvo.id }, { quem: adm });
     expect(await carregarDocumento(salvo.id, { quem: adm })).toMatchObject({ estado: "rascunho", agendadoPara: null });
     expect((await atividadesDe(salvo.id)).at(-1)).toMatchObject({ acao: "documento.cancelar_agendamento" });
+  });
+});
+
+describe("arrastar o documento agendado no calendário (RF36, E44, E46)", () => {
+  it("aparece no dia marcado; o ADM arrasta para outro dia; a Comunicação é negada e nada muda", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const com = await pessoaDaEquipe("COM");
+    const salvo = await documentoSalvo(adm, "edital", await documentoCompleto("edital", adm));
+    const { fila, pedidos } = filaEmMemoria();
+    await agendarDocumento({ id: salvo.id, revisaoBase: 1, para: PARA, confirmoOficial: true }, { quem: adm, fila, agora: AGORA });
+
+    const { dias } = await itensDoCalendario({ ano: 2026, mes: 11, tipo: "edital" }, { quem: adm });
+    expect(dias["2026-11-03"]?.map((i) => i.id)).toContain(salvo.id);
+
+    const outroDia = new Date("2026-11-05T11:00:00Z"); // 05/11 às 8h na Bahia
+    expect(await erroDe(reagendarConteudo({ id: salvo.id, para: outroDia }, { quem: com, fila, agora: AGORA }))).toBeInstanceOf(SemPermissao);
+    expect(await carregarDocumento(salvo.id, { quem: adm })).toMatchObject({ agendadoPara: PARA });
+
+    await reagendarConteudo({ id: salvo.id, para: outroDia }, { quem: adm, fila, agora: AGORA });
+
+    expect(await carregarDocumento(salvo.id, { quem: adm })).toMatchObject({ estado: "agendado", agendadoPara: outroDia });
+    expect(pedidos.at(-1)).toEqual({ conteudoId: salvo.id, para: outroDia.toISOString() });
+    expect((await atividadesDe(salvo.id)).at(-1)).toMatchObject({
+      acao: "documento.reagendar",
+      detalhe: { de: PARA.toISOString(), para: outroDia.toISOString() },
+    });
   });
 });
