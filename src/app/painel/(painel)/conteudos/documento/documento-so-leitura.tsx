@@ -5,6 +5,7 @@ import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { dataHoraNaBahia } from "@/lib/datas";
 import type { DocumentoAberto } from "@/lib/documentos/carregar";
+import { tamanhoDoArquivo } from "@/lib/documentos/cartao";
 import { NOME_DO_TIPO, ROTULO_DO_SUBTIPO, rotuloDoDocumento, usaVigencia } from "@/lib/documentos/dados";
 import { seloDosCampos } from "@/lib/documentos/selo";
 
@@ -72,7 +73,7 @@ export function DocumentoSoLeitura({ documento, categoria }: { documento: Docume
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate texto-rotulo text-texto-primario">{pdf.nomeArquivo}</span>
               <span className="texto-pequeno text-texto-secundario">
-                {(pdf.bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB
+                {tamanhoDoArquivo(pdf.bytes)}
                 {pdf.paginas ? ` · ${pdf.paginas} ${pdf.paginas === 1 ? "página" : "páginas"}` : ""}
               </span>
             </div>

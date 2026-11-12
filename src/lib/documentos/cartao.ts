@@ -39,7 +39,11 @@ const ETIQUETA: Record<SubtipoDocumento, string> = {
 };
 
 const dia = (valor: string) => valor.split("-").reverse().join("/");
-const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+/** "640 KB", "1,2 MB": como o tamanho do PDF aparece no painel e no site. */
+export function tamanhoDoArquivo(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+}
 
 export function cartaoDoDocumento(entrada: {
   tipo: TipoDocumento;
@@ -62,7 +66,7 @@ export function cartaoDoDocumento(entrada: {
     prazo: dados.eventoData && dados.eventoHora ? `${dia(dados.eventoData)} · ${dados.eventoHora.replace(":", "h")}` : null,
     vigencia: dados.vigenciaInicio && dados.vigenciaFim ? `${dia(dados.vigenciaInicio)} a ${dia(dados.vigenciaFim)}` : null,
     abrangencia: tipo === "acordo" && dados.abrangencia ? dados.abrangencia : null,
-    arquivo: entrada.pdfBytes !== null ? `PDF · ${megabytes(entrada.pdfBytes)}` : null,
+    arquivo: entrada.pdfBytes !== null ? `PDF · ${tamanhoDoArquivo(entrada.pdfBytes)}` : null,
     hrefAbrir: entrada.hrefs?.abrir ?? null,
     hrefBaixar: entrada.hrefs?.baixar ?? null,
   };

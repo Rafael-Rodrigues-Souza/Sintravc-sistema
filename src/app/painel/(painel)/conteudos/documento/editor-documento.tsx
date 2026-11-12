@@ -52,6 +52,7 @@ import {
   type SubtipoDocumento,
   type TipoDocumento,
 } from "@/lib/documentos/dados";
+import { tamanhoDoArquivo } from "@/lib/documentos/cartao";
 import { faltasParaPublicarDocumento, type CampoObrigatorioDocumento } from "@/lib/documentos/obrigatorios";
 import { seloDosCampos } from "@/lib/documentos/selo";
 import type { QuemDaEquipe } from "@/lib/permissoes";
@@ -132,7 +133,7 @@ const MENSAGEM_DO_CAMPO: Partial<Record<CampoObrigatorioDocumento, string>> = {
   categoriaId: "Escolha a categoria para publicar.",
 };
 
-const tamanhoEmMb = (bytes: number) => `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+const tamanhoEmMb = tamanhoDoArquivo;
 
 /**
  * Editor de documento oficial, edital ou acordo (RF41, RN12; Figma 114:1972 e, para o acordo, o
@@ -1129,12 +1130,10 @@ function CampoDeData({ id, rotulo, valor, erro, aoMudar }: { id: string; rotulo:
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{rotulo}</Label>
-      <div className="relative">
-        <CalendarDays aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-texto-terciario" />
+      <div>
         <Input
           id={id}
           type="date"
-          className="pl-10"
           value={valor}
           aria-invalid={erro ? true : undefined}
           aria-describedby={erro ? `${id}-erro` : undefined}

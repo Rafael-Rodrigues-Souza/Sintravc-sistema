@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cartaoDoDocumento } from "./cartao";
+import { cartaoDoDocumento, tamanhoDoArquivo } from "./cartao";
 import { documentoVazio } from "./dados";
 
 const AGORA = new Date("2026-10-25T13:00:00Z");
@@ -60,5 +60,13 @@ describe("cartaoDoDocumento: o que o cartão da página Documentos mostra (Figma
       arquivo: null,
       hrefAbrir: null,
     });
+  });
+});
+
+describe("tamanhoDoArquivo", () => {
+  it("abaixo de 1 MB, mostra em KB; acima, em MB com uma casa", () => {
+    expect(tamanhoDoArquivo(2_048)).toBe("2 KB");
+    expect(tamanhoDoArquivo(640 * 1024)).toBe("640 KB");
+    expect(tamanhoDoArquivo(1_258_291)).toBe("1,2 MB");
   });
 });
