@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 import { conferirSessaoDaEquipe, sessaoRecusada } from "@/lib/acesso/sessao-da-equipe";
 import { armazenamentoS3, contentDisposition, type Armazenamento } from "@/lib/armazenamento";
@@ -30,7 +31,7 @@ export async function tratarPdfDoDocumento(
     return texto(403, "Seu perfil não pode abrir versões antigas de documentos oficiais.");
   }
 
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pedido.id)) return texto(404, "Este documento não existe.");
+  if (!z.uuid().safeParse(pedido.id).success) return texto(404, "Este documento não existe.");
   // O PDF da cópia de trabalho ainda não foi confirmado como oficial: só quem edita (o ADM) vê.
   // Quem só vê e baixa (a COM) recebe o da versão publicada (RN12, E46).
   const pdfMidiaId =

@@ -17,7 +17,7 @@ import { descartarAlteracoesDocumento, restaurarVersaoDocumento, resolverConflit
 import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
 
-import type { VersaoNaTela } from "../acoes-ciclo-de-vida";
+import { versaoNaTela, type VersaoNaTela } from "@/lib/conteudos/versoes";
 
 /**
  * Ações do editor de documento oficial (RF41, RN12, E46). Só o ADM altera (RN08): cada action
@@ -72,7 +72,7 @@ function erroParaResposta(erro: unknown, contexto: string): { tipo: "erro"; mens
   return { tipo: "erro", mensagem: FALHOU };
 }
 
-async function versaoNaTela(documento: DocumentoAberto): Promise<VersaoServidor<DadosDocumento>> {
+async function versaoDoServidor(documento: DocumentoAberto): Promise<VersaoServidor<DadosDocumento>> {
   return {
     revisao: documento.revisao,
     dados: documento.dados,
@@ -82,7 +82,7 @@ async function versaoNaTela(documento: DocumentoAberto): Promise<VersaoServidor<
 }
 
 async function responder(resultado: ResultadoSalvarDocumento): Promise<RespostaEnvio<DadosDocumento>> {
-  if (resultado.tipo === "conflito") return { tipo: "conflito", servidor: await versaoNaTela(resultado.servidor) };
+  if (resultado.tipo === "conflito") return { tipo: "conflito", servidor: await versaoDoServidor(resultado.servidor) };
   return { tipo: "salvo", id: resultado.id, revisao: resultado.revisao, salvoEm: resultado.salvoEm.toISOString() };
 }
 
@@ -215,14 +215,7 @@ export async function acaoListarVersoesDocumento(
     const versoes = await versoesDoDocumento(validado.data.id, { quem: pessoa.quem });
     return {
       tipo: "versoes",
-      versoes: versoes.map((v) => ({
-        versao: v.versao,
-        criadoPorNome: v.criadoPorNome,
-        criadoEm: v.criadoEm.toISOString(),
-        noAr: v.noAr,
-        voltaAoSite: v.voltaAoSite,
-        resumo: v.resumo,
-      })),
+      versoes: versoes.map(versaoNaTela),
     };
   } catch (erro) {
     return erroParaResposta(erro, "listar as versões");

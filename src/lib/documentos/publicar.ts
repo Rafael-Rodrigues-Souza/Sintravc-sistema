@@ -47,20 +47,17 @@ export async function publicarDocumento(
       throw new ErroConteudo("invalido", `${p.este} não pode ser ${p.o("publicad")} no estado em que está. Atualize a página.`);
     }
     if (atual.estado === "publicado" && atual.revisaoPublicada === atual.revisao) return publicado(atual);
-    return publicarDocumentoNaTransacao(tx, atual, deps.quem, { quem: deps.quem, sessaoEdicao: deps.sessaoEdicao });
+    return publicarDocumentoNaTransacao(tx, atual, deps);
   });
 }
 
 /**
- * Põe no ar a cópia de trabalho do documento travado, já com a confirmação conferida. Também usada
- * pela publicação agendada, com quem agendou (e confirmou) como autor da versão.
+ * Põe no ar a cópia de trabalho do documento travado, já com a confirmação conferida: quem publica
+ * é quem confirmou o PDF como oficial e o autor da versão. (A publicação agendada usa o núcleo
+ * comum, irAoAr, com quem agendou e confirmou.)
  */
-export async function publicarDocumentoNaTransacao(
-  tx: Transacao,
-  atual: LinhaDoConteudo,
-  confirmou: { id: string },
-  deps: DepsDaPublicacaoDocumento,
-) {
+export async function publicarDocumentoNaTransacao(tx: Transacao, atual: LinhaDoConteudo, deps: DepsDaPublicacaoDocumento) {
+  const confirmou = deps.quem;
   const anterior = atual.jaPublicado ? await retratoDoDocumento(tx, atual.id) : null;
   const copia = await copiaDeTrabalho(tx, atual);
   const trocouPdf = !!anterior && anterior.dados.pdfMidiaId !== copia.pdfMidiaId;

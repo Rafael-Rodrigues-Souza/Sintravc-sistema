@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { noticiaVazia, type DadosNoticia } from "./dados";
-import { resumirMudancas } from "./versoes";
+import { resumirMudancas, versaoNaTela } from "./versoes";
 
 const v1: DadosNoticia = { ...noticiaVazia(), titulo: "Assembleia no sábado", lide: "Lide.", linhaFina: "Linha fina." };
 
@@ -23,5 +23,14 @@ describe("resumirMudancas (Histórico de versões, N14)", () => {
 
   it("sem diferença no que o site mostra", () => {
     expect(resumirMudancas(v1, { ...v1 })).toBe("Sem mudanças no texto.");
+  });
+});
+
+describe("versaoNaTela: a versão como o Histórico recebe (N14)", () => {
+  it("só os campos do painel, com a data em texto ISO (sem os dados da versão)", () => {
+    const criadoEm = new Date("2026-11-10T13:06:00Z");
+    // A versão vem do domínio com os dados junto; o painel não precisa deles.
+    const doDominio = { versao: 2, criadoPorNome: "Mariana Souza", criadoEm, noAr: true, voltaAoSite: false, resumo: "Mudou: resumo.", dados: { x: 1 } };
+    expect(versaoNaTela(doDominio)).toEqual({ versao: 2, criadoPorNome: "Mariana Souza", criadoEm: "2026-11-10T13:06:00.000Z", noAr: true, voltaAoSite: false, resumo: "Mudou: resumo." });
   });
 });

@@ -19,6 +19,7 @@ import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
 import { MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import { versoesDaNoticia } from "@/lib/conteudos/publicar";
+import { versaoNaTela, type VersaoNaTela } from "@/lib/conteudos/versoes";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -147,14 +148,7 @@ export async function acaoExcluirRascunho(entrada: unknown): Promise<RespostaSim
   }
 }
 
-export type VersaoNaTela = {
-  versao: number;
-  criadoPorNome: string;
-  criadoEm: string;
-  noAr: boolean;
-  voltaAoSite: boolean;
-  resumo: string;
-};
+export type { VersaoNaTela } from "@/lib/conteudos/versoes";
 
 /** Versões publicadas para o painel Histórico (N14). */
 export async function acaoListarVersoes(entrada: unknown): Promise<{ tipo: "versoes"; versoes: VersaoNaTela[] } | { tipo: "erro"; mensagem: string }> {
@@ -166,14 +160,7 @@ export async function acaoListarVersoes(entrada: unknown): Promise<{ tipo: "vers
     const versoes = await versoesDaNoticia(validado.data.id, { quem: pessoa.quem });
     return {
       tipo: "versoes",
-      versoes: versoes.map((v) => ({
-        versao: v.versao,
-        criadoPorNome: v.criadoPorNome,
-        criadoEm: v.criadoEm.toISOString(),
-        noAr: v.noAr,
-        voltaAoSite: v.voltaAoSite,
-        resumo: v.resumo,
-      })),
+      versoes: versoes.map(versaoNaTela),
     };
   } catch (e) {
     return erro(e, "listar as versões");
