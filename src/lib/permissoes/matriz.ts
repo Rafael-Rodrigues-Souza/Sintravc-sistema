@@ -24,7 +24,7 @@ export type DoServico = { responsaveisIds: readonly string[] };
 export type Recurso =
   | { tipo: "site_publico" }
   | { tipo: "noticia"; autorId?: string; jaPublicado?: boolean }
-  | { tipo: "documento" }
+  | { tipo: "documento"; jaPublicado?: boolean }
   | { tipo: "comunicado" }
   | { tipo: "radio" }
   | { tipo: "pagina_inicial" }
@@ -95,12 +95,20 @@ export const matriz = {
     },
   },
 
-  // Edital, acordo e convenção.
+  // Edital, acordo e convenção: só o ADM altera; a COM vê e baixa (RN07, RN08, E46).
   documento: {
     criar: SO_ADM,
+    editar: SO_ADM,
     publicar: SO_ADM,
+    agendar: SO_ADM,
     substituir: SO_ADM,
+    ocultar: SO_ADM,
     arquivar: SO_ADM,
+    restaurar: SO_ADM,
+    ver_versoes: SO_ADM,
+    restaurar_versao: SO_ADM,
+    // Só rascunho nunca publicado (RN54, E07).
+    excluir: (quem, documento) => documento.jaPublicado === false && SO_ADM(quem),
     ver: ADM_COM,
     baixar: ADM_COM,
   },

@@ -1,6 +1,7 @@
 import { inArray } from "drizzle-orm";
 
 import { rotuloDaNoticia } from "@/lib/conteudos/dados";
+import { rotuloDoDocumento, type TipoDocumento } from "@/lib/documentos/dados";
 import { banco, type Transacao } from "@/lib/db";
 import { conteudo, midiaUso } from "@/lib/db/schema";
 
@@ -19,6 +20,18 @@ const DESCRITORES: Record<string, (ids: string[], tx: Transacao | ReturnType<typ
       const linhas = await tx.select({ id: conteudo.id, titulo: conteudo.titulo }).from(conteudo).where(inArray(conteudo.id, ids));
       return new Map(
         linhas.map((l) => [l.id, { rotulo: rotuloDaNoticia(l.titulo), href: `/painel/conteudos/noticia/${l.id}` }]),
+      );
+    },
+    documento: async (ids, tx) => {
+      const linhas = await tx
+        .select({ id: conteudo.id, tipo: conteudo.tipo, titulo: conteudo.titulo })
+        .from(conteudo)
+        .where(inArray(conteudo.id, ids));
+      return new Map(
+        linhas.map((l) => [
+          l.id,
+          { rotulo: rotuloDoDocumento(l.tipo as TipoDocumento, l.titulo), href: `/painel/conteudos/documento/${l.id}` },
+        ]),
       );
     },
   };

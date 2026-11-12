@@ -9,7 +9,7 @@ import { atividadesDe, idDaCategoria, noticiaCompleta, rascunhoSalvo } from "@/t
 import { agendarNoticia } from "./agendar";
 import { carregarNoticia, retratoNoAr } from "./carregar";
 import { salvarEdicaoRapida, ultimasAcoes, type EntradaEdicaoRapida } from "./edicao-rapida";
-import { ocultarNoticias } from "./ciclo-de-vida";
+import { ocultarConteudos } from "./ciclo-de-vida";
 import { ErroConteudo } from "./erros";
 import { ErroFaltamCampos, publicarNoticia } from "./publicar";
 
@@ -154,7 +154,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
     await publicarNoticia({ id, revisaoBase: revisao }, { quem });
-    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Revisar" }, { quem });
 
     const resultado = await salvarEdicaoRapida(await entrada(id, { titulo: "Título revisado" }), depsDe(quem).deps);
 
@@ -165,7 +165,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
     await publicarNoticia({ id, revisaoBase: revisao }, { quem });
-    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Revisar" }, { quem });
 
     const resultado = await salvarEdicaoRapida(await entrada(id, { situacao: "publicado" }), depsDe(quem).deps);
 

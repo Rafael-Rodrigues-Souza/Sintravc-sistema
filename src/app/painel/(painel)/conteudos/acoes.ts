@@ -13,7 +13,7 @@ import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
 import { MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
-import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
+import { ehCampoObrigatorio, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import type { RespostaEnvio } from "@/lib/conteudos/fila-rascunho";
 import { descartarAlteracoes, ErroFaltamCampos, publicarNoticia } from "@/lib/conteudos/publicar";
 import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/salvar";
@@ -161,7 +161,7 @@ export async function acaoPublicarNoticia(entrada: unknown, sessaoEdicao: unknow
     if (r.tipo === "conflito") return { tipo: "conflito" };
     return { tipo: "publicada", versao: r.versao, revisaoPublicada: r.revisaoPublicada, publicadoEm: r.publicadoEm.toISOString() };
   } catch (erro) {
-    if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos };
+    if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos.filter(ehCampoObrigatorio) };
     if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message };
     console.error("[conteudos] Falha ao publicar.", erro);
     return { tipo: "erro", mensagem: "Não foi possível publicar agora. Tente de novo em alguns minutos." };
@@ -223,7 +223,7 @@ export type RespostaAgendar =
   | { tipo: "erro"; mensagem: string; campo?: string };
 
 function erroDoAgendamento(erro: unknown, contexto: string): Extract<RespostaAgendar, { tipo: "faltam" | "erro" }> {
-  if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos };
+  if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos.filter(ehCampoObrigatorio) };
   if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
   if (erro instanceof SemPermissao) return { tipo: "erro", mensagem: SEM_PERMISSAO_AGENDAR };
   console.error(`[conteudos] Falha ao ${contexto}.`, erro);

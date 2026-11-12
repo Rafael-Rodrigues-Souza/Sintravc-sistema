@@ -6,11 +6,11 @@ import { z } from "zod";
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
 import {
-  arquivarNoticias,
+  arquivarConteudos,
   desfazerArquivamento,
   excluirRascunho,
   mostrarNoSite,
-  ocultarNoticias,
+  ocultarConteudos,
   restaurarComoRascunho,
   restaurarVersao,
   type ResultadoLote,
@@ -64,7 +64,7 @@ export async function acaoOcultar(entrada: unknown): Promise<RespostaLote> {
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "ocultar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
   try {
-    const r = await ocultarNoticias(validado.data, { quem: pessoa.quem });
+    const r = await ocultarConteudos(validado.data, { quem: pessoa.quem });
     atualizarTelas();
     return { tipo: "feito", ...r };
   } catch (e) {
@@ -94,7 +94,7 @@ export async function acaoArquivar(entrada: unknown): Promise<RespostaLote> {
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "arquivar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
   try {
-    const r = await arquivarNoticias(validado.data, { quem: pessoa.quem });
+    const r = await arquivarConteudos(validado.data, { quem: pessoa.quem });
     atualizarTelas();
     return { tipo: "feito", ...r };
   } catch (e) {

@@ -7,9 +7,10 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import type { DadosNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
-import { faltasParaPublicar, type CampoObrigatorio } from "./obrigatorios";
 import { jaFoiAoAr } from "./publicacao";
-import { gravarPorCima, gravarUsos, registrarAtividadeNoticia, travarNoticia } from "./salvar";
+import { copiaDeTrabalho, type CopiaDeTrabalho } from "./copia-de-trabalho";
+import { gravarPorCima, registrarAtividadeNoticia, travarNoticia } from "./salvar";
+import type { TipoDeConteudo } from "./tipo-do-conteudo";
 import { resumirMudancas } from "./versoes";
 
 export type DepsDaPublicacao = {
@@ -55,13 +56,13 @@ export async function publicarNaTransacao(
   if (atual.estado === "publicado" && atual.revisaoPublicada === atual.revisao) {
     return publicada(atual);
   }
-  const noticia = (await lerNoticia(tx, atual.id))!;
-  const { gravado, versao, primeira } = await irAoAr(tx, atual, noticia.dados, { criadoPor: deps.quem.id, agora: new Date() });
+  const copia = await copiaDeTrabalho(tx, atual);
+  const { gravado, versao, primeira } = await irAoAr(tx, atual, copia, { criadoPor: deps.quem.id, agora: new Date() });
   await registrarAtividadeNoticia(
     tx,
     primeira ? "noticia.publicar" : "noticia.publicar_alteracoes",
     atual.id,
-    noticia.dados.titulo,
+    copia.titulo,
     { quem: deps.quem, sessaoEdicao: deps.sessaoEdicao },
     { versao },
   );
@@ -69,18 +70,22 @@ export async function publicarNaTransacao(
 }
 
 /**
- * Põe no ar a cópia de trabalho de uma notícia já travada (E42): confere os obrigatórios, grava o
- * estado, o slug, a data e a versão, e o retrato. O mesmo núcleo serve ao "Publicar agora" e à
- * publicação agendada (T01, E44). Quem chama registra a Atividade.
+ * Põe no ar a cópia de trabalho de um conteúdo já travado, de qualquer tipo (E42, E46): confere os
+ * obrigatórios, grava o estado, o slug, a data e a versão, e o retrato. O mesmo núcleo serve ao
+ * "Publicar agora" e à publicação agendada (T01, E44). Quem chama registra a Atividade.
  */
 export async function irAoAr(
   tx: Transacao,
   atual: typeof conteudo.$inferSelect,
-  dados: DadosNoticia,
+  copia: CopiaDeTrabalho,
   opcoes: { criadoPor: string; agora: Date },
 ) {
-  const faltas = faltasParaPublicar(dados);
-  if (faltas.length > 0) throw new ErroFaltamCampos(faltas.map((f) => f.campo));
+  if (copia.faltas.length > 0) {
+    throw new ErroFaltamCampos(
+      copia.faltas.map((f) => f.campo),
+      atual.tipo === "noticia" ? undefined : copia.faltas.map((f) => f.rotulo),
+    );
+  }
 
   const primeira = !atual.jaPublicado;
   const versao = atual.versao + 1;
@@ -88,7 +93,7 @@ export async function irAoAr(
     .update(conteudo)
     .set({
       estado: "publicado",
-      slug: atual.slug ?? (await slugLivre(tx, dados.titulo)),
+      slug: atual.slug ?? (await slugLivre(tx, atual.tipo, copia.titulo)),
       publicadoEm: atual.publicadoEm ?? opcoes.agora,
       jaPublicado: true,
       versao,
@@ -100,10 +105,9 @@ export async function irAoAr(
     .where(eq(conteudo.id, atual.id))
     .returning();
 
-  const retrato: RetratoDaNoticia = { formato: 1, dados };
-  await tx.insert(conteudoVersao).values({ conteudoId: atual.id, versao, snapshot: retrato, criadoPor: opcoes.criadoPor });
+  await tx.insert(conteudoVersao).values({ conteudoId: atual.id, versao, snapshot: copia.retrato, criadoPor: opcoes.criadoPor });
   // A versão anterior saiu do ar: o que só ela usava deixa de contar como uso da Mídia.
-  await gravarUsos(tx, atual.id, dados);
+  await copia.gravarUsos(tx);
   return { gravado: gravado!, versao, primeira };
 }
 
@@ -149,7 +153,11 @@ export async function descartarAlteracoes(
 
 /** Faltam campos obrigatórios para publicar (CA-US21.3). A tela indica cada um. */
 export class ErroFaltamCampos extends ErroConteudo {
-  constructor(readonly campos: CampoObrigatorio[]) {
+  constructor(
+    readonly campos: string[],
+    /** Nomes dos campos para o aviso de falha (M06), quando não são os da notícia (documento). */
+    readonly rotulos?: string[],
+  ) {
     super(
       "invalido",
       campos.length === 1 ? "Falta 1 item obrigatório para publicar." : `Faltam ${campos.length} itens obrigatórios para publicar.`,
@@ -158,8 +166,8 @@ export class ErroFaltamCampos extends ErroConteudo {
   }
 }
 
-/** Endereço da notícia a partir da manchete (P2): sem acento, minúsculo, com hífens. */
-export function slugificar(titulo: string): string {
+/** Endereço do conteúdo a partir do título (P2): sem acento, minúsculo, com hífens. */
+export function slugificar(titulo: string, seVazio = "noticia"): string {
   const base = titulo
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -168,18 +176,18 @@ export function slugificar(titulo: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80)
     .replace(/-+$/g, "");
-  return base || "noticia";
+  return base || seVazio;
 }
 
-/** Slug ainda não usado por outra notícia: "x", "x-2", "x-3"... */
-async function slugLivre(tx: Transacao, titulo: string) {
-  const base = slugificar(titulo);
+/** Slug ainda não usado por outro conteúdo do mesmo tipo: "x", "x-2", "x-3"... */
+async function slugLivre(tx: Transacao, tipo: TipoDeConteudo, titulo: string) {
+  const base = slugificar(titulo, tipo === "noticia" ? "noticia" : tipo);
   const usados = new Set(
     (
       await tx
         .select({ slug: conteudo.slug })
         .from(conteudo)
-        .where(and(eq(conteudo.tipo, "noticia"), or(eq(conteudo.slug, base), like(conteudo.slug, `${base}-%`))))
+        .where(and(eq(conteudo.tipo, tipo), or(eq(conteudo.slug, base), like(conteudo.slug, `${base}-%`))))
     ).map((l) => l.slug),
   );
   if (!usados.has(base)) return base;
