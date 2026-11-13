@@ -53,12 +53,22 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    // Celular de 375 px: roda só os testes marcados com @celular (que também rodam no desktop).
-    // Um passo que só vale no celular pula fora dele com test.skip(!isMobile).
+    // Responsividade (E48): os testes marcados com @responsivo rodam também nestes três projetos.
+    // O tablet abre em pé (800×1280); o teste gira para deitado (1280×800) sem recarregar.
     {
       name: "celular",
-      grep: /@celular/,
-      use: { ...devices["Pixel 5"], viewport: { width: 375, height: 812 } },
+      grep: /@responsivo/,
+      use: { ...devices["Pixel 5"], viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true },
+    },
+    {
+      name: "tablet",
+      grep: /@responsivo/,
+      use: { ...devices["Galaxy Tab S4"], viewport: { width: 800, height: 1280 }, isMobile: true, hasTouch: true },
+    },
+    {
+      name: "notebook",
+      grep: /@responsivo/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 720 } },
     },
   ],
   webServer: {

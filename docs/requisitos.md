@@ -45,7 +45,7 @@ Home, Notícias, Sindicato (Instituição, Diretoria, Benefícios), Documentos, 
 | RF07 | Mostrar o botão “Filiar-se pelo WhatsApp” (seção Filie-se, menu mobile e rodapé), abrindo conversa com a recepção e mensagem pronta. | VIS | 1 | RN03 |
 | RF08 | Exibir comunicados ativos como faixa no topo de todas as páginas, alternando entre eles na ordem da fila, com link “Saiba mais”. | VIS, ASS | 1 | RN14 |
 | RF09 | Oferecer menu mobile (visitante; a variante conectada é da Fase 2, E01), página 404, Política de privacidade, Termos de uso e aviso de cookies na primeira visita. | VIS | 1 | RN45 |
-| RF10 | Exibir todas as páginas em versão desktop e mobile e nos temas claro e escuro. | VIS, ASS | 1 | — |
+| RF10 | Exibir todas as páginas em versão desktop e mobile e nos temas claro e escuro, sem quebrar em tablet (com toque, em pé e deitado), em janela reduzida e em telas baixas (E48). | VIS, ASS | 1 | — |
 | RF11 | Quando o associado estiver conectado, mostrar no cabeçalho “Olá, <nome>”, o sino de notificações com contador, o menu da conta e o atalho “Agendar” na Home. | ASS | 2 (E01) | RN41 |
 
 ### 2.2 M02 · Acesso do associado
@@ -240,7 +240,7 @@ Consulta de filiação, dados cadastrais e dependentes (login, primeiro acesso, 
 | RNF07 | Desempenho | Páginas públicas rápidas no celular (meta: LCP abaixo de 2,5 s em 4G); imagens otimizadas; player do YouTube só no clique. |
 | RNF08 | SEO | Páginas públicas renderizadas no servidor, com título, descrição e imagem de compartilhamento por notícia; mapa do site. |
 | RNF09 | Acessibilidade | WCAG 2.1 AA: contraste, navegação por teclado, foco visível, texto alternativo obrigatório nas imagens publicadas. |
-| RNF10 | Responsividade | Layouts desktop e mobile conforme o protótipo; temas claro e escuro com os tokens do Figma. |
+| RNF10 | Responsividade | Layouts desktop e mobile conforme o protótipo; temas claro e escuro com os tokens do Figma. De 320 a 1920 px de largura e a partir de 600 px de altura, sem rolagem lateral, item esmagado, texto cortado ou sobreposto; no toque, alvos de 44 px, nada que dependa de hover, e girar o tablet não quebra a tela (E48). |
 | RNF11 | Disponibilidade | Se a API do sindicato estiver fora do ar, o site público continua funcionando; login, agendamento e balcão usam a última consulta de até 24 h e, sem ela, mostram aviso de indisponibilidade (E22). |
 | RNF12 | Atualização | Alterações em Configurações › Site visíveis no site em até 1 minuto. |
 | RNF13 | Confiabilidade | Tarefas agendadas (publicações, lembretes, pendências, verificação diária) com nova tentativa em caso de falha. |
