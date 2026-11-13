@@ -28,6 +28,7 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
    - AlertDialog nas confirmações;
    - Sonner nos avisos.
 4. Os critérios de aceitação da história (`docs/criterios-de-aceitacao.md`) são o teste de pronto.
+5. Toda tela nova passa pela skill `conferir-responsivo` (E48) e tem pelo menos um e2e marcado com `@responsivo`, que roda nos projetos do `playwright.config.ts`. Os tamanhos ficam só no objeto `RESPONSIVO` desse arquivo: não repita os números.
 
 ## Conteúdo institucional e jurídico
 

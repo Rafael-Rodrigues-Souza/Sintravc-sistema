@@ -38,6 +38,22 @@ export const ambienteE2E = {
 /** API do Mailpit, para ler os e-mails nos testes. */
 export const URL_MAILPIT = process.env.URL_MAILPIT ?? "http://localhost:8025";
 
+/**
+ * Tamanhos da responsividade (E48), num lugar só. Daqui saem os projetos @responsivo abaixo e a
+ * skill conferir-responsivo (.claude/skills/conferir-responsivo/conferir.ts); os docs citam este objeto.
+ * - perfis: um projeto do Playwright cada; a skill salva sempre um print de referência de cada um.
+ * - varredura: a janela com mouse que a skill percorre (janela reduzida, tela dividida, telas baixas).
+ */
+export const RESPONSIVO = {
+  perfis: {
+    celular: { largura: 375, altura: 667, toque: true, dispositivo: "Pixel 5" },
+    "tablet-em-pe": { largura: 800, altura: 1280, toque: true, dispositivo: "Galaxy Tab S4" },
+    "tablet-deitado": { largura: 1280, altura: 800, toque: true, dispositivo: "Galaxy Tab S4 landscape" },
+    notebook: { largura: 1280, altura: 720, toque: false, dispositivo: "Desktop Chrome" },
+  },
+  varredura: { de: 320, ate: 1920, passo: 40, alturas: [600, 700, 800, 1080] },
+} as const;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -51,7 +67,20 @@ export default defineConfig({
     timezoneId: "America/Bahia",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // Responsividade (E48): os testes marcados com @responsivo rodam também em cada perfil abaixo.
+    ...Object.entries(RESPONSIVO.perfis).map(([name, p]) => ({
+      name,
+      grep: /@responsivo/,
+      use: {
+        ...devices[p.dispositivo],
+        viewport: { width: p.largura, height: p.altura },
+        isMobile: p.toque,
+        hasTouch: p.toque,
+      },
+    })),
+  ],
   webServer: {
     // Apaga o banco da rodada anterior antes de subir: a fila de tarefas (E44) só liga depois que
     // e2e/preparar.ts recria o banco. A página inicial não usa o banco: o servidor pode subir antes.
