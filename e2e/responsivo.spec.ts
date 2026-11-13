@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
 
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
-import { codigoTotp } from "../src/lib/acesso/totp";
+import { apertar, entrarNoPainel } from "./entrar";
 
 const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm", PessoaDeTeste>;
+
+/** Projetos em que o painel é estreito (abaixo de lg) e o menu lateral vira o botão “Menu”. */
+const MENU_PELO_BOTAO = ["celular", "tablet-em-pe"];
 
 async function semRolagemLateral(page: Page) {
   const { conteudo, tela } = await page.evaluate(() => ({
@@ -15,53 +18,30 @@ async function semRolagemLateral(page: Page) {
   expect(conteudo, "a página não pode rolar para o lado").toBeLessThanOrEqual(tela);
 }
 
-/** Toca no celular e no tablet; clica com o mouse no notebook e no desktop. */
-async function apertar(alvo: Locator, toque: boolean) {
-  if (toque) await alvo.tap();
-  else await alvo.click();
-}
-
-// Roda no desktop e nos projetos celular, tablet e notebook (E48).
+// Roda no desktop e em cada perfil de RESPONSIVO do playwright.config.ts (E48).
 test.describe("em qualquer tamanho de tela", { tag: "@responsivo" }, () => {
   test("entrar no painel e chegar a Conteúdos pelo menu, sem rolagem lateral", async ({ page, hasTouch }, testInfo) => {
     await page.goto("/painel/entrar");
     await semRolagemLateral(page);
-
-    await page.getByLabel("E-mail de trabalho").fill(pessoas.adm.email);
-    await page.getByLabel("Senha").fill(pessoas.adm.senha);
-    await Promise.all([
-      page.waitForResponse((r) => r.request().method() === "POST"),
-      apertar(page.getByRole("button", { name: "Continuar" }), hasTouch),
-    ]);
-    await page.getByLabel("Número 1 de 6").fill(await codigoTotp(pessoas.adm.segredoTotp));
-    await apertar(page.getByRole("button", { name: "Confirmar e entrar" }), hasTouch);
+    await entrarNoPainel(page, pessoas.adm, { toque: hasTouch });
     await expect(page).toHaveURL(/\/painel$/);
     await semRolagemLateral(page);
 
-    // Em tela estreita o menu começa fechado e abre pelo botão; em tela larga ele fica à vista.
     const menu = page.getByRole("navigation", { name: "Menu do painel" });
     const botaoMenu = page.getByRole("button", { name: "Menu", exact: true });
-    if (await botaoMenu.isVisible()) {
+    if (MENU_PELO_BOTAO.includes(testInfo.project.name)) {
+      // Tela estreita: o menu começa fechado e só abre pelo botão.
       await expect(menu).toBeHidden();
       await apertar(botaoMenu, hasTouch);
+    } else {
+      // Tela larga: o menu lateral fica à vista e não há botão.
+      await expect(botaoMenu).toBeHidden();
     }
     await expect(menu).toBeVisible();
     await apertar(menu.getByRole("link", { name: "Conteúdos" }), hasTouch);
+
     await expect(page).toHaveURL(/\/painel\/conteudos$/);
     await expect(page.getByRole("heading", { name: "Conteúdos", level: 1 })).toBeVisible();
     await semRolagemLateral(page);
-
-    if (testInfo.project.name === "tablet") {
-      // Gira o tablet sem recarregar: deitado, o menu lateral aparece; em pé de novo, volta o botão.
-      await page.setViewportSize({ width: 1280, height: 800 });
-      await expect(menu).toBeVisible();
-      await expect(botaoMenu).toBeHidden();
-      await semRolagemLateral(page);
-
-      await page.setViewportSize({ width: 800, height: 1280 });
-      await expect(botaoMenu).toBeVisible();
-      await expect(menu).toBeHidden();
-      await semRolagemLateral(page);
-    }
   });
 });

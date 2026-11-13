@@ -339,9 +339,10 @@ Valem os RNF01–RNF15 de `requisitos.md`, com os ajustes de E05, E22, E26, E28 
 - **Acessibilidade:** WCAG 2.1 AA; temas claro e escuro com os tokens do Figma.
 - **Responsividade (RF10, RNF10, E48):**
   - site e painel em desktop, celular e **tablet com toque, em pé e deitado** (uma operadora usa tablet para trabalhar);
-  - qualquer largura de 320 a 1920 px e altura a partir de 600 px (janela reduzida, tela dividida, notebook baixo), sem rolagem lateral, item esmagado, texto cortado ou sobreposto; em tela baixa, menus e painéis fixos rolam;
+  - janela reduzida, tela dividida e notebook baixo, sem rolagem lateral, item esmagado, texto cortado ou sobreposto; em tela baixa, menus e painéis fixos rolam;
   - no toque, alvos de pelo menos 44 px e nenhuma ação só com hover;
-  - conferido pela skill `conferir-responsivo` e por e2e `@responsivo` nos projetos “celular”, “tablet” e “notebook”.
+  - os tamanhos ficam num lugar só, o objeto `RESPONSIVO` do `playwright.config.ts` (perfis e varredura da janela);
+  - conferido pela skill `conferir-responsivo` e por e2e `@responsivo`, que rodam nos projetos do `playwright.config.ts` (um por perfil de `RESPONSIVO`).
 - **SEO:**
   - título, descrição e imagem de compartilhamento por página (a capa da notícia é a imagem padrão, P4);
   - mapa do site;

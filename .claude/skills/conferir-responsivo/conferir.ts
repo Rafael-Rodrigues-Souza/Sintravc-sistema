@@ -1,14 +1,15 @@
 /**
  * Confere a responsividade das telas e só relata: não corrige nada.
  *
- * 1. Varredura com mouse (janela reduzida, tela dividida, telas baixas): largura de 320 a 1920 px,
- *    de 40 em 40, nas alturas 600, 700, 800 e 1080, nos temas claro e escuro.
- * 2. Toque: celular (375×667) e tablet em pé (800×1280) e deitado (1280×800), com isMobile e
- *    hasTouch. Aqui também entram alvos menores que 44 px, ações que só aparecem com o mouse por
- *    cima e o que muda ao girar o tablet sem recarregar a página.
+ Os tamanhos vêm de RESPONSIVO, no playwright.config.ts (E48), nos temas claro e escuro:
+ * 1. Varredura com mouse (janela reduzida, tela dividida, telas baixas): RESPONSIVO.varredura.
+ * 2. Perfis (os mesmos dos projetos @responsivo): RESPONSIVO.perfis. Nos perfis com toque também
+ *    entram alvos menores que 44 px e ações que só aparecem com o mouse por cima; o tablet é girado
+ *    para a posição do outro perfil sem recarregar a página.
  *
- * Salva print só dos tamanhos com problema (um por problema novo) e grava resultado.md e
- * resultado.json na pasta de saída.
+ * Na varredura, salva print só dos tamanhos com problema (um por problema novo). De cada perfil,
+ * salva sempre um print de referência (ref-*.png), com ou sem problema, para comparar com o Figma.
+ * Grava resultado.md e resultado.json na pasta de saída.
  *
  * Uso (com o app rodando):
  *   pnpm exec tsx .claude/skills/conferir-responsivo/conferir.ts inicio painel/entrar
@@ -29,16 +30,13 @@ import { parseArgs } from "node:util";
 
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
-import { codigoTotp } from "../../../src/lib/acesso/totp";
+import { entrarNoPainel } from "../../../e2e/entrar";
+import { RESPONSIVO } from "../../../playwright.config";
 
 const TEMAS = ["claro", "escuro"] as const;
 type Tema = (typeof TEMAS)[number];
 const ALVO_MINIMO = 44;
-const TOQUE = [
-  { nome: "celular", largura: 375, altura: 667 },
-  { nome: "tablet em pé", largura: 800, altura: 1280 },
-  { nome: "tablet deitado", largura: 1280, altura: 800 },
-] as const;
+const PERFIS = Object.entries(RESPONSIVO.perfis).map(([nome, p]) => ({ nome, ...p }));
 
 /**
  * Um ponto encontrado. `alvo` identifica o elemento; `molde` junta os elementos iguais (as linhas de
@@ -63,28 +61,24 @@ if (positionals.length === 0) {
 }
 const telas = positionals.map((t) => (t === "inicio" ? "/" : `/${t.replace(/^\/+/, "")}`));
 
-const PASSO = values.rapido ? 80 : 40;
-const LARGURAS = Array.from({ length: Math.floor((1920 - 320) / PASSO) + 1 }, (_, i) => 320 + i * PASSO);
-const ALTURAS = values.rapido ? [700, 1080] : [600, 700, 800, 1080];
+const { de, ate, passo, alturas } = RESPONSIVO.varredura;
+const PASSO = values.rapido ? passo * 2 : passo;
+const LARGURAS = Array.from({ length: Math.floor((ate - de) / PASSO) + 1 }, (_, i) => de + i * PASSO);
+const ALTURAS: readonly number[] = values.rapido ? [alturas[1], alturas[alturas.length - 1]] : alturas;
 
 const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 const saida = values.saida ?? join(".scratch", "responsivo", carimbo);
 mkdirSync(saida, { recursive: true });
 
-async function entrarNoPainel(browser: Browser): Promise<string> {
-  const { RESPONSIVO_EMAIL: email, RESPONSIVO_SENHA: senha, RESPONSIVO_TOTP: segredo } = process.env;
-  if (!email || !senha || !segredo) {
+async function guardarSessao(browser: Browser): Promise<string> {
+  const { RESPONSIVO_EMAIL: email, RESPONSIVO_SENHA: senha, RESPONSIVO_TOTP: segredoTotp } = process.env;
+  if (!email || !senha || !segredoTotp) {
     throw new Error("Para --entrar, defina RESPONSIVO_EMAIL, RESPONSIVO_SENHA e RESPONSIVO_TOTP.");
   }
   const contexto = await browser.newContext({ baseURL: values.url });
   const page = await contexto.newPage();
   await page.goto("/painel/entrar");
-  await page.getByLabel("E-mail de trabalho").fill(email);
-  await page.getByLabel("Senha").fill(senha);
-  await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByLabel("Número 1 de 6").fill(await codigoTotp(segredo));
-  await page.getByRole("button", { name: "Confirmar e entrar" }).click();
-  await page.waitForURL(/\/painel(?!\/entrar)/);
+  await entrarNoPainel(page, { email, senha, segredoTotp });
   const arquivo = join(saida, "sessao.json");
   await contexto.storageState({ path: arquivo });
   await contexto.close();
@@ -125,10 +119,16 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
       const ehClicavel = (el: Element) => el.matches(clicaveis);
       const visiveis = todos.filter(visivel);
       // Texto só para leitor de tela (sr-only): 1 px e recortado. Não conta como texto na tela.
+      // Está na página (não é display:none) mas some da vista: 1 px ou recortado por clip (sr-only).
       const soLeitor = (el: Element) => {
         const r = el.getBoundingClientRect();
-        return r.width <= 2 || r.height <= 2;
+        if (r.width === 0 && r.height === 0) return false;
+        const s = getComputedStyle(el);
+        const recortado = s.position === "absolute" && ((s.clip !== "auto" && s.clip !== "") || s.clipPath !== "none");
+        return recortado || r.width <= 2 || r.height <= 2;
       };
+      const textoProprio = (el: Element) =>
+        [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
       // Caixa visível de um elemento: o que sobra depois dos recortes (overflow, clip) dos pais.
       const recortes = new Map<Element, DOMRect | null>();
       const recorte = (el: Element | null): DOMRect | null => {
@@ -167,11 +167,10 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
       for (const el of visiveis) {
         const s = getComputedStyle(el);
         const clamp = s.getPropertyValue("-webkit-line-clamp");
-        const textoProprio = [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
         const corta =
           s.textOverflow === "ellipsis" ||
           (clamp && clamp !== "none") ||
-          (textoProprio && (s.overflowX === "hidden" || s.overflowY === "hidden" || s.overflowX === "clip" || s.overflowY === "clip"));
+          (textoProprio(el) && (s.overflowX === "hidden" || s.overflowY === "hidden" || s.overflowX === "clip" || s.overflowY === "clip"));
         if (!corta || !el.textContent?.trim() || soLeitor(el)) continue;
         const h = el as HTMLElement;
         if (h.scrollWidth > h.clientWidth + 1 || h.scrollHeight > h.clientHeight + 1) add("texto cortado", el);
@@ -206,13 +205,32 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
           add("esmagado", c.el, `${c.coluna ? "altura" : "largura"} ${px(c.antes)}, o natural é ${px(natural[i])}`);
         }
       });
+      // Esmagado também em grid (a faixa da grade é menor que o conteúdo do item) e em caixa de altura
+      // fixa que corta o conteúdo. Fica de fora o que rola de propósito (overflow auto/scroll), o
+      // corte intencional (reticências, line-clamp) e a caixa com texto próprio (vai como texto cortado).
+      for (const el of visiveis) {
+        const h = el as HTMLElement;
+        if (soLeitor(el) || h.scrollHeight <= h.clientHeight + 2) continue;
+        const s = getComputedStyle(el);
+        const clamp = s.getPropertyValue("-webkit-line-clamp");
+        if (/(auto|scroll)/.test(s.overflowY) || s.textOverflow === "ellipsis" || (clamp && clamp !== "none")) continue;
+        const emGrid = el.parentElement ? getComputedStyle(el.parentElement).display.includes("grid") : false;
+        const corta = s.overflowY === "hidden" || s.overflowY === "clip";
+        if (!emGrid && !corta) continue;
+        if (!el.textContent?.trim() && !el.querySelector(clicaveis)) continue;
+        if (corta && textoProprio(el)) continue;
+        add("esmagado", el, `altura ${px(h.clientHeight)}, o conteúdo pede ${px(h.scrollHeight)}${emGrid ? " (item de grid)" : " (altura fixa, conteúdo cortado)"}`);
+      }
 
-      // Texto sobreposto: linhas de texto de nós diferentes que se cruzam.
+      // Texto sobreposto: linhas de texto de nós diferentes que se cruzam. Com um diálogo aberto, só
+      // conta o texto de dentro dele: o resto da página está coberto de propósito.
+      const dialogos = visiveis.filter((el) => el.matches("dialog[open], [role=dialog], [role=alertdialog], [aria-modal=true]"));
       const caixas: { r: DOMRect; dono: Element }[] = [];
       const percorrer = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       for (let n = percorrer.nextNode(); n && caixas.length < 3000; n = percorrer.nextNode()) {
         const dono = n.parentElement;
         if (!dono || !n.textContent?.trim() || !visivel(dono) || Number(getComputedStyle(dono).opacity) < 0.05) continue;
+        if (dialogos.length > 0 && !dialogos.some((d) => d.contains(dono))) continue;
         const limite = recorte(dono);
         if (!limite) continue;
         const faixa = document.createRange();
@@ -275,29 +293,47 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
         }
       }
 
-      // Menu escondido sem botão visível que o abra.
+      // Menu escondido sem botão visível que o abra. Só conta como botão o que tem aria-controls
+      // apontando para o id do menu (menu sem id não tem como ser apontado).
       for (const nav of document.querySelectorAll("nav")) {
         if (visivel(nav)) continue;
-        const botoes = [...document.querySelectorAll("[aria-controls], [aria-expanded], [aria-haspopup]")].filter(visivel);
-        const abre = botoes.some((b) => (nav.id && b.getAttribute("aria-controls") === nav.id) || b.hasAttribute("aria-expanded"));
-        if (!abre) add("menu sem botão", nav, "escondido e nada visível o abre");
+        const abre = nav.id !== "" && [...document.querySelectorAll(`[aria-controls="${CSS.escape(nav.id)}"]`)].some(visivel);
+        if (!abre) {
+          add("menu sem botão", nav, nav.id ? "escondido e nenhum botão visível aponta para ele (aria-controls)" : "escondido e sem id para um botão apontar");
+        }
       }
 
       if (toque) {
-        // Alvos de toque menores que 44 px.
+        // Ações que só aparecem com o mouse por cima (e alvos pequenos): fica de fora o que é escondido
+        // de propósito: texto só para leitor de tela, campo escondido sob um rótulo visível (ex.:
+        // arquivo, o alvo é o rótulo) e o que está marcado como aria-hidden ou inert.
+        const dePropósito = (el: Element) =>
+          soLeitor(el) ||
+          el.closest("[aria-hidden=true], [inert]") !== null ||
+          (el instanceof HTMLInputElement && [...(el.labels ?? [])].some(visivel));
+
+        // Alvos de toque menores que 44 px. Link no meio de um parágrafo fica de fora (o WCAG dispensa).
+        const linkNoTexto = (el: Element) =>
+          el.matches("a") && getComputedStyle(el).display === "inline" && el.closest("p, li, dd, td, blockquote") !== null;
         for (const el of visiveis.filter(ehClicavel)) {
+          if (linkNoTexto(el) || dePropósito(el)) continue;
           const r = el.getBoundingClientRect();
           if (r.width < alvoMinimo || r.height < alvoMinimo) add("alvo pequeno", el, `${Math.round(r.width)}×${Math.round(r.height)} px`);
         }
 
-        // Ações que só aparecem com o mouse por cima: clicáveis transparentes ou escondidos, e regras
-        // :hover que mostram algo que no toque continua escondido.
-        const opacidade = (el: Element | null): number => (el ? Number(getComputedStyle(el).opacity) * opacidade(el.parentElement) : 1);
-        for (const el of todos.filter(ehClicavel)) {
-          const r = el.getBoundingClientRect();
-          if (r.width === 0 || r.height === 0) continue;
-          if (opacidade(el) < 0.05 || getComputedStyle(el).visibility === "hidden") add("só com o mouse", el, "invisível no toque");
-        }
+        const nomeAcessivel = (el: Element) => (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " ");
+        // Há alternativa quando outro clicável visível tem o mesmo nome (ex.: a mesma ação no menu ⋯).
+        const temAlternativa = (el: Element) => {
+          const n = nomeAcessivel(el);
+          return n !== "" && visiveis.some((o) => o !== el && ehClicavel(o) && !el.contains(o) && nomeAcessivel(o) === n);
+        };
+        const escondido = (el: Element) => {
+          const s = getComputedStyle(el);
+          return s.display === "none" || s.visibility === "hidden" || Number(s.opacity) < 0.05;
+        };
+
+        // 1. Regra :hover que mostra uma ação que, no toque, continua escondida: defeito, salvo se a
+        //    mesma ação aparece em outro lugar.
         const regras: CSSStyleRule[] = [];
         const juntar = (lista: CSSRuleList) => {
           for (const regra of lista) {
@@ -312,6 +348,7 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
             // folha de outro domínio: não dá para ler
           }
         }
+        const explicados = new Set<Element>();
         for (const regra of regras) {
           const st = regra.style;
           if (!st.opacity && !st.visibility && !st.display) continue;
@@ -322,10 +359,22 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
             continue;
           }
           for (const el of alvos) {
-            const s = getComputedStyle(el);
-            const escondido = s.display === "none" || s.visibility === "hidden" || Number(s.opacity) < 0.05;
-            const temAcao = ehClicavel(el) || el.querySelector(clicaveis);
-            if (escondido && temAcao) add("só com o mouse", el, `só aparece com :hover (${regra.selectorText.slice(0, 60)})`);
+            const acoes = ehClicavel(el) ? [el] : [...el.querySelectorAll(clicaveis)];
+            if (!escondido(el) || acoes.length === 0 || dePropósito(el)) continue;
+            for (const a of acoes) explicados.add(a);
+            if (acoes.every(temAlternativa)) continue;
+            add("só com o mouse", el, `só aparece com :hover (${regra.selectorText.slice(0, 60)})`);
+          }
+        }
+
+        // 2. Clicável transparente ou invisível sem regra :hover que explique: não dá para saber se há
+        //    outro caminho pelo toque, então vai para conferir à mão.
+        const opacidade = (el: Element | null): number => (el ? Number(getComputedStyle(el).opacity) * opacidade(el.parentElement) : 1);
+        for (const el of todos.filter(ehClicavel)) {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0 || explicados.has(el) || dePropósito(el) || temAlternativa(el)) continue;
+          if (opacidade(el) < 0.05 || getComputedStyle(el).visibility === "hidden") {
+            add("conferir à mão", el, "clicável invisível no toque; confira se há outro caminho pelo toque");
           }
         }
       }
@@ -368,8 +417,7 @@ async function registrar(page: Page, base: Omit<Achado, keyof Ponto | "print">, 
   const novos = pontos.filter((p) => !jaFotografado.has(`${base.tela}|${base.modo}|${base.tema}|${p.tipo}|${p.alvo}`));
   let print: string | undefined;
   if (novos.length > 0) {
-    const tela = base.tela.replace(/^\//, "").replace(/[/?&=]/g, "_") || "inicio";
-    print = `${tela}-${base.modo.replace(/\s+/g, "-")}-${base.tema}-${base.largura}x${base.altura}.png`;
+    print = `${nomeDoArquivo(base.tela)}-${base.modo.replace(/\s+/g, "-")}-${base.tema}-${base.largura}x${base.altura}.png`;
     await page.screenshot({ path: join(saida, print), fullPage: true });
     for (const p of novos) jaFotografado.add(`${base.tela}|${base.modo}|${base.tema}|${p.tipo}|${p.alvo}`);
   }
@@ -393,35 +441,42 @@ async function varrer(browser: Browser, tema: Tema, sessao: string | undefined) 
   await contexto.close();
 }
 
-async function tocar(browser: Browser, tema: Tema, sessao: string | undefined) {
-  for (const perfil of TOQUE) {
-    const contexto: BrowserContext = await novoContexto(browser, tema, sessao, true, perfil.largura, perfil.altura);
+function nomeDoArquivo(tela: string) {
+  return tela.replace(/^\//, "").replace(/[/?&=]/g, "_") || "inicio";
+}
+
+async function conferirPerfis(browser: Browser, tema: Tema, sessao: string | undefined) {
+  for (const perfil of PERFIS) {
+    const contexto: BrowserContext = await novoContexto(browser, tema, sessao, perfil.toque, perfil.largura, perfil.altura);
     const page = await contexto.newPage();
+    // O perfil na outra posição (tablet em pé ↔ deitado), se houver um com toque.
+    const girado = PERFIS.find((o) => o.toque && perfil.toque && o.largura === perfil.altura && o.altura === perfil.largura);
     for (const tela of telas) {
       // Volta à posição do perfil: a tela anterior pode ter terminado girada.
       await page.setViewportSize({ width: perfil.largura, height: perfil.altura });
       await page.goto(tela, { waitUntil: "networkidle" });
+      // Print de referência para comparar com o Figma, com ou sem problema.
+      await page.screenshot({ path: join(saida, `ref-${nomeDoArquivo(tela)}-${perfil.nome}-${tema}-${perfil.largura}x${perfil.altura}.png`), fullPage: true });
       const base = { tela, modo: perfil.nome, tema, largura: perfil.largura, altura: perfil.altura };
-      const aoAbrir = await medir(page, true);
-      await registrar(page, base, aoAbrir);
-      if (perfil.nome.startsWith("tablet")) {
+      await registrar(page, base, await medir(page, perfil.toque));
+      if (girado) {
         // Gira sem recarregar. O que só aparece depois do giro (e não ao abrir já na outra posição)
         // é problema da troca de posição.
         const outra = await contexto.newPage();
-        await outra.setViewportSize({ width: perfil.altura, height: perfil.largura });
+        await outra.setViewportSize({ width: girado.largura, height: girado.altura });
         await outra.goto(tela, { waitUntil: "networkidle" });
         const recarregado = new Set((await medir(outra, true)).map((p) => `${p.tipo}|${p.alvo}`));
         await outra.close();
-        await page.setViewportSize({ width: perfil.altura, height: perfil.largura });
+        await page.setViewportSize({ width: girado.largura, height: girado.altura });
         await assentar(page);
-        const girado = await medir(page, true);
-        const sóNoGiro = girado
+        const sóNoGiro = (await medir(page, true))
           .filter((p) => !recarregado.has(`${p.tipo}|${p.alvo}`))
           .map((p) => ({ ...p, tipo: `ao girar: ${p.tipo}` }));
-        await registrar(page, { ...base, modo: `${perfil.nome} → girado`, largura: perfil.altura, altura: perfil.largura }, sóNoGiro);
+        await registrar(page, { ...base, modo: `${perfil.nome} → ${girado.nome}`, largura: girado.largura, altura: girado.altura }, sóNoGiro);
       }
     }
-    process.stdout.write(`  ${perfil.nome} · ${tema}: ok\n`);
+    process.stdout.write(`  ${perfil.nome} · ${tema}: ok
+`);
     await contexto.close();
   }
 }
@@ -484,10 +539,10 @@ function relatorio(): string {
 async function main() {
   // Sem --hide-scrollbars: a barra de rolagem que aparece na borda de um menu precisa ocupar espaço.
   const browser = await chromium.launch({ ignoreDefaultArgs: ["--hide-scrollbars"] });
-  const sessao = values.entrar ? await entrarNoPainel(browser) : undefined;
+  const sessao = values.entrar ? await guardarSessao(browser) : undefined;
   for (const tema of TEMAS) {
     await varrer(browser, tema, sessao);
-    await tocar(browser, tema, sessao);
+    await conferirPerfis(browser, tema, sessao);
   }
   await browser.close();
 
