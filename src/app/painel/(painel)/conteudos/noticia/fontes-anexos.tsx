@@ -90,7 +90,8 @@ export function FontesEAnexos({
                       aria-hidden
                       className={cn(
                         "relative h-6 w-10 rounded-full transition-colors peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring",
-                        link.visivel ? "bg-destaque-azul" : "bg-borda-forte",
+                        // Contraste ≥ 3:1 com o fundo e com a bolinha nos dois temas (WCAG 1.4.11).
+                        link.visivel ? "bg-destaque-azul" : "bg-texto-terciario",
                       )}
                     >
                       <span

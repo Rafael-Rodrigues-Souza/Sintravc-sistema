@@ -14,15 +14,15 @@ const ITENS: Item[] = [
   { rotulo: "Episódio da Rádio Chofer", descricao: "Vídeo do YouTube", icone: SquarePlay, href: "/painel/radio" },
 ];
 
-const DOCUMENTOS = [
-  { rotulo: "Edital", descricao: "Documento oficial em PDF", icone: FolderClosed },
-  { rotulo: "Acordo ou convenção", descricao: "Documento oficial em PDF", icone: Scale },
+const DOCUMENTOS: Item[] = [
+  { rotulo: "Edital", descricao: "Documento oficial em PDF", icone: FolderClosed, href: "/painel/conteudos/documento/nova?tipo=edital" },
+  { rotulo: "Acordo ou convenção", descricao: "Documento oficial em PDF", icone: Scale, href: "/painel/conteudos/documento/nova?tipo=acordo" },
 ];
 
 /**
  * Menu "Criar conteúdo" (Figma 214:33805). Para a Comunicação, Edital e Acordo aparecem travados,
  * com a orientação de escrever uma notícia com o link (RN07, RN08); o servidor também recusa.
- * Para o ADM, os documentos chegam com o editor de documentos e, até lá, ficam "Disponível em breve".
+ * Para o ADM, abrem o editor de documento oficial (#12).
  */
 export function MenuCriar({
   podeCriarDocumento,
@@ -59,19 +59,22 @@ export function MenuCriar({
               Só Administrador geral
             </DropdownMenu.Label>
           )}
-          {DOCUMENTOS.map((item) => (
-            <DropdownMenu.Item
-              key={item.rotulo}
-              disabled
-              className="flex items-start gap-3 rounded-[12px] p-3 opacity-60 outline-none"
-            >
-              <Icone icone={item.icone} apagado />
-              <Textos rotulo={item.rotulo} descricao={podeCriarDocumento ? "Disponível em breve" : item.descricao} />
-              {podeCriarDocumento ? null : (
+          {DOCUMENTOS.map((item) =>
+            podeCriarDocumento ? (
+              <DropdownMenu.Item key={item.rotulo} asChild>
+                <Link href={item.href} className="flex items-start gap-3 rounded-[12px] p-3 outline-none data-[highlighted]:bg-fundo-superficie-alt">
+                  <Icone icone={item.icone} />
+                  <Textos rotulo={item.rotulo} descricao={item.descricao} />
+                </Link>
+              </DropdownMenu.Item>
+            ) : (
+              <DropdownMenu.Item key={item.rotulo} disabled className="flex items-start gap-3 rounded-[12px] p-3 opacity-60 outline-none">
+                <Icone icone={item.icone} apagado />
+                <Textos rotulo={item.rotulo} descricao={item.descricao} />
                 <Lock aria-label="Só Administrador geral" className="mt-1 size-4 shrink-0 text-texto-terciario" />
-              )}
-            </DropdownMenu.Item>
-          ))}
+              </DropdownMenu.Item>
+            ),
+          )}
           {podeCriarDocumento ? null : (
             <p className="m-1 rounded-[10px] bg-fundo-superficie-alt px-3 py-2.5 texto-pequeno text-texto-secundario">
               Para falar de um acordo ou edital, escreva uma notícia e coloque o link do documento oficial.

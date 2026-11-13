@@ -13,6 +13,10 @@ export function armazenamentoEmMemoria(opcoes: { falharAoEnviar?: boolean; falha
       if (opcoes.falharAoApagar) throw new Error("S3 fora do ar (simulado)");
       objetos.delete(chave);
     },
+    async ler(chave) {
+      const arquivo = objetos.get(chave);
+      return arquivo ? new Blob([arquivo.conteudo as BlobPart]).stream() : null;
+    },
   };
   return { armazenamento, objetos };
 }

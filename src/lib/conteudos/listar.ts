@@ -1,8 +1,11 @@
 import { and, asc, count, desc, eq, ne, sql, type SQL } from "drizzle-orm";
 
 import { banco } from "@/lib/db";
-import { categoria, conteudo, noticia, pessoaEquipe } from "@/lib/db/schema";
+import { categoria, conteudo, conteudoVersao, documento, noticia, pessoaEquipe } from "@/lib/db/schema";
+import type { DatasDoDocumento } from "@/lib/documentos/selo";
 import { exigir, pode, type QuemDaEquipe } from "@/lib/permissoes";
+
+import { exigirEmAlgumTipo } from "./tipo-do-conteudo";
 
 export type TipoConteudo = (typeof conteudo.$inferSelect)["tipo"];
 export type EstadoConteudo = (typeof conteudo.$inferSelect)["estado"];
@@ -39,14 +42,23 @@ export type ItemConteudo = {
   jaPublicado: boolean;
   autorId: string;
   atualizadoEm: Date;
+  /**
+   * Edital e acordo: as datas da versão no ar, para o selo de vigência calculado (C2). O selo é "só
+   * no publicado" (E46): vem do que o site mostra, não da cópia de trabalho. Nulo na notícia e no
+   * documento que nunca foi publicado.
+   */
+  datasNoAr: DatasDoDocumento | null;
 };
 
-/** Busca na manchete, no nome do autor e nas palavras-chave, sem diferença de acento nem de maiúsculas. */
+/**
+ * Busca no título, no nome do autor, nas palavras-chave da notícia e no número do documento, sem
+ * diferença de acento nem de maiúsculas.
+ */
 function condicaoDaBusca(busca: string | undefined): SQL | undefined {
   const termo = busca?.trim();
   if (!termo) return undefined;
   const padrao = `%${termo.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const campo = sql`unaccent(concat_ws(' ', ${conteudo.titulo}, ${pessoaEquipe.nome}, array_to_string(${noticia.palavrasChave}, ' ')))`;
+  const campo = sql`unaccent(concat_ws(' ', ${conteudo.titulo}, ${pessoaEquipe.nome}, array_to_string(${noticia.palavrasChave}, ' '), ${documento.numero}))`;
   return sql`${campo} ilike unaccent(${padrao})`;
 }
 
@@ -58,7 +70,7 @@ export async function listarConteudos(
   filtros: FiltrosConteudos,
   deps: { quem: QuemDaEquipe },
 ): Promise<{ itens: ItemConteudo[]; total: number }> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigirEmAlgumTipo(deps.quem, "ver");
   const pagina = Math.max(1, filtros.pagina ?? 1);
   const onde = and(
     filtros.arquivados ? eq(conteudo.estado, "arquivado") : ne(conteudo.estado, "arquivado"),
@@ -68,13 +80,27 @@ export async function listarConteudos(
     filtros.autorId ? eq(conteudo.autorId, filtros.autorId) : undefined,
     condicaoDaBusca(filtros.busca),
   );
+  // Só as datas do retrato no ar, sem trazer o texto inteiro da versão.
+  const dadosNoAr = sql`${conteudoVersao.snapshot} -> 'dados'`;
   const base = () =>
     banco()
-      .select()
+      .select({
+        conteudo,
+        pessoa_equipe: pessoaEquipe,
+        categoria,
+        datasNoAr: sql<DatasDoDocumento | null>`case when ${conteudo.tipo} <> 'noticia' and ${conteudoVersao.id} is not null then jsonb_build_object(
+          'eventoData', ${dadosNoAr} ->> 'eventoData',
+          'eventoHora', ${dadosNoAr} ->> 'eventoHora',
+          'temVigencia', (${dadosNoAr} ->> 'temVigencia')::boolean,
+          'vigenciaInicio', ${dadosNoAr} ->> 'vigenciaInicio',
+          'vigenciaFim', ${dadosNoAr} ->> 'vigenciaFim') end`,
+      })
       .from(conteudo)
       .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudo.autorId))
       .leftJoin(noticia, eq(noticia.conteudoId, conteudo.id))
+      .leftJoin(documento, eq(documento.conteudoId, conteudo.id))
       .leftJoin(categoria, eq(categoria.id, conteudo.categoriaId))
+      .leftJoin(conteudoVersao, and(eq(conteudoVersao.conteudoId, conteudo.id), eq(conteudoVersao.versao, conteudo.versao)))
       .where(onde)
       .$dynamic();
 
@@ -88,12 +114,13 @@ export async function listarConteudos(
       .from(conteudo)
       .innerJoin(pessoaEquipe, eq(pessoaEquipe.id, conteudo.autorId))
       .leftJoin(noticia, eq(noticia.conteudoId, conteudo.id))
+      .leftJoin(documento, eq(documento.conteudoId, conteudo.id))
       .where(onde),
   ]);
 
   return {
     total: contagem?.total ?? 0,
-    itens: linhas.map(({ conteudo: c, pessoa_equipe: autor, categoria: cat }) => ({
+    itens: linhas.map(({ conteudo: c, pessoa_equipe: autor, categoria: cat, datasNoAr }) => ({
       id: c.id,
       tipo: c.tipo,
       titulo: c.titulo,
@@ -107,6 +134,7 @@ export async function listarConteudos(
       jaPublicado: c.jaPublicado,
       autorId: c.autorId,
       atualizadoEm: c.atualizadoEm,
+      datasNoAr,
     })),
   };
 }
@@ -115,7 +143,7 @@ export async function listarConteudos(
 export async function contarConteudosPorTipo(
   deps: { quem: QuemDaEquipe },
 ): Promise<Record<TipoConteudo | "todos" | "arquivados", number>> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigirEmAlgumTipo(deps.quem, "ver");
   const linhas = await banco()
     .select({ tipo: conteudo.tipo, arquivado: sql<boolean>`${conteudo.estado} = 'arquivado'`, total: count() })
     .from(conteudo)
@@ -134,7 +162,7 @@ export async function contarConteudosPorTipo(
 
 /** Quem já escreveu conteúdo, para o filtro de autor. */
 export async function listarAutores(deps: { quem: QuemDaEquipe }): Promise<{ id: string; nome: string }[]> {
-  exigir(deps.quem, "ver", { tipo: "noticia" });
+  exigirEmAlgumTipo(deps.quem, "ver");
   return banco()
     .selectDistinct({ id: pessoaEquipe.id, nome: pessoaEquipe.nome })
     .from(conteudo)

@@ -16,11 +16,11 @@ import { imagem } from "@/testes/arquivos/gerar";
 
 import { agendarNoticia } from "./agendar";
 import {
-  arquivarNoticias,
+  arquivarConteudos,
   desfazerArquivamento,
   excluirRascunho,
   mostrarNoSite,
-  ocultarNoticias,
+  ocultarConteudos,
   restaurarComoRascunho,
   restaurarVersao,
 } from "./ciclo-de-vida";
@@ -38,13 +38,13 @@ async function publicada(quem: QuemDaEquipe, titulo = "Assembleia da categoria n
   return id;
 }
 
-describe("ocultarNoticias (CA-US22.1, RN11)", () => {
+describe("ocultarConteudos (CA-US22.1, RN11)", () => {
   it("sem motivo, ou só com espaços, não oculta", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await publicada(quem);
 
     for (const motivo of ["", "   "]) {
-      const erro = await ocultarNoticias({ ids: [id], motivo }, { quem }).catch((e) => e);
+      const erro = await ocultarConteudos({ ids: [id], motivo }, { quem }).catch((e) => e);
       expect(erro).toBeInstanceOf(ErroConteudo);
       expect(erro).toMatchObject({ codigo: "invalido", campo: "motivo" });
     }
@@ -56,7 +56,7 @@ describe("ocultarNoticias (CA-US22.1, RN11)", () => {
     const id = await publicada(quem);
     const antes = new Date();
 
-    const resultado = await ocultarNoticias({ ids: [id], motivo: "  Informação errada no lide  " }, { quem });
+    const resultado = await ocultarConteudos({ ids: [id], motivo: "  Informação errada no lide  " }, { quem });
 
     expect(resultado).toEqual({ feitos: [id], ignorados: [] });
     const aberta = await carregarNoticia(id, { quem });
@@ -74,7 +74,7 @@ describe("Retirado em (E45)", () => {
   it("editar a cópia de trabalho da notícia oculta não muda a data da retirada", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await publicada(quem);
-    await ocultarNoticias({ ids: [id], motivo: "Revisar os números" }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Revisar os números" }, { quem });
     const { ocultadoEm, revisao, dados } = (await carregarNoticia(id, { quem }))!;
 
     await new Promise((r) => setTimeout(r, 20));
@@ -90,7 +90,7 @@ describe("mostrarNoSite (Oculto → Publicado, RN10, E45)", () => {
   it("volta a versão que estava no ar, sem versão nova; a alteração pendente continua na cópia de trabalho", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await publicada(quem);
-    await ocultarNoticias({ ids: [id], motivo: "Revisar os números" }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Revisar os números" }, { quem });
     const oculta = (await carregarNoticia(id, { quem }))!;
     await salvarRascunhoNoticia(
       { id, revisaoBase: oculta.revisao, dados: { ...oculta.dados, lide: "Lide ainda em revisão." } },
@@ -110,7 +110,7 @@ describe("mostrarNoSite (Oculto → Publicado, RN10, E45)", () => {
   it("oculta com alteração: o aviso de alterações aparece, e “Descartar alterações” volta a cópia à versão no ar", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await publicada(quem);
-    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Revisar" }, { quem });
     const oculta = (await carregarNoticia(id, { quem }))!;
     const salvo = await salvarRascunhoNoticia({ id, revisaoBase: oculta.revisao, dados: { ...oculta.dados, lide: "Outro lide." } }, edicaoDe(quem));
     if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
@@ -135,15 +135,15 @@ describe("mostrarNoSite (Oculto → Publicado, RN10, E45)", () => {
   });
 });
 
-describe("arquivarNoticias (CA-US22.2, RN10)", () => {
+describe("arquivarConteudos (CA-US22.2, RN10)", () => {
   it("2 conteúdos em lote saem da lista, vão para Arquivados e cada um ganha a sua linha na Atividade", async () => {
     const quem = await pessoaDaEquipe("COM");
     const marca = `lote-${Date.now()}`;
     const a = await publicada(quem, `Campanha de vacinação ${marca}`);
     const b = await publicada(quem, `Plantão no feriado ${marca}`);
-    await ocultarNoticias({ ids: [b], motivo: "Data errada" }, { quem });
+    await ocultarConteudos({ ids: [b], motivo: "Data errada" }, { quem });
 
-    const resultado = await arquivarNoticias({ ids: [a, b] }, { quem });
+    const resultado = await arquivarConteudos({ ids: [a, b] }, { quem });
 
     expect(resultado.feitos.sort()).toEqual([a, b].sort());
     expect(resultado.ignorados).toEqual([]);
@@ -163,7 +163,7 @@ describe("arquivarNoticias (CA-US22.2, RN10)", () => {
   it("arquivada não se edita: o salvamento é recusado e nada muda", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await publicada(quem);
-    await arquivarNoticias({ ids: [id] }, { quem });
+    await arquivarConteudos({ ids: [id] }, { quem });
     const { revisao, dados } = (await carregarNoticia(id, { quem }))!;
 
     const erro = await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: { ...dados, lide: "Outro" } }, edicaoDe(quem)).catch(
@@ -178,9 +178,9 @@ describe("arquivarNoticias (CA-US22.2, RN10)", () => {
     const quem = await pessoaDaEquipe("COM");
     const a = await publicada(quem);
     const { id: b } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await arquivarNoticias({ ids: [a] }, { quem });
+    await arquivarConteudos({ ids: [a] }, { quem });
 
-    const resultado = await arquivarNoticias({ ids: [a, b] }, { quem });
+    const resultado = await arquivarConteudos({ ids: [a, b] }, { quem });
 
     expect(resultado.feitos).toEqual([b]);
     expect(resultado.ignorados).toEqual([expect.objectContaining({ id: a, motivo: expect.stringContaining("arquivad") })]);
@@ -194,9 +194,9 @@ describe("desfazerArquivamento (aviso “Desfazer”, CA-US22.2, E45)", () => {
     const { fila } = filaEmMemoria();
     const a = await publicada(quem);
     const b = await publicada(quem);
-    await ocultarNoticias({ ids: [b], motivo: "Data errada" }, { quem });
+    await ocultarConteudos({ ids: [b], motivo: "Data errada" }, { quem });
     const { id: c } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await arquivarNoticias({ ids: [a, b, c] }, { quem });
+    await arquivarConteudos({ ids: [a, b, c] }, { quem });
 
     const resultado = await desfazerArquivamento({ ids: [a, b, c] }, { quem, fila });
 
@@ -214,7 +214,7 @@ describe("desfazerArquivamento (aviso “Desfazer”, CA-US22.2, E45)", () => {
     const para = new Date("2026-11-03T11:00:00Z");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
     await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila, agora });
-    await arquivarNoticias({ ids: [id] }, { quem });
+    await arquivarConteudos({ ids: [id] }, { quem });
 
     expect(await executarPublicacaoAgendada(pedidos[0]!, { agora: para })).toEqual({ tipo: "ignorada" });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "arquivado", jaPublicado: false });
@@ -232,7 +232,7 @@ describe("desfazerArquivamento (aviso “Desfazer”, CA-US22.2, E45)", () => {
     const para = new Date("2026-11-03T11:00:00Z");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
     await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila, agora: new Date("2026-11-02T12:00:00Z") });
-    await arquivarNoticias({ ids: [id] }, { quem });
+    await arquivarConteudos({ ids: [id] }, { quem });
 
     await desfazerArquivamento({ ids: [id] }, { quem, fila, agora: new Date("2026-11-04T12:00:00Z") });
 
@@ -256,8 +256,8 @@ describe("restaurarComoRascunho (Arquivado → Rascunho, RN10)", () => {
   it("volta como rascunho, fora do site, e guarda as versões, o endereço e a marca de já publicado", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await publicada(quem);
-    await ocultarNoticias({ ids: [id], motivo: "Data errada" }, { quem });
-    await arquivarNoticias({ ids: [id] }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Data errada" }, { quem });
+    await arquivarConteudos({ ids: [id] }, { quem });
     const slug = (await carregarNoticia(id, { quem }))!.slug;
 
     await restaurarComoRascunho({ id }, { quem });
@@ -308,7 +308,7 @@ describe("excluirRascunho (CA-US22.3 a CA-US22.5, RN54, E07)", () => {
   it("o que já foi publicado alguma vez não se exclui, nem depois de restaurado como rascunho", async () => {
     const quem = await pessoaDaEquipe("ADM");
     const id = await publicada(quem);
-    await arquivarNoticias({ ids: [id] }, { quem });
+    await arquivarConteudos({ ids: [id] }, { quem });
     await restaurarComoRascunho({ id }, { quem });
 
     const erro = await excluirRascunho({ id }, { quem }).catch((e) => e);
@@ -389,7 +389,7 @@ describe("restaurarVersao (CA-US21.9, E31, E42)", () => {
   it("oculta: nenhuma versão está no site, e a que volta com “Mostrar no site” vem marcada", async () => {
     const quem = await pessoaDaEquipe("COM");
     const id = await comTresVersoes(quem);
-    await ocultarNoticias({ ids: [id], motivo: "Revisar" }, { quem });
+    await ocultarConteudos({ ids: [id], motivo: "Revisar" }, { quem });
 
     const versoes = await versoesDaNoticia(id, { quem });
 

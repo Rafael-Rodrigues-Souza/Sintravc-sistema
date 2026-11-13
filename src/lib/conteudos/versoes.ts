@@ -27,3 +27,17 @@ export function resumirMudancas(anterior: DadosNoticia | null, atual: DadosNotic
   const lista = mudou.length === 1 ? mudou[0] : `${mudou.slice(0, -1).join(", ")} e ${mudou.at(-1)}`;
   return `Mudou: ${lista}.`;
 }
+
+/** Uma versão como o painel Histórico recebe (N14): sem os dados, com a data em texto ISO. */
+export type VersaoNaTela = {
+  versao: number;
+  criadoPorNome: string;
+  criadoEm: string;
+  noAr: boolean;
+  voltaAoSite: boolean;
+  resumo: string;
+};
+
+export function versaoNaTela(v: Omit<VersaoNaTela, "criadoEm"> & { criadoEm: Date }): VersaoNaTela {
+  return { versao: v.versao, criadoPorNome: v.criadoPorNome, criadoEm: v.criadoEm.toISOString(), noAr: v.noAr, voltaAoSite: v.voltaAoSite, resumo: v.resumo };
+}

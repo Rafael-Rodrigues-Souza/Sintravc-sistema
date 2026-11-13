@@ -86,7 +86,7 @@ export function camposDiferentes(a: DadosNoticia, b: DadosNoticia): string {
 }
 
 /** "Há duas versões do rascunho" (N4, E02; Figma 293:43298). */
-export function ModalConflito({
+export function ModalConflito<D = DadosNoticia>({
   aberto,
   minha,
   servidor,
@@ -96,12 +96,15 @@ export function ModalConflito({
   erro,
   aoEscolher,
   aoDecidirDepois,
+  diferencas = camposDiferentes as unknown as (a: D, b: D) => string,
 }: {
   aberto: boolean;
-  minha: DadosNoticia;
-  servidor: VersaoServidor;
+  minha: D;
+  servidor: VersaoServidor<D>;
   /** O que a pessoa tinha antes de editar sem internet, para dizer o que cada lado mudou. */
-  base: DadosNoticia;
+  base: D;
+  /** O que mudou entre duas versões (a notícia usa camposDiferentes; o documento, as partes dele). */
+  diferencas?: (a: D, b: D) => string;
   guardadaEm: Date | null;
   resolvendo: boolean;
   erro: string | null;
@@ -129,13 +132,13 @@ export function ModalConflito({
               valor="minha"
               marcada={escolha === "minha"}
               titulo="Manter a minha versão"
-              detalhe={`Salva neste aparelho${guardadaEm ? ` às ${horaNaBahia(guardadaEm)}` : ""}. Mudou: ${camposDiferentes(base, minha)}.`}
+              detalhe={`Salva neste aparelho${guardadaEm ? ` às ${horaNaBahia(guardadaEm)}` : ""}. Mudou: ${diferencas(base, minha)}.`}
             />
             <Opcao
               valor="servidor"
               marcada={escolha === "servidor"}
               titulo="Usar a versão do servidor"
-              detalhe={`Salva por ${servidor.salvoPorNome} às ${horaNaBahia(new Date(servidor.salvoEm))}. Mudou: ${camposDiferentes(base, servidor.dados)}.`}
+              detalhe={`Salva por ${servidor.salvoPorNome} às ${horaNaBahia(new Date(servidor.salvoEm))}. Mudou: ${diferencas(base, servidor.dados)}.`}
             />
           </RadioGroup>
           <p className="texto-pequeno text-texto-secundario">

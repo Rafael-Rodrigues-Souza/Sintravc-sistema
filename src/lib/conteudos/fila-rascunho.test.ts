@@ -272,3 +272,22 @@ describe("computador compartilhado (ajuste 1 da aprovação)", () => {
     expect(fila.temPendencia()).toBe(false);
   });
 });
+
+describe("rascunho do documento oficial no navegador (E02, E46)", () => {
+  it("fica numa chave própria, que não se mistura com a notícia nem entre edital e acordo novos", () => {
+    const armazem = armazemEmMemoria();
+    const servidor = servidorFalso();
+    servidor.ficarOffline();
+    const comum = { pessoaId: ANA, revisao: 0, intervaloMs: INTERVALO, enviar: servidor.enviar, online: servidor.online, armazem };
+
+    criarFilaDoRascunho({ ...comum, id: null, tipo: "documento", nova: "edital-nova" }).alterar(dados("Edital"));
+    criarFilaDoRascunho({ ...comum, id: null, tipo: "documento", nova: "acordo-nova" }).alterar(dados("Acordo"));
+    criarFilaDoRascunho({ ...comum, id: null }).alterar(dados("Notícia"));
+
+    expect(armazem.chaves().sort()).toEqual([
+      `sintravc:rascunho:${ANA}:documento:acordo-nova`,
+      `sintravc:rascunho:${ANA}:documento:edital-nova`,
+      `sintravc:rascunho:${ANA}:noticia:nova`,
+    ]);
+  });
+});

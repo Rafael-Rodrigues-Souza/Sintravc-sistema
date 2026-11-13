@@ -16,6 +16,9 @@ const ROTULO: Record<CampoObrigatorio, string> = {
  * erro, a frase do desenho (295:43916). O erro técnico fica só no log do servidor.
  */
 export function motivoDaFalha(erro: unknown): string {
-  if (erro instanceof ErroFaltamCampos) return `Falta preencher: ${erro.campos.map((c) => ROTULO[c]).join(", ")}.`;
+  if (erro instanceof ErroFaltamCampos) {
+    const nomes = erro.rotulos ?? erro.campos.map((c) => ROTULO[c as CampoObrigatorio] ?? c);
+    return `Falta preencher: ${nomes.join(", ")}.`;
+  }
   return "O sistema tentou publicar de novo e não conseguiu.";
 }

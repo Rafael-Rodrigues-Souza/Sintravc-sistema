@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgEnum, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { dataHora, datas, idUuid } from "./comum";
 import { pessoaEquipe } from "./equipe";
@@ -9,6 +9,8 @@ export const escopoCategoria = pgEnum("escopo_categoria", ["noticias", "document
 export const tipoConteudo = pgEnum("tipo_conteudo", ["noticia", "edital", "acordo"]);
 export const estadoConteudo = pgEnum("estado_conteudo", ["rascunho", "agendado", "publicado", "oculto", "arquivado"]);
 export const tipoLink = pgEnum("tipo_link", ["fonte", "anexo"]);
+/** Edital: convocação, eleição, prestação de contas, outros. Acordo: ACT ou CCT (spec §2.2). */
+export const subtipoDocumento = pgEnum("subtipo_documento", ["convocacao", "eleicao", "prestacao_contas", "outros", "act", "cct"]);
 
 /**
  * Categoria (spec §2.2). Só o ADM gerencia (RN08); a tela fica no #20. As iniciais vêm na
@@ -98,6 +100,46 @@ export const noticia = pgTable("noticia", {
   fixadaAte: dataHora(),
   ...datas,
 });
+
+/**
+ * Documento oficial, edital ou acordo (1:1 com Conteudo; spec §2.2, RF41, RN12, E46). Só o ADM
+ * altera (RN08). O selo Vigente, Encerrado ou Prazo é calculado pelas datas (C2), não é estado.
+ * - `tipo` repete o do conteúdo só para o número ser único por tipo (`numero_normalizado`, E46).
+ * - Datas do documento e da vigência são dias do calendário; o evento ou prazo tem hora (UTC).
+ * - `confirmado_oficial_por`: quem confirmou que o PDF da última ida ao ar é o oficial e assinado.
+ */
+export const documento = pgTable(
+  "documento",
+  {
+    conteudoId: uuid()
+      .primaryKey()
+      .references(() => conteudo.id, { onDelete: "cascade" }),
+    tipo: tipoConteudo().notNull(),
+    numero: text().notNull().default(""),
+    numeroNormalizado: text(),
+    subtipo: subtipoDocumento(),
+    dataDocumento: date({ mode: "string" }),
+    dataEvento: dataHora(),
+    temVigencia: boolean().notNull().default(false),
+    vigenciaInicio: date({ mode: "string" }),
+    vigenciaFim: date({ mode: "string" }),
+    abrangencia: text().notNull().default(""),
+    partesSignatarias: text().notNull().default(""),
+    resumo: text().notNull().default(""),
+    pdfMidiaId: uuid().references(() => midia.id, { onDelete: "restrict" }),
+    textoPesquisavel: text().notNull().default(""),
+    confirmadoOficialPor: uuid().references(() => pessoaEquipe.id),
+    ...datas,
+  },
+  (tabela) => [
+    uniqueIndex("documento_numero_unico_por_tipo")
+      .on(tabela.tipo, tabela.numeroNormalizado)
+      .where(sql`${tabela.numeroNormalizado} is not null`),
+    check("documento_tipo", sql`${tabela.tipo} in ('edital', 'acordo')`),
+    check("documento_resumo_limite", sql`char_length(${tabela.resumo}) <= 400`),
+    check("documento_vigencia_ordem", sql`${tabela.vigenciaFim} is null or ${tabela.vigenciaInicio} is null or ${tabela.vigenciaFim} >= ${tabela.vigenciaInicio}`),
+  ],
+);
 
 /** Fontes e anexos do conteúdo. "Adicionar link" grava `fonte`; "Adicionar anexo", `anexo` (E40). */
 export const conteudoLink = pgTable(

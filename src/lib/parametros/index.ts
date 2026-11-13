@@ -51,6 +51,9 @@ export const CATALOGO = {
   "editor.salvamento_automatico_segundos": z.number().positive(),
   "tarefas.tentativas": inteiro,
   "tarefas.intervalo_segundos": inteiro,
+  "documento.novo_dias": inteiro,
+  "documento.extracao_tempo_maximo_ms": z.number().int().positive(),
+  "documento.extracao_paginas_maximas": z.number().int().positive(),
 } satisfies Record<string, z.ZodType>;
 
 export type ChaveParametro = keyof typeof CATALOGO;

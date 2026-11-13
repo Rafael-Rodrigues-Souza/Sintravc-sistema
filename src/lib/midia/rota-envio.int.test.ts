@@ -1,38 +1,16 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { confirmarCodigo, entrar } from "@/lib/acesso/entrar";
-import { codigoTotp, cookiesDe, criarPessoaDeTeste } from "@/lib/acesso/pessoas-de-teste";
 import { banco } from "@/lib/db";
 import { midia } from "@/lib/db/schema";
-import type { Perfil } from "@/lib/permissoes";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { heicDeExemplo, imagem } from "@/testes/arquivos/gerar";
+import { sessaoDe } from "@/testes/sessao";
 
 import { tratarEnvioMidia } from "./rota-envio";
 
 const URL_SITE = "http://localhost:3000";
 const HORA = 60 * 60 * 1000;
-let contador = 0;
-
-/** Entra de verdade (senha + código) e devolve o cabeçalho Cookie da sessão. */
-async function sessaoDe(perfil: Perfil): Promise<string> {
-  contador += 1;
-  const p = await criarPessoaDeTeste({
-    nome: `Rota ${contador}`,
-    email: `rota${contador}-${Date.now()}@sintravc.local`,
-    perfil,
-    senha: "senha-certa-123",
-  });
-  const primeira = await entrar({ email: p.email, senha: p.senha });
-  if (primeira.tipo !== "precisa_codigo") throw new Error(`login: ${primeira.tipo}`);
-  const final = await confirmarCodigo(
-    { codigo: await codigoTotp(p.segredoTotp) },
-    { cabecalhos: new Headers({ cookie: cookiesDe(primeira.cabecalhos) }) },
-  );
-  if (final.tipo !== "entrou") throw new Error(`código: ${final.tipo}`);
-  return cookiesDe(final.cabecalhos);
-}
 
 async function pedido(opcoes: { cookie?: string; origin?: string | null; arquivo?: File; contentLength?: string }) {
   const corpo = new FormData();

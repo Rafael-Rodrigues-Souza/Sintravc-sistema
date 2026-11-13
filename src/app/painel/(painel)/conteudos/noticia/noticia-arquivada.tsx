@@ -8,6 +8,7 @@ import * as React from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { rotuloDaNoticia } from "@/lib/conteudos/dados";
+import { rotuloDoDocumento } from "@/lib/documentos/dados";
 
 import { ConfirmarAcao, type PedidoDeAcao } from "../ciclo-de-vida";
 import { SeloEstado } from "../selos";
@@ -16,20 +17,31 @@ import { SeloEstado } from "../selos";
  * Notícia arquivada aberta pelo endereço do editor (RN10): fica só para leitura, fora do site e
  * das listas. A única saída é "Restaurar como rascunho"; o servidor também recusa salvar.
  */
+const PALAVRAS = {
+  noticia: { nome: "Notícia", este: "Esta notícia", arquivado: "arquivada", ele: "Ela", o: "a", restaurado: "restaurada" },
+  edital: { nome: "Edital", este: "Este edital", arquivado: "arquivado", ele: "Ele", o: "o", restaurado: "restaurado" },
+  acordo: { nome: "Acordo ou convenção", este: "Este acordo", arquivado: "arquivado", ele: "Ele", o: "o", restaurado: "restaurado" },
+} as const;
+
 export function NoticiaArquivada({
   id,
   titulo,
   podeRestaurar,
   temVersao,
+  tipo = "noticia",
 }: {
   id: string;
   titulo: string;
+  /** Notícia, edital ou acordo: a mesma tela serve aos documentos oficiais (E46). */
+  tipo?: "noticia" | "edital" | "acordo";
   podeRestaurar: boolean;
   temVersao: boolean;
 }) {
   const router = useRouter();
   const [pedido, setPedido] = React.useState<PedidoDeAcao | null>(null);
-  const nome = rotuloDaNoticia(titulo);
+  const nome = tipo === "noticia" ? rotuloDaNoticia(titulo) : rotuloDoDocumento(tipo, titulo);
+  const familia = tipo === "noticia" ? "noticia" : "documento";
+  const p = PALAVRAS[tipo];
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-5 pt-8 pb-12 lg:px-10">
@@ -46,14 +58,14 @@ export function NoticiaArquivada({
             <h1 className="truncate texto-titulo-card text-texto-primario">{nome}</h1>
             <SeloEstado estado="arquivado" />
           </div>
-          <p className="texto-pequeno text-texto-secundario">Notícia</p>
+          <p className="texto-pequeno text-texto-secundario">{p.nome}</p>
         </div>
       </header>
 
-      <Alerta tipo="informacao" titulo="Esta notícia está arquivada">
+      <Alerta tipo="informacao" titulo={`${p.este} está ${p.arquivado}`}>
         <div className="flex flex-col items-start gap-3">
-          Ela está fora do site e das listas, com histórico e anexos guardados. Para editar, restaure como rascunho: ela continua
-          fora do site até alguém publicar.
+          {p.ele} está fora do site e das listas, com histórico e anexos guardados. Para editar, restaure como rascunho: {p.ele.toLowerCase()}{" "}
+          continua fora do site até alguém publicar.
           <div className="flex flex-wrap gap-2">
             {podeRestaurar ? (
               <Button
@@ -66,7 +78,7 @@ export function NoticiaArquivada({
               </Button>
             ) : null}
             <Button asChild variant="secundario" size="pequeno">
-              <Link href={`/painel/conteudos/noticia/${id}/previa`}>
+              <Link href={`/painel/conteudos/${familia}/${id}/previa`}>
                 <Eye aria-hidden />
                 {temVersao ? "Ver como estava" : "Ver o texto"}
               </Link>
@@ -77,7 +89,7 @@ export function NoticiaArquivada({
 
       <section className="flex flex-col items-center gap-3 rounded-[16px] border border-dashed border-borda-padrao px-6 py-10 text-center">
         <Archive aria-hidden className="size-8 text-texto-terciario" />
-        <p className="max-w-[420px] texto-pequeno text-texto-secundario">O editor volta a abrir quando a notícia for restaurada.</p>
+        <p className="max-w-[420px] texto-pequeno text-texto-secundario">O editor volta a abrir quando {p.o} {p.nome.toLowerCase()} for {p.restaurado}.</p>
       </section>
 
       <ConfirmarAcao

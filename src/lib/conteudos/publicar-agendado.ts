@@ -11,19 +11,16 @@ import { lerEnvSite } from "@/lib/env";
 import type { PedidoPublicacao } from "@/lib/tarefas/fila";
 
 import { voltarARascunho } from "./agendar";
-import { lerNoticia } from "./carregar";
-import { rotuloDaNoticia } from "./dados";
+import { copiaDeTrabalho } from "./copia-de-trabalho";
 import { ErroConteudo } from "./erros";
 import { irAoAr } from "./publicar";
-import { travarNoticia } from "./salvar";
-
-/** Editor da notícia no painel (link da notificação e do e-mail). */
-const enderecoDoEditor = (id: string) => `/painel/conteudos/noticia/${id}`;
+import { editorDo, familiaDo, rotuloDoConteudo, travarConteudo } from "./tipo-do-conteudo";
 
 export type ResultadoPublicacaoAgendada = { tipo: "publicada"; versao: number } | { tipo: "ignorada" };
 
 /**
- * T01 · Publicar agendados (spec §6; CA-US21.2, RF71, RNF13). Roda na fila, no horário marcado.
+ * T01 · Publicar agendados, notícia ou documento (spec §6; CA-US21.2, RF71, RNF13, E46). Roda na fila,
+ * no horário marcado.
  *
  * - **Idempotente:** se a notícia não está mais agendada para esta hora (já foi ao ar, foi
  *   reagendada ou cancelada), não faz nada.
@@ -41,14 +38,14 @@ export async function executarPublicacaoAgendada(
     if (!atual || !aindaAgendada(atual, marcadoPara)) return { tipo: "ignorada" };
 
     const agora = deps.agora ?? new Date();
-    const noticia = (await lerNoticia(tx, atual.id))!;
+    const copia = await copiaDeTrabalho(tx, atual);
     const agendadoPor = atual.agendadoPor ?? atual.autorId;
-    const { versao } = await irAoAr(tx, atual, noticia.dados, { criadoPor: agendadoPor, agora });
+    const { versao } = await irAoAr(tx, atual, copia, { criadoPor: agendadoPor, agora });
     await registrarAtividade(tx, {
       ator: { tipo: "sistema" },
-      acao: "noticia.publicar_agendado",
+      acao: `${familiaDo(atual.tipo)}.publicar_agendado`,
       area: "conteudos",
-      alvo: { tipo: "noticia", id: atual.id, rotulo: rotuloDaNoticia(noticia.dados.titulo) },
+      alvo: { tipo: atual.tipo, id: atual.id, rotulo: rotuloDoConteudo(atual.tipo, copia.titulo) },
       detalhe: {
         versao,
         agendado_por: agendadoPor,
@@ -83,12 +80,13 @@ export async function registrarFalhaDaPublicacao(
     if (!atual || !aindaAgendada(atual, marcadoPara)) return null;
 
     await voltarARascunho(tx, atual.id);
-    const titulo = rotuloDaNoticia(atual.titulo);
+    const titulo = rotuloDoConteudo(atual.tipo, atual.titulo);
+    const familia = familiaDo(atual.tipo);
     await registrarAtividade(tx, {
       ator: { tipo: "sistema" },
-      acao: "noticia.agendamento_falhou",
+      acao: `${familia}.agendamento_falhou`,
       area: "conteudos",
-      alvo: { tipo: "noticia", id: atual.id, rotulo: titulo },
+      alvo: { tipo: atual.tipo, id: atual.id, rotulo: titulo },
       motivo: deps.motivo,
       detalhe: { agendado_por: atual.agendadoPor, marcado_para: marcadoPara.toISOString() },
     });
@@ -102,13 +100,14 @@ export async function registrarFalhaDaPublicacao(
           atual.agendadoPor ? or(eq(pessoaEquipe.perfil, "ADM"), eq(pessoaEquipe.id, atual.agendadoPor)) : eq(pessoaEquipe.perfil, "ADM"),
         ),
       );
-    const link = enderecoDoEditor(atual.id);
+    const link = editorDo(atual.tipo, atual.id);
+    const quemVoltou = { noticia: "A notícia voltou", edital: "O edital voltou", acordo: "O acordo voltou" }[atual.tipo];
     if (destinatarios.length > 0) {
       await tx.insert(notificacaoEquipe).values(
         destinatarios.map((p) => ({
           pessoaId: p.id,
-          tipo: "noticia.agendamento_falhou",
-          texto: `A publicação agendada de “${titulo}” falhou. A notícia voltou para os rascunhos.`,
+          tipo: `${familia}.agendamento_falhou`,
+          texto: `A publicação agendada de “${titulo}” falhou. ${quemVoltou} para os rascunhos.`,
           link,
         })),
       );
@@ -141,7 +140,7 @@ export async function registrarFalhaDaPublicacao(
  */
 async function travarSeAindaExiste(tx: Transacao, id: string) {
   try {
-    return await travarNoticia(tx, id);
+    return await travarConteudo(tx, id);
   } catch (erro) {
     if (erro instanceof ErroConteudo && erro.codigo === "nao_encontrada") return null;
     throw erro;

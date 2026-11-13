@@ -60,6 +60,9 @@ describe("Parametro: valores iniciais do regras-de-negocio.md §3", () => {
     ["editor.salvamento_automatico_segundos", 2], // RF38, E40
     ["tarefas.tentativas", 3], // RNF13, E44
     ["tarefas.intervalo_segundos", 60], // RNF13, E44
+    ["documento.novo_dias", 7], // E46: selo “Novo” na página Documentos (#16)
+    ["documento.extracao_tempo_maximo_ms", 20000], // P3, E46
+    ["documento.extracao_paginas_maximas", 200], // P3, E46
   ])("%s = %j", async (chave, valor) => {
     expect(await lerParametro(chave as keyof typeof CATALOGO)).toEqual(valor);
   });

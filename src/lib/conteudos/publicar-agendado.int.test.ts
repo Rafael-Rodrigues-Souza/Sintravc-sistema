@@ -4,7 +4,7 @@ import { filaEmMemoria } from "@/lib/tarefas/fila";
 import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 import { atividadesDe, noticiaCompleta, rascunhoSalvo } from "@/testes/noticias";
 
-import { agendarNoticia, reagendarNoticia, cancelarAgendamento } from "./agendar";
+import { agendarNoticia, reagendarConteudo, cancelarAgendamento } from "./agendar";
 import { carregarNoticia } from "./carregar";
 import type { DadosNoticia } from "./dados";
 import { executarPublicacaoAgendada } from "./publicar-agendado";
@@ -78,7 +78,7 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
   it("pedido velho (reagendada ou cancelada depois) não faz nada", async () => {
     const { quem, id } = await agendada();
     const depois = new Date("2026-11-04T11:00:00Z");
-    await reagendarNoticia({ id, para: depois }, { quem, fila: filaEmMemoria().fila, agora: ANTES });
+    await reagendarConteudo({ id, para: depois }, { quem, fila: filaEmMemoria().fila, agora: ANTES });
 
     expect(await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA })).toEqual({ tipo: "ignorada" });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "agendado", agendadoPara: depois });

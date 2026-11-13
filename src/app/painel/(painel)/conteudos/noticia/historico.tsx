@@ -23,6 +23,8 @@ type Carga = { tipo: "carregando" } | { tipo: "erro"; mensagem: string } | { tip
  */
 export function HistoricoDeVersoes({
   id,
+  familia = "noticia",
+  listar = acaoListarVersoes,
   aberto,
   comAlteracoes,
   restaurando,
@@ -30,6 +32,10 @@ export function HistoricoDeVersoes({
   aoRestaurar,
 }: {
   id: string;
+  /** Notícia ou documento oficial: muda o endereço da prévia e o texto (E46). */
+  familia?: "noticia" | "documento";
+  /** A action que lista as versões (a do documento só o ADM usa, RN08). */
+  listar?: typeof acaoListarVersoes;
   aberto: boolean;
   /** A cópia de trabalho tem mudanças que não estão no site: restaurar as substitui. */
   comAlteracoes: boolean;
@@ -42,12 +48,12 @@ export function HistoricoDeVersoes({
 
   const carregar = React.useCallback(async () => {
     setCarga({ tipo: "carregando" });
-    const r = await acaoListarVersoes({ id }).catch(() => ({
+    const r = await listar({ id }).catch(() => ({
       tipo: "erro" as const,
       mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo.",
     }));
     setCarga(r.tipo === "versoes" ? { tipo: "pronto", versoes: r.versoes } : r);
-  }, [id]);
+  }, [id, listar]);
 
   return (
     <DialogPrimitive.Root
@@ -104,7 +110,7 @@ export function HistoricoDeVersoes({
                 </span>
                 <h3 className="texto-titulo-card text-texto-primario">Nenhuma versão publicada ainda</h3>
                 <p className="max-w-[340px] texto-pequeno text-texto-secundario">
-                  A primeira versão aparece aqui quando a notícia for publicada.
+                  A primeira versão aparece aqui quando {familia === "noticia" ? "a notícia for publicada" : "o documento for publicado"}.
                 </p>
                 <Button type="button" variant="secundario" onClick={aoFechar}>
                   Voltar ao editor
@@ -145,7 +151,7 @@ export function HistoricoDeVersoes({
                     <p className="texto-corpo text-texto-primario">{v.resumo}</p>
                     <div className="flex flex-wrap gap-x-5 gap-y-1 pt-1">
                       <Link
-                        href={`/painel/conteudos/noticia/${id}/previa?versao=${v.versao}`}
+                        href={`/painel/conteudos/${familia}/${id}/previa?versao=${v.versao}`}
                         className="inline-flex items-center gap-1.5 texto-pequeno font-semibold text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
                       >
                         <Eye aria-hidden className="size-4" />

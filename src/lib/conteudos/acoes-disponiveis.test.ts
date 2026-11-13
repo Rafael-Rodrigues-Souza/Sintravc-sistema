@@ -38,4 +38,12 @@ describe("acoesDisponiveis: o menu de ações de cada conteúdo (RN10, RN54)", (
   it("quem não mexe em notícia não vê nada", () => {
     expect(acoesDisponiveis({ estado: "publicado", jaPublicado: true, autorId: "autora" }, atd)).toEqual([]);
   });
+
+  it("documento oficial: o ADM tem o mesmo menu; a Comunicação não tem ações (RN08, CA-US23.2)", () => {
+    const publicado = { tipo: "edital" as const, estado: "publicado" as const, jaPublicado: true, autorId: "adm" };
+    expect(acoesDisponiveis(publicado, adm)).toEqual(["ocultar", "arquivar"]);
+    expect(acoesDisponiveis(publicado, colega)).toEqual([]);
+    expect(acoesDisponiveis({ ...publicado, estado: "rascunho", jaPublicado: false }, adm)).toEqual(["arquivar", "excluir"]);
+    expect(acoesDisponiveis({ ...publicado, estado: "rascunho", jaPublicado: false }, colega)).toEqual([]);
+  });
 });

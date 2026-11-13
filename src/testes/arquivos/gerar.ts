@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { strToU8, zipSync } from "fflate";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import sharp from "sharp";
 
 /**
@@ -46,6 +46,14 @@ export function svg(): Uint8Array {
 export async function pdf(paginas: number): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   for (let i = 0; i < paginas; i++) doc.addPage();
+  return doc.save();
+}
+
+/** PDF com texto de verdade: uma página para cada texto (para a extração do texto pesquisável, P3). */
+export async function pdfComTexto(paginas: string[]): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const fonte = await doc.embedFont(StandardFonts.Helvetica);
+  for (const texto of paginas) doc.addPage().drawText(texto, { x: 50, y: 700, size: 14, font: fonte });
   return doc.save();
 }
 

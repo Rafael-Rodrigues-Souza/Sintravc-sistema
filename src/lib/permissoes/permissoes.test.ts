@@ -29,9 +29,13 @@ const matriz: Linha[] = [
   ["Fixar notícia", (q) => pode(q, "fixar", { tipo: "noticia" }), ADM_COM],
   ["Ver versões da notícia", (q) => pode(q, "ver_versoes", { tipo: "noticia" }), ADM_COM],
   ["Restaurar versão da notícia", (q) => pode(q, "restaurar_versao", { tipo: "noticia" }), ADM_COM],
-  ...(["criar", "publicar", "substituir", "arquivar"] as const).map(
+  ...(
+    ["criar", "editar", "publicar", "agendar", "substituir", "ocultar", "arquivar", "restaurar", "ver_versoes", "restaurar_versao"] as const
+  ).map(
     (acao): Linha => [`Edital, acordo e convenção: ${acao}`, (q) => pode(q, acao, { tipo: "documento" }), SO_ADM],
   ),
+  ["Edital, acordo e convenção: excluir rascunho nunca publicado", (q) => pode(q, "excluir", { tipo: "documento", jaPublicado: false }), SO_ADM],
+  ["Edital, acordo e convenção: excluir o que já foi ao ar", (q) => pode(q, "excluir", { tipo: "documento", jaPublicado: true }), { ADM: N, COM: N, ATD: N, ASS: N, VIS: N }],
   ["Edital, acordo e convenção: ver no painel", (q) => pode(q, "ver", { tipo: "documento" }), ADM_COM],
   ["Edital, acordo e convenção: baixar no painel", (q) => pode(q, "baixar", { tipo: "documento" }), ADM_COM],
   ["Comunicados", (q) => pode(q, "gerenciar", { tipo: "comunicado" }), ADM_COM],

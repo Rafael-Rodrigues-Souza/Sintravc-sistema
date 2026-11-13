@@ -4,8 +4,6 @@ import { ChevronLeft, Eye, Monitor, Smartphone, Upload } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
-import { ListaAntesDePublicar } from "@/components/painel/antes-de-publicar";
-import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { cn } from "@/lib/utils";
 
 type Tela = "computador" | "celular";
@@ -15,21 +13,22 @@ type Tela = "computador" | "celular";
  * "Publicar…", que volta ao editor com a confirmação aberta (o editor confere tudo de novo).
  */
 export function MolduraPrevia({
-  id,
-  dados,
+  editor,
+  antesDePublicar,
   selo,
   rotuloPublicar,
   children,
 }: {
-  id: string;
-  dados: DadosNoticia;
+  /** Endereço do editor (notícia ou documento). */
+  editor: string;
+  /** A lista "Confira antes de publicar" do tipo. */
+  antesDePublicar: React.ReactNode;
   selo: string;
   /** Nulo: nada a publicar ou o perfil não publica. */
   rotuloPublicar: string | null;
   children: React.ReactNode;
 }) {
   const [tela, setTela] = React.useState<Tela>("computador");
-  const editor = `/painel/conteudos/noticia/${id}`;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -100,7 +99,7 @@ export function MolduraPrevia({
         </div>
         <aside className="mx-4 mb-8 flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-5 md:mx-0 md:w-[330px]">
           <h2 className="texto-titulo-card text-texto-primario">Confira antes de publicar</h2>
-          <ListaAntesDePublicar dados={dados} />
+          {antesDePublicar}
         </aside>
       </div>
     </div>

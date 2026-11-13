@@ -6,11 +6,11 @@ import { z } from "zod";
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
 import {
-  arquivarNoticias,
+  arquivarConteudos,
   desfazerArquivamento,
   excluirRascunho,
   mostrarNoSite,
-  ocultarNoticias,
+  ocultarConteudos,
   restaurarComoRascunho,
   restaurarVersao,
   type ResultadoLote,
@@ -19,19 +19,20 @@ import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
 import { MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import { versoesDaNoticia } from "@/lib/conteudos/publicar";
+import { versaoNaTela, type VersaoNaTela } from "@/lib/conteudos/versoes";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
 
 /**
- * Ciclo de vida da notícia (RF40, US22, E45) e Histórico de versões (N14, E31). Cada action
+ * Ciclo de vida do conteúdo, notícia ou documento (RF40, US22, E45, E46) e Histórico de versões (N14, E31). Cada action
  * confere a sessão, o formato e a permissão; o domínio confere de novo, com os dados da notícia
  * (RNF01). As mensagens vão direto para o aviso (Sonner) ou para o campo.
  */
 
 const PEDIDO_INVALIDO = "A tela mandou dados incompletos. Atualize a página e tente de novo.";
 const FALHOU = "Não foi possível concluir agora. Tente de novo em alguns minutos.";
-const SEM_PERMISSAO = "Seu perfil não pode fazer isso com esta notícia.";
+const SEM_PERMISSAO = "Seu perfil não pode fazer isso com este conteúdo.";
 
 const esquemaIds = z.array(z.uuid()).min(1).max(100);
 const esquemaId = z.object({ id: z.uuid() });
@@ -64,7 +65,7 @@ export async function acaoOcultar(entrada: unknown): Promise<RespostaLote> {
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "ocultar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
   try {
-    const r = await ocultarNoticias(validado.data, { quem: pessoa.quem });
+    const r = await ocultarConteudos(validado.data, { quem: pessoa.quem });
     atualizarTelas();
     return { tipo: "feito", ...r };
   } catch (e) {
@@ -94,7 +95,7 @@ export async function acaoArquivar(entrada: unknown): Promise<RespostaLote> {
   if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "arquivar", { tipo: "noticia" })) return { tipo: "erro", mensagem: SEM_PERMISSAO };
   try {
-    const r = await arquivarNoticias(validado.data, { quem: pessoa.quem });
+    const r = await arquivarConteudos(validado.data, { quem: pessoa.quem });
     atualizarTelas();
     return { tipo: "feito", ...r };
   } catch (e) {
@@ -147,14 +148,7 @@ export async function acaoExcluirRascunho(entrada: unknown): Promise<RespostaSim
   }
 }
 
-export type VersaoNaTela = {
-  versao: number;
-  criadoPorNome: string;
-  criadoEm: string;
-  noAr: boolean;
-  voltaAoSite: boolean;
-  resumo: string;
-};
+export type { VersaoNaTela } from "@/lib/conteudos/versoes";
 
 /** Versões publicadas para o painel Histórico (N14). */
 export async function acaoListarVersoes(entrada: unknown): Promise<{ tipo: "versoes"; versoes: VersaoNaTela[] } | { tipo: "erro"; mensagem: string }> {
@@ -166,14 +160,7 @@ export async function acaoListarVersoes(entrada: unknown): Promise<{ tipo: "vers
     const versoes = await versoesDaNoticia(validado.data.id, { quem: pessoa.quem });
     return {
       tipo: "versoes",
-      versoes: versoes.map((v) => ({
-        versao: v.versao,
-        criadoPorNome: v.criadoPorNome,
-        criadoEm: v.criadoEm.toISOString(),
-        noAr: v.noAr,
-        voltaAoSite: v.voltaAoSite,
-        resumo: v.resumo,
-      })),
+      versoes: versoes.map(versaoNaTela),
     };
   } catch (e) {
     return erro(e, "listar as versões");

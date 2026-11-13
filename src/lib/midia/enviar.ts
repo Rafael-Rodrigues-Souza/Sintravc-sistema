@@ -7,6 +7,7 @@ import { midia } from "@/lib/db/schema";
 import { lerParametro } from "@/lib/parametros";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
+import { ErroMidia } from "./erros";
 import { prepararArquivo, type ArquivoPreparado, type Limites } from "./preparar";
 
 /** Limites da Mídia, do Parametro (R7, RN15, E39). */
@@ -28,11 +29,17 @@ export async function limitesDaMidia(): Promise<Limites> {
  */
 export async function enviarMidia(
   entrada: { bytes: Uint8Array; nome: string },
-  deps: { quem: QuemDaEquipe; armazenamento?: Armazenamento },
+  deps: {
+    quem: QuemDaEquipe;
+    armazenamento?: Armazenamento;
+    /** Aceita só este tipo (ex.: o PDF oficial do documento, RN12); o resto é recusado antes do S3. */
+    somente?: { tipo: ArquivoPreparado["tipo"]; mensagem: string };
+  },
 ): Promise<{ id: string }> {
   exigir(deps.quem, "enviar", { tipo: "midia" });
   const armazenamento = deps.armazenamento ?? armazenamentoS3;
   const pronto = await prepararArquivo(entrada, await limitesDaMidia());
+  if (deps.somente && pronto.tipo !== deps.somente.tipo) throw new ErroMidia("formato", deps.somente.mensagem);
 
   let chaveEnviada: string | undefined;
   try {
