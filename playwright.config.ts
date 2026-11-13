@@ -51,7 +51,16 @@ export default defineConfig({
     timezoneId: "America/Bahia",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // Celular de 375 px: roda só os testes marcados com @celular (que também rodam no desktop).
+    // Um passo que só vale no celular pula fora dele com test.skip(!isMobile).
+    {
+      name: "celular",
+      grep: /@celular/,
+      use: { ...devices["Pixel 5"], viewport: { width: 375, height: 812 } },
+    },
+  ],
   webServer: {
     // Apaga o banco da rodada anterior antes de subir: a fila de tarefas (E44) só liga depois que
     // e2e/preparar.ts recria o banco. A página inicial não usa o banco: o servidor pode subir antes.
