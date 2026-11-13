@@ -246,7 +246,7 @@ describe("salvarRascunhoNoticia: Atividade (E40, CA-US21.5)", () => {
   it("um conflito não grava nada, nem na Atividade", async () => {
     const autora = await pessoaDaEquipe("COM");
     const { id } = await criar(autora);
-    await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, edicaoDe(autora));
+    await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados({ titulo: "Manchete salva pela autora" }) }, edicaoDe(autora));
     const antes = await atividadesDa(id);
 
     const r = await salvarRascunhoNoticia({ id, revisaoBase: 1, dados: dados() }, edicaoDe(await pessoaDaEquipe()));

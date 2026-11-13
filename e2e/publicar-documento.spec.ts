@@ -127,6 +127,31 @@ test("“Visualizar” abre o PDF numa aba nova, no navegador; “Baixar PDF” 
   expect(download.suggestedFilename()).toBe("edital-012-2026.pdf");
 });
 
+test("E47 · ligar e desligar “Tem vigência” no edital publicado não deixa aviso de alterações", async ({ page }) => {
+  await entrar(page, pessoas.adm, `/painel/conteudos/documento/${idEdital}`);
+  const vigencia = page.getByRole("switch", { name: "Este documento tem vigência" });
+  const aviso = page.getByText("Há alterações que ainda não estão no site");
+  await expect(vigencia).toHaveAttribute("aria-checked", "false");
+  await expect(aviso).toHaveCount(0);
+
+  // Cada mudança espera o seu salvamento automático: são duas gravações, como na issue #40.
+  await vigencia.click();
+  await expect(status(page)).not.toContainText("Salvo automaticamente às");
+  await salvo(page);
+  await expect(aviso).toBeVisible();
+
+  await vigencia.click();
+  await expect(status(page)).not.toContainText("Salvo automaticamente às");
+  await salvo(page);
+  await expect(aviso).toHaveCount(0);
+
+  // Ao abrir de novo, continua sem aviso, e nenhuma versão nova foi criada.
+  await page.reload();
+  await expect(vigencia).toHaveAttribute("aria-checked", "false");
+  await expect(aviso).toHaveCount(0);
+  expect(await documentoNoBanco(idEdital)).toMatchObject({ estado: "publicado", versao: 1 });
+});
+
 test("o número é único por tipo: outro edital com o mesmo número mostra o erro no campo", async ({ page }) => {
   await entrar(page, pessoas.adm, "/painel/conteudos/documento/nova?tipo=edital");
   await page.getByLabel("Título oficial").fill("Outro edital");

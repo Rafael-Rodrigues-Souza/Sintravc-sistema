@@ -28,7 +28,7 @@ export const categoria = pgTable("categoria", {
 /**
  * Base comum de notícia, edital e acordo (spec §2.2, RN10).
  * - `versao`: número da versão publicada (E31, #9). O salvamento automático não muda.
- * - `revisao`: sobe a cada salvamento; é o que detecta o conflito entre o rascunho do navegador e o
+ * - `revisao`: sobe a cada salvamento que muda algo (E47); é o que detecta o conflito entre o rascunho do navegador e o
  *   do servidor (E02, E40).
  * - `slug` fica nulo até a primeira publicação (E40) e é gerado nela (E42); UNIQUE por tipo aceita vários nulos.
  * - No rascunho os textos podem ficar vazios; os obrigatórios são cobrados ao publicar (E40).
@@ -61,9 +61,10 @@ export const conteudo = pgTable(
     versao: integer().notNull().default(0),
     revisao: integer().notNull().default(1),
     /**
-     * A `revisao` que foi ao ar na última publicação (E42). O site mostra o retrato da versão
-     * publicada (ConteudoVersao); o editor salva a cópia de trabalho. Há alterações ainda não
-     * publicadas quando o estado é publicado e `revisao > revisao_publicada`.
+     * A `revisao` igual à versão no ar (E42, E47). O site mostra o retrato da versão publicada
+     * (ConteudoVersao); o editor salva a cópia de trabalho. Quando uma gravação deixa a cópia igual
+     * ao retrato, esta coluna acompanha a `revisao`. Há alterações ainda não publicadas quando o
+     * estado é publicado ou oculto e `revisao > revisao_publicada`.
      */
     revisaoPublicada: integer(),
     /** Quem fez o último salvamento ("Salva por Carlos Ribeiro às 10h38", N4). */

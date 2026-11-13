@@ -24,7 +24,7 @@ export async function resolverConflitoNoticia(
     }
     if (escolha === "servidor") {
       await registrarAtividadeNoticia(tx, "noticia.resolver_conflito", id, atual.titulo, deps, { escolha });
-      return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm };
+      return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm, revisaoPublicada: atual.revisaoPublicada };
     }
     const dados = await validarNoticia(tx, entrada.dados, deps.urlDoArquivo);
     const salvo = await gravarPorCima(tx, id, dados, deps.quem);

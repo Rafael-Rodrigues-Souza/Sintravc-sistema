@@ -120,7 +120,7 @@ export async function resolverConflitoDocumento(
     if (atual.revisao !== entrada.revisaoServidor) return { tipo: "conflito", servidor: (await lerDocumento(tx, id))! };
     if (escolha === "servidor") {
       await registrarAtividadeConteudo(tx, { id, tipo, titulo: atual.titulo }, "resolver_conflito", deps, { escolha });
-      return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm };
+      return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm, revisaoPublicada: atual.revisaoPublicada };
     }
     const dados = await validarDocumento(tx, tipo, entrada.dados, id);
     const salvo = await gravarDocumentoPorCima(tx, id, tipo, dados, deps.quem);

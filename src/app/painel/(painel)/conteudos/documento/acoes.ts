@@ -83,7 +83,13 @@ async function versaoDoServidor(documento: DocumentoAberto): Promise<VersaoServi
 
 async function responder(resultado: ResultadoSalvarDocumento): Promise<RespostaEnvio<DadosDocumento>> {
   if (resultado.tipo === "conflito") return { tipo: "conflito", servidor: await versaoDoServidor(resultado.servidor) };
-  return { tipo: "salvo", id: resultado.id, revisao: resultado.revisao, salvoEm: resultado.salvoEm.toISOString() };
+  return {
+    tipo: "salvo",
+    id: resultado.id,
+    revisao: resultado.revisao,
+    salvoEm: resultado.salvoEm.toISOString(),
+    revisaoPublicada: resultado.revisaoPublicada,
+  };
 }
 
 /** Salvamento automático do rascunho (RF38, E40). */
