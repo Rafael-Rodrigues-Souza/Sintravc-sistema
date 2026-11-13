@@ -1181,7 +1181,8 @@ function Interruptor({ ligado, rotuloId, aoMudar }: { ligado: boolean; rotuloId:
       onClick={() => aoMudar(!ligado)}
       className={cn(
         "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring motion-reduce:transition-none",
-        ligado ? "bg-destaque-marinho" : "bg-borda-forte",
+        // Contraste ≥ 3:1 com o cartão e com a bolinha nos dois temas (WCAG 1.4.11).
+        ligado ? "bg-destaque-azul" : "bg-texto-terciario",
       )}
     >
       <span
