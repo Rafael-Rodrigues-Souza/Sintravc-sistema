@@ -56,6 +56,7 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
 
 - Antes de encerrar, pare todos os servidores que você iniciou (`pnpm dev`, `next start`, e2e) e confira se as portas 3000 e 3100 estão livres. No Windows, o processo filho do `next` pode ficar preso: use `taskkill /PID`.
 - Diagramas Mermaid no PR: nada de ponto e vírgula nos textos (ele encerra o comando). Use vírgula.
+- Na descrição do PR, escreva `Closes #N` para cada issue que ele resolve. É a única parte do PR em inglês: o GitHub só fecha a issue sozinho com palavras como `Closes`, e “Fecha #N” deixa a issue aberta.
 - Testes que leem várias linhas do banco e conferem a ordem sempre usam `ORDER BY` (na Atividade, por `id`, que é uuidv7). Sem isso o CI pode falhar por sorte.
 - Antes de criar um arquivo novo, confira se ele já existe para não sobrescrever.
 - Cada fluxo principal tem pelo menos um e2e que usa a tela como uma pessoa usaria (clicando nos botões e escolhendo nos seletores), e não só dados montados à mão no teste.
