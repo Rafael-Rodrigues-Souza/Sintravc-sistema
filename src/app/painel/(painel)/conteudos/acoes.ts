@@ -59,7 +59,13 @@ function responder(resultado: ResultadoSalvar): RespostaEnvio {
   if (resultado.tipo === "conflito") return { tipo: "conflito", servidor: versaoDoServidor(resultado.servidor) };
   // Sem revalidatePath: ele faria a tela do editor ser buscada de novo a cada salvamento e montada
   // outra vez (perdendo o desfazer). A lista de Conteúdos é dinâmica e já lê o banco a cada visita.
-  return { tipo: "salvo", id: resultado.id, revisao: resultado.revisao, salvoEm: resultado.salvoEm.toISOString() };
+  return {
+    tipo: "salvo",
+    id: resultado.id,
+    revisao: resultado.revisao,
+    salvoEm: resultado.salvoEm.toISOString(),
+    revisaoPublicada: resultado.revisaoPublicada,
+  };
 }
 
 function erroParaResposta(erro: unknown, contexto: string): RespostaEnvio {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { jaFoiAoAr, temAlteracoesNaoPublicadas } from "./publicacao";
+import { jaFoiAoAr, mesmoConteudoNoSite, temAlteracoesNaoPublicadas } from "./publicacao";
 
 describe("temAlteracoesNaoPublicadas (E42)", () => {
   it("publicada e salva depois da publicação: tem", () => {
@@ -26,5 +26,26 @@ describe("jaFoiAoAr (E45)", () => {
     expect(jaFoiAoAr("publicado")).toBe(true);
     expect(jaFoiAoAr("oculto")).toBe(true);
     for (const estado of ["rascunho", "agendado", "arquivado"] as const) expect(jaFoiAoAr(estado)).toBe(false);
+  });
+});
+
+describe("mesmoConteudoNoSite (E47)", () => {
+  it("mesmos campos em outra ordem de chaves (o jsonb reordena): é o mesmo", () => {
+    const corpo = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Oi" }] }] };
+    const corpoReordenado = { content: [{ content: [{ text: "Oi", type: "text" }], type: "paragraph" }], type: "doc" };
+    expect(mesmoConteudoNoSite({ titulo: "A", corpo, links: [] }, { links: [], corpo: corpoReordenado, titulo: "A" })).toBe(true);
+  });
+
+  it("um campo diferente: não é o mesmo", () => {
+    expect(mesmoConteudoNoSite({ titulo: "A", temVigencia: false }, { titulo: "A", temVigencia: true })).toBe(false);
+  });
+
+  it("a ordem das listas conta (fontes e anexos aparecem nessa ordem no site)", () => {
+    expect(mesmoConteudoNoSite({ links: [{ url: "a" }, { url: "b" }] }, { links: [{ url: "b" }, { url: "a" }] })).toBe(false);
+  });
+
+  it("campo ausente num retrato antigo e nulo na cópia: é o mesmo", () => {
+    expect(mesmoConteudoNoSite({ titulo: "A" }, { titulo: "A", capaLegenda: null })).toBe(true);
+    expect(mesmoConteudoNoSite({ titulo: "A" }, { titulo: "A", capaLegenda: "" })).toBe(false);
   });
 });

@@ -15,7 +15,8 @@ export type VersaoServidor<D = DadosNoticia> = { revisao: number; dados: D; salv
 export type PedidoEnvio<D = DadosNoticia> = { id?: string; revisaoBase?: number; dados: D };
 
 export type RespostaEnvio<D = DadosNoticia> =
-  | { tipo: "salvo"; id: string; revisao: number; salvoEm: string }
+  /** `revisaoPublicada`: a do servidor depois do salvamento; igual à `revisao` quando a cópia ficou igual à versão no ar (E47). */
+  | { tipo: "salvo"; id: string; revisao: number; salvoEm: string; revisaoPublicada?: number | null }
   | { tipo: "conflito"; servidor: VersaoServidor<D> }
   | { tipo: "sem_conexao" }
   | { tipo: "erro"; mensagem: string; campo?: string };

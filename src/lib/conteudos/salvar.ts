@@ -5,9 +5,10 @@ import { registrarAtividade } from "@/lib/atividade";
 import { atividade, conteudo, conteudoLink, midiaUso, noticia } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
-import { lerNoticia, retratoNoAr, type NoticiaAberta } from "./carregar";
+import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import { rotuloDaNoticia, type DadosNoticia } from "./dados";
 import { noticiaArquivada, noticiaNaoEncontrada } from "./erros";
+import { jaFoiAoAr, mesmoConteudoNoSite } from "./publicacao";
 import { midiasDaNoticia, validarNoticia, type UrlDoArquivo } from "./validar";
 
 export type DepsDoSalvamento = {
@@ -19,7 +20,14 @@ export type DepsDoSalvamento = {
 };
 
 export type ResultadoSalvar =
-  | { tipo: "salvo"; id: string; revisao: number; salvoEm: Date }
+  | {
+      tipo: "salvo";
+      id: string;
+      revisao: number;
+      salvoEm: Date;
+      /** Igual à `revisao` quando a cópia de trabalho ficou igual à versão no ar (E47). */
+      revisaoPublicada: number | null;
+    }
   /** Alguém salvou depois da `revisaoBase`: nada foi gravado; a pessoa escolhe a versão (E02, N4). */
   | { tipo: "conflito"; servidor: NoticiaAberta };
 
@@ -48,8 +56,14 @@ export async function salvarRascunhoNoticia(
       throw noticiaArquivada();
     }
     const dados = await validarNoticia(tx, entrada.dados, deps.urlDoArquivo);
+    const servidor = (await lerNoticia(tx, id))!;
     if (atual.revisao !== entrada.revisaoBase) {
-      return { tipo: "conflito", servidor: (await lerNoticia(tx, id))! };
+      return { tipo: "conflito", servidor };
+    }
+    // Nada mudou (Ctrl+S sem mexer, mudar e desfazer antes do salvamento automático): não grava,
+    // não sobe a revisão e não vai para a Atividade (E47).
+    if (mesmoConteudoNoSite(servidor.dados, dados)) {
+      return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm, revisaoPublicada: atual.revisaoPublicada };
     }
     const salvo = await gravarPorCima(tx, id, dados, deps.quem);
     if (!(await sessaoJaRegistrada(tx, id, deps.sessaoEdicao))) {
@@ -128,9 +142,13 @@ export async function travarNoticia(tx: Transacao, id: string) {
   return atual;
 }
 
-/** Grava os dados sobre a notícia (já travada e conferida) e sobe a revisão. */
+/**
+ * Grava os dados sobre a notícia (já travada e conferida) e sobe a revisão. Toda gravação da cópia
+ * de trabalho passa por aqui: se ela ficou igual à versão no ar, a `revisao_publicada` acompanha, e
+ * o aviso de alterações não publicadas some (E47).
+ */
 export async function gravarPorCima(tx: Transacao, id: string, dados: DadosNoticia, quem: QuemDaEquipe) {
-  const [salvo] = await tx
+  let [salvo] = await tx
     .update(conteudo)
     .set({
       titulo: dados.titulo,
@@ -141,8 +159,12 @@ export async function gravarPorCima(tx: Transacao, id: string, dados: DadosNotic
     .where(eq(conteudo.id, id))
     .returning();
   await tx.update(noticia).set(colunasDaNoticia(dados)).where(eq(noticia.conteudoId, id));
-  await gravarLinksEUsos(tx, id, dados);
-  return { tipo: "salvo" as const, id, revisao: salvo!.revisao, salvoEm: salvo!.atualizadoEm };
+  const noAr = await retratoNoAr(tx, id);
+  await gravarLinksEUsos(tx, id, dados, noAr);
+  if (noAr && jaFoiAoAr(salvo!.estado) && mesmoConteudoNoSite(noAr.dados, dados)) {
+    [salvo] = await tx.update(conteudo).set({ revisaoPublicada: salvo!.revisao }).where(eq(conteudo.id, id)).returning();
+  }
+  return { tipo: "salvo" as const, id, revisao: salvo!.revisao, salvoEm: salvo!.atualizadoEm, revisaoPublicada: salvo!.revisaoPublicada };
 }
 
 async function criar(tx: Transacao, dados: DadosNoticia, quem: QuemDaEquipe): Promise<Extract<ResultadoSalvar, { tipo: "salvo" }>> {
@@ -158,27 +180,27 @@ async function criar(tx: Transacao, dados: DadosNoticia, quem: QuemDaEquipe): Pr
     .returning();
   await tx.insert(noticia).values({ conteudoId: criado!.id, ...colunasDaNoticia(dados) });
   await gravarLinksEUsos(tx, criado!.id, dados);
-  return { tipo: "salvo", id: criado!.id, revisao: criado!.revisao, salvoEm: criado!.atualizadoEm };
+  return { tipo: "salvo", id: criado!.id, revisao: criado!.revisao, salvoEm: criado!.atualizadoEm, revisaoPublicada: null };
 }
 
 /**
  * Fontes e anexos são regravados a cada salvamento, na ordem da tela. A `midia_uso` acompanha:
  * capa, imagens do corpo e anexos (RN16: a Mídia só exclui arquivo sem uso).
  */
-async function gravarLinksEUsos(tx: Transacao, id: string, dados: DadosNoticia) {
+async function gravarLinksEUsos(tx: Transacao, id: string, dados: DadosNoticia, noAr?: RetratoDaNoticia | null) {
   await tx.delete(conteudoLink).where(eq(conteudoLink.conteudoId, id));
   if (dados.links.length > 0) {
     await tx.insert(conteudoLink).values(dados.links.map((link, ordem) => ({ conteudoId: id, ...link, ordem })));
   }
-  await gravarUsos(tx, id, dados);
+  await gravarUsos(tx, id, dados, noAr);
 }
 
 /**
  * Uso da Mídia pela notícia: o que está na cópia de trabalho mais o que está no ar (E42). Assim,
  * tirar uma imagem só da cópia de trabalho não deixa a Mídia apagar o que o site ainda mostra.
  */
-export async function gravarUsos(tx: Transacao, id: string, dados: DadosNoticia) {
-  const noAr = await retratoNoAr(tx, id);
+export async function gravarUsos(tx: Transacao, id: string, dados: DadosNoticia, retrato?: RetratoDaNoticia | null) {
+  const noAr = retrato === undefined ? await retratoNoAr(tx, id) : retrato;
   const usadas = [...new Set([...midiasDaNoticia(dados), ...(noAr ? midiasDaNoticia(noAr.dados) : [])])];
   await tx.delete(midiaUso).where(and(eq(midiaUso.donoTipo, "noticia"), eq(midiaUso.donoId, id)));
   if (usadas.length > 0) {

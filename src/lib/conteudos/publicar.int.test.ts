@@ -13,6 +13,7 @@ import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 import { carregarNoticia } from "./carregar";
 import { noticiaVazia, type DadosNoticia } from "./dados";
 import { descartarAlteracoes, publicarNoticia, versoesDaNoticia } from "./publicar";
+import { temAlteracoesNaoPublicadas } from "./publicacao";
 import { salvarRascunhoNoticia } from "./salvar";
 
 async function idDaCategoria(nome: string) {
@@ -260,5 +261,50 @@ describe("descartarAlteracoes (E42)", () => {
     await expect(descartarAlteracoes({ id, revisaoBase: revisao }, { quem: await pessoaDaEquipe("ATD") })).rejects.toBeInstanceOf(
       SemPermissao,
     );
+  });
+});
+
+describe("alterações não publicadas: compara o conteúdo, não o número de gravações (E47)", () => {
+  it("mudar e desfazer: o aviso some, publicar não gera versão e a Atividade fica com uma edição só", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const original = await completa({ titulo: "Manchete no ar" });
+    const { id, revisao } = await rascunho(quem, original);
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    const sessao = edicaoDe(quem);
+
+    const mudou = await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: { ...original, titulo: "Manchete mexida" } }, sessao);
+    if (mudou.tipo !== "salvo") throw new Error("esperava salvo");
+    expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(true);
+
+    const desfez = await salvarRascunhoNoticia({ id, revisaoBase: mudou.revisao, dados: original }, sessao);
+
+    expect(desfez).toMatchObject({ tipo: "salvo", revisaoPublicada: (desfez as { revisao: number }).revisao });
+    expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(false);
+    await publicarNoticia({ id, revisaoBase: (desfez as { revisao: number }).revisao }, { quem });
+    expect(await versoesDaNoticia(id, { quem })).toHaveLength(1);
+    expect((await atividadesDa(id)).map((a) => a.acao)).toEqual(["noticia.criar", "noticia.publicar", "noticia.editar"]);
+  });
+
+  it("mudar de verdade continua mostrando o aviso", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const original = await completa();
+    const { id, revisao } = await rascunho(quem, original);
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+
+    const salvo = await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: { ...original, local: "Vitória da Conquista" } }, edicaoDe(quem));
+
+    expect(salvo).toMatchObject({ tipo: "salvo", revisaoPublicada: revisao });
+    expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(true);
+  });
+
+  it("salvar sem mudar nada (Ctrl+S) não grava, não sobe a revisão e não vai para a Atividade", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const original = await completa();
+    const { id, revisao } = await rascunho(quem, original);
+
+    const salvo = await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: original }, edicaoDe(quem));
+
+    expect(salvo).toMatchObject({ tipo: "salvo", revisao });
+    expect((await atividadesDa(id)).map((a) => a.acao)).toEqual(["noticia.criar"]);
   });
 });

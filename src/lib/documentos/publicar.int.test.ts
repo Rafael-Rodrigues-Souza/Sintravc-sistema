@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { banco } from "@/lib/db";
 import { conteudoVersao } from "@/lib/db/schema";
 import { ErroFaltamCampos } from "@/lib/conteudos/publicar";
+import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { usosDasMidias } from "@/lib/midia/usos";
 import { SemPermissao } from "@/lib/permissoes";
 import { documentoCompleto, documentoSalvo, edicaoDoDocumento, pdfEnviado } from "@/testes/documentos";
@@ -114,5 +115,38 @@ describe("publicarDocumento (CA-US23.1, RN12, E46)", () => {
     await salvarRascunhoDocumento({ id: salvo.id, tipo: "acordo", revisaoBase: 1, dados: { ...dados, resumo: "Novo resumo." } }, edicaoDoDocumento(adm));
     await publicarDocumento({ id: salvo.id, revisaoBase: 2, confirmoOficial: true }, { quem: adm });
     expect((await atividadesDe(salvo.id)).at(-1)).toMatchObject({ acao: "documento.publicar_alteracoes", detalhe: { versao: 2 } });
+  });
+});
+
+describe("alterações não publicadas do documento: compara o conteúdo (E47)", () => {
+  it("ligar e desligar “Tem vigência”: o aviso some, e publicar não gera versão", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const dados = await documentoCompleto("edital", adm);
+    const salvo = await documentoSalvo(adm, "edital", dados);
+    await publicarDocumento({ id: salvo.id, revisaoBase: 1, confirmoOficial: true }, { quem: adm });
+    const sessao = edicaoDoDocumento(adm);
+
+    const ligou = await salvarRascunhoDocumento({ id: salvo.id, tipo: "edital", revisaoBase: 1, dados: { ...dados, temVigencia: true } }, sessao);
+    expect(ligou).toMatchObject({ tipo: "salvo", revisao: 2, revisaoPublicada: 1 });
+    expect(temAlteracoesNaoPublicadas((await carregarDocumento(salvo.id, { quem: adm }))!)).toBe(true);
+
+    const desligou = await salvarRascunhoDocumento({ id: salvo.id, tipo: "edital", revisaoBase: 2, dados }, sessao);
+
+    expect(desligou).toMatchObject({ tipo: "salvo", revisao: 3, revisaoPublicada: 3 });
+    expect(temAlteracoesNaoPublicadas((await carregarDocumento(salvo.id, { quem: adm }))!)).toBe(false);
+    await publicarDocumento({ id: salvo.id, revisaoBase: 3, confirmoOficial: true }, { quem: adm });
+    expect(await carregarDocumento(salvo.id, { quem: adm })).toMatchObject({ versao: 1 });
+    expect((await atividadesDe(salvo.id)).map((a) => a.acao)).toEqual(["documento.criar", "documento.publicar", "documento.editar"]);
+  });
+
+  it("salvar sem mudar nada não grava, não sobe a revisão e não vai para a Atividade", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const dados = await documentoCompleto("acordo", adm);
+    const salvo = await documentoSalvo(adm, "acordo", dados);
+
+    const r = await salvarRascunhoDocumento({ id: salvo.id, tipo: "acordo", revisaoBase: 1, dados }, edicaoDoDocumento(adm));
+
+    expect(r).toMatchObject({ tipo: "salvo", revisao: 1 });
+    expect((await atividadesDe(salvo.id)).map((a) => a.acao)).toEqual(["documento.criar"]);
   });
 });

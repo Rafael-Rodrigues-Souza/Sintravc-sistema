@@ -10,7 +10,9 @@ import {
 import { ErroConteudo } from "@/lib/conteudos/erros";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
-import { lerDocumento, retratoDoDocumento, type DocumentoAberto } from "./carregar";
+import { jaFoiAoAr, mesmoConteudoNoSite } from "@/lib/conteudos/publicacao";
+
+import { lerDocumento, retratoDoDocumento, type DocumentoAberto, type RetratoDoDocumento } from "./carregar";
 import { normalizarNumero } from "./conferir";
 import { instanteDoEvento, type DadosDocumento, type TipoDocumento } from "./dados";
 import { numeroRepetido, validarDocumento } from "./validar";
@@ -22,7 +24,14 @@ export type DepsDoSalvamentoDocumento = {
 };
 
 export type ResultadoSalvarDocumento =
-  | { tipo: "salvo"; id: string; revisao: number; salvoEm: Date }
+  | {
+      tipo: "salvo";
+      id: string;
+      revisao: number;
+      salvoEm: Date;
+      /** Igual à `revisao` quando a cópia de trabalho ficou igual à versão no ar (E47). */
+      revisaoPublicada: number | null;
+    }
   /** Alguém salvou depois da `revisaoBase`: nada foi gravado; a pessoa escolhe a versão (E02, N4). */
   | { tipo: "conflito"; servidor: DocumentoAberto };
 
@@ -53,8 +62,13 @@ export async function salvarRascunhoDocumento(
       const atual = await travarConteudo(tx, id, [tipo]);
       if (atual.estado === "arquivado") throw conteudoArquivado(tipo);
       const dados = await validarDocumento(tx, tipo, entrada.dados, id);
+      const servidor = (await lerDocumento(tx, id))!;
       if (atual.revisao !== entrada.revisaoBase) {
-        return { tipo: "conflito", servidor: (await lerDocumento(tx, id))! };
+        return { tipo: "conflito", servidor };
+      }
+      // Nada mudou: não grava, não sobe a revisão e não vai para a Atividade (E47).
+      if (mesmoConteudoNoSite(servidor.dados, dados)) {
+        return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm, revisaoPublicada: atual.revisaoPublicada };
       }
       if (atual.estado === "agendado") await conferirPdfDoAgendado(tx, id, dados);
       const salvo = await gravarDocumentoPorCima(tx, id, tipo, dados, deps.quem);
@@ -109,16 +123,24 @@ async function sessaoJaRegistrada(tx: Transacao, id: string, sessao: string) {
   return !!linha;
 }
 
-/** Grava os dados sobre o documento (já travado e conferido) e sobe a revisão. */
+/**
+ * Grava os dados sobre o documento (já travado e conferido) e sobe a revisão. Toda gravação da
+ * cópia de trabalho passa por aqui: se ela ficou igual à versão no ar, a `revisao_publicada`
+ * acompanha, e o aviso de alterações não publicadas some (E47).
+ */
 export async function gravarDocumentoPorCima(tx: Transacao, id: string, tipo: TipoDocumento, dados: DadosDocumento, quem: QuemDaEquipe) {
-  const [salvo] = await tx
+  let [salvo] = await tx
     .update(conteudo)
     .set({ titulo: dados.titulo, categoriaId: dados.categoriaId, atualizadoPor: quem.id, revisao: sql`${conteudo.revisao} + 1` })
     .where(eq(conteudo.id, id))
     .returning();
   await tx.update(documento).set(colunasDoDocumento(tipo, dados)).where(eq(documento.conteudoId, id));
-  await gravarUsosDoDocumento(tx, id, dados);
-  return { tipo: "salvo" as const, id, revisao: salvo!.revisao, salvoEm: salvo!.atualizadoEm };
+  const noAr = await retratoDoDocumento(tx, id);
+  await gravarUsosDoDocumento(tx, id, dados, noAr);
+  if (noAr && jaFoiAoAr(salvo!.estado) && mesmoConteudoNoSite(noAr.dados, dados)) {
+    [salvo] = await tx.update(conteudo).set({ revisaoPublicada: salvo!.revisao }).where(eq(conteudo.id, id)).returning();
+  }
+  return { tipo: "salvo" as const, id, revisao: salvo!.revisao, salvoEm: salvo!.atualizadoEm, revisaoPublicada: salvo!.revisaoPublicada };
 }
 
 async function criar(tx: Transacao, tipo: TipoDocumento, dados: DadosDocumento, quem: QuemDaEquipe) {
@@ -128,7 +150,7 @@ async function criar(tx: Transacao, tipo: TipoDocumento, dados: DadosDocumento, 
     .returning();
   await tx.insert(documento).values({ conteudoId: criado!.id, ...colunasDoDocumento(tipo, dados) });
   await gravarUsosDoDocumento(tx, criado!.id, dados);
-  return { tipo: "salvo" as const, id: criado!.id, revisao: criado!.revisao, salvoEm: criado!.atualizadoEm };
+  return { tipo: "salvo" as const, id: criado!.id, revisao: criado!.revisao, salvoEm: criado!.atualizadoEm, revisaoPublicada: null };
 }
 
 /** O arquivo da Mídia que o documento usa: o PDF oficial (RN16). */
@@ -140,8 +162,8 @@ export function midiasDoDocumento(dados: DadosDocumento): string[] {
  * Uso da Mídia pelo documento: o PDF da cópia de trabalho mais o da versão no ar (E42). Assim,
  * substituir o PDF no rascunho não deixa a Mídia apagar o que o site ainda mostra.
  */
-export async function gravarUsosDoDocumento(tx: Transacao, id: string, dados: DadosDocumento) {
-  const noAr = await retratoDoDocumento(tx, id);
+export async function gravarUsosDoDocumento(tx: Transacao, id: string, dados: DadosDocumento, retrato?: RetratoDoDocumento | null) {
+  const noAr = retrato === undefined ? await retratoDoDocumento(tx, id) : retrato;
   const usadas = [...new Set([...midiasDoDocumento(dados), ...(noAr ? midiasDoDocumento(noAr.dados) : [])])];
   await tx.delete(midiaUso).where(and(eq(midiaUso.donoTipo, "documento"), eq(midiaUso.donoId, id)));
   if (usadas.length > 0) {

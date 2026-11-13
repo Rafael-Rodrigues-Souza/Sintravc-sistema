@@ -155,6 +155,21 @@ export function EditorNoticia({
   const [salvandoParaSair, setSalvandoParaSair] = React.useState(false);
   const liberarSaida = React.useRef(false);
 
+  // --- Situação da publicação (E42, E47) ---
+  const [publicacao, setPublicacao] = React.useState<Publicacao>({
+    estado: inicio.estado,
+    revisaoPublicada: inicio.revisaoPublicada,
+    publicadoEm: inicio.publicadoEm,
+    agendadoPara: inicio.agendadoPara,
+    motivoOculto: inicio.motivoOculto,
+  });
+  // O salvamento diz se a cópia de trabalho ficou igual à versão no ar: mudar e desfazer tira o aviso (E47).
+  const seguirPublicacao = <R extends { tipo: string; revisaoPublicada?: number | null }>(resposta: R): R => {
+    const { revisaoPublicada } = resposta;
+    if (resposta.tipo === "salvo" && revisaoPublicada != null) setPublicacao((atual) => ({ ...atual, revisaoPublicada }));
+    return resposta;
+  };
+
   // Uma sessão de edição por vez que o editor abre: a Atividade registra a edição uma vez por sessão (E40).
   const [sessaoEdicao] = React.useState(() => crypto.randomUUID());
   const [fila] = React.useState(() =>
@@ -164,7 +179,7 @@ export function EditorNoticia({
       revisao: inicio.revisao,
       salvoEm: inicio.salvoEm,
       intervaloMs,
-      enviar: (pedido) => acaoSalvarRascunho(paraJsonSimples(pedido), sessaoEdicao),
+      enviar: async (pedido) => seguirPublicacao(await acaoSalvarRascunho(paraJsonSimples(pedido), sessaoEdicao)),
       online: () => navigator.onLine,
       armazem: armazemDoNavegador(),
       versaoServidor: inicio.servidor ?? undefined,
@@ -314,7 +329,7 @@ export function EditorNoticia({
       const escolhidos = escolha === "minha" ? conflito.minha : conflito.servidor.dados;
       setDados(escolhidos);
       setBase(escolhidos);
-      fila.conflitoResolvido(resposta);
+      fila.conflitoResolvido(seguirPublicacao(resposta));
       setDecidirDepois(false);
       toast.success(escolha === "minha" ? "Sua versão foi mantida." : "A versão do servidor foi mantida.");
     } else if (resposta.tipo === "conflito") {
@@ -326,13 +341,6 @@ export function EditorNoticia({
   };
 
   // --- Publicar (RF39, E42) ---------------------------------------------------
-  const [publicacao, setPublicacao] = React.useState<Publicacao>({
-    estado: inicio.estado,
-    revisaoPublicada: inicio.revisaoPublicada,
-    publicadoEm: inicio.publicadoEm,
-    agendadoPara: inicio.agendadoPara,
-    motivoOculto: inicio.motivoOculto,
-  });
   const [quando, setQuando] = React.useState<"agora" | "agendar">(inicio.agendadoPara ? "agendar" : "agora");
   const [campos, setCampos] = React.useState<CamposDaData>(() =>
     inicio.agendadoPara ? bahiaEmCampos(new Date(inicio.agendadoPara)) : amanhaAsOito(),
