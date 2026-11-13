@@ -16,7 +16,7 @@ export type PedidoEnvio<D = DadosNoticia> = { id?: string; revisaoBase?: number;
 
 export type RespostaEnvio<D = DadosNoticia> =
   /** `revisaoPublicada`: a do servidor depois do salvamento; igual à `revisao` quando a cópia ficou igual à versão no ar (E47). */
-  | { tipo: "salvo"; id: string; revisao: number; salvoEm: string; revisaoPublicada?: number | null }
+  | { tipo: "salvo"; id: string; revisao: number; salvoEm: string; revisaoPublicada: number | null }
   | { tipo: "conflito"; servidor: VersaoServidor<D> }
   | { tipo: "sem_conexao" }
   | { tipo: "erro"; mensagem: string; campo?: string };
@@ -212,7 +212,7 @@ export function criarFilaDoRascunho<D = DadosNoticia>(opcoes: {
     },
 
     /** O modal de conflito gravou a escolha no servidor: segue da revisão devolvida. */
-    conflitoResolvido(resposta: Extract<RespostaEnvio<D>, { tipo: "salvo" }>) {
+    conflitoResolvido(resposta: Pick<Extract<RespostaEnvio<D>, { tipo: "salvo" }>, "tipo" | "id" | "revisao" | "salvoEm">) {
       mudancaNoServidor = mudanca;
       apagarCopia();
       mudar({

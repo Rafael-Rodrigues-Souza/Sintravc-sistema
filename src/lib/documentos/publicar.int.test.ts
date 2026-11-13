@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { banco } from "@/lib/db";
-import { conteudoVersao } from "@/lib/db/schema";
+import { conteudo, conteudoVersao } from "@/lib/db/schema";
 import { ErroFaltamCampos } from "@/lib/conteudos/publicar";
 import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { usosDasMidias } from "@/lib/midia/usos";
@@ -148,5 +148,23 @@ describe("alterações não publicadas do documento: compara o conteúdo (E47)",
 
     expect(r).toMatchObject({ tipo: "salvo", revisao: 1 });
     expect((await atividadesDe(salvo.id)).map((a) => a.acao)).toEqual(["documento.criar"]);
+  });
+});
+
+describe("aviso preso do documento, de antes do E47", () => {
+  it("salvar sem mudança tira o aviso de quem já estava igual ao publicado", async () => {
+    const adm = await pessoaDaEquipe("ADM");
+    const dados = await documentoCompleto("edital", adm);
+    const salvo = await documentoSalvo(adm, "edital", dados);
+    await publicarDocumento({ id: salvo.id, revisaoBase: 1, confirmoOficial: true }, { quem: adm });
+    // Como ficavam os conteúdos antes do E47: mudar e desfazer subia a revisão e deixava o aviso.
+    await banco().update(conteudo).set({ revisao: sql`${conteudo.revisao} + 2` }).where(eq(conteudo.id, salvo.id));
+    const antes = await atividadesDe(salvo.id);
+
+    const r = await salvarRascunhoDocumento({ id: salvo.id, tipo: "edital", revisaoBase: 3, dados }, edicaoDoDocumento(adm));
+
+    expect(r).toMatchObject({ tipo: "salvo", revisao: 3, revisaoPublicada: 3 });
+    expect(temAlteracoesNaoPublicadas((await carregarDocumento(salvo.id, { quem: adm }))!)).toBe(false);
+    expect(await atividadesDe(salvo.id)).toEqual(antes);
   });
 });

@@ -8,9 +8,9 @@ import {
   travarConteudo,
 } from "@/lib/conteudos/tipo-do-conteudo";
 import { ErroConteudo } from "@/lib/conteudos/erros";
+import { mesmosDados } from "@/lib/conteudos/publicacao";
+import { acompanharVersaoNoAr } from "@/lib/conteudos/versao-no-ar";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
-
-import { jaFoiAoAr, mesmoConteudoNoSite } from "@/lib/conteudos/publicacao";
 
 import { lerDocumento, retratoDoDocumento, type DocumentoAberto, type RetratoDoDocumento } from "./carregar";
 import { normalizarNumero } from "./conferir";
@@ -66,9 +66,11 @@ export async function salvarRascunhoDocumento(
       if (atual.revisao !== entrada.revisaoBase) {
         return { tipo: "conflito", servidor };
       }
-      // Nada mudou: não grava, não sobe a revisão e não vai para a Atividade (E47).
-      if (mesmoConteudoNoSite(servidor.dados, dados)) {
-        return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm, revisaoPublicada: atual.revisaoPublicada };
+      // Nada mudou: não grava, não sobe a revisão e não vai para a Atividade (E47). Se a cópia já
+      // era igual à versão no ar (aviso preso de antes do E47), a `revisao_publicada` acompanha.
+      if (mesmosDados(servidor.dados, dados)) {
+        const linha = await acompanharVersaoNoAr(tx, atual, dados, await retratoDoDocumento(tx, id));
+        return { tipo: "salvo", id, revisao: linha.revisao, salvoEm: linha.atualizadoEm, revisaoPublicada: linha.revisaoPublicada };
       }
       if (atual.estado === "agendado") await conferirPdfDoAgendado(tx, id, dados);
       const salvo = await gravarDocumentoPorCima(tx, id, tipo, dados, deps.quem);
@@ -129,7 +131,7 @@ async function sessaoJaRegistrada(tx: Transacao, id: string, sessao: string) {
  * acompanha, e o aviso de alterações não publicadas some (E47).
  */
 export async function gravarDocumentoPorCima(tx: Transacao, id: string, tipo: TipoDocumento, dados: DadosDocumento, quem: QuemDaEquipe) {
-  let [salvo] = await tx
+  const [gravado] = await tx
     .update(conteudo)
     .set({ titulo: dados.titulo, categoriaId: dados.categoriaId, atualizadoPor: quem.id, revisao: sql`${conteudo.revisao} + 1` })
     .where(eq(conteudo.id, id))
@@ -137,10 +139,8 @@ export async function gravarDocumentoPorCima(tx: Transacao, id: string, tipo: Ti
   await tx.update(documento).set(colunasDoDocumento(tipo, dados)).where(eq(documento.conteudoId, id));
   const noAr = await retratoDoDocumento(tx, id);
   await gravarUsosDoDocumento(tx, id, dados, noAr);
-  if (noAr && jaFoiAoAr(salvo!.estado) && mesmoConteudoNoSite(noAr.dados, dados)) {
-    [salvo] = await tx.update(conteudo).set({ revisaoPublicada: salvo!.revisao }).where(eq(conteudo.id, id)).returning();
-  }
-  return { tipo: "salvo" as const, id, revisao: salvo!.revisao, salvoEm: salvo!.atualizadoEm, revisaoPublicada: salvo!.revisaoPublicada };
+  const salvo = await acompanharVersaoNoAr(tx, gravado!, dados, noAr);
+  return { tipo: "salvo" as const, id, revisao: salvo.revisao, salvoEm: salvo.atualizadoEm, revisaoPublicada: salvo.revisaoPublicada };
 }
 
 async function criar(tx: Transacao, tipo: TipoDocumento, dados: DadosDocumento, quem: QuemDaEquipe) {

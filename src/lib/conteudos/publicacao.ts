@@ -29,17 +29,17 @@ export function temAlteracoesNaoPublicadas(conteudo: {
  * número de gravações: mudar e desfazer não deixa aviso. A ordem das chaves não conta (o jsonb do
  * retrato reordena); a das listas, sim. Campo ausente num retrato antigo vale como nulo.
  */
-export function mesmoConteudoNoSite(a: unknown, b: unknown): boolean {
+export function mesmosDados(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a === undefined || a === null || b === undefined || b === null) return (a ?? null) === (b ?? null);
   if (Array.isArray(a) || Array.isArray(b)) {
-    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => mesmoConteudoNoSite(item, b[i]));
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => mesmosDados(item, b[i]));
   }
   if (typeof a === "object" && typeof b === "object") {
     const x = a as Record<string, unknown>;
     const y = b as Record<string, unknown>;
     const chaves = new Set([...Object.keys(x), ...Object.keys(y)]);
-    return [...chaves].every((chave) => mesmoConteudoNoSite(x[chave], y[chave]));
+    return [...chaves].every((chave) => mesmosDados(x[chave], y[chave]));
   }
   return false;
 }

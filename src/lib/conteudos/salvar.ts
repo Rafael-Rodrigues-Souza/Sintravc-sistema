@@ -8,8 +8,9 @@ import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import { rotuloDaNoticia, type DadosNoticia } from "./dados";
 import { noticiaArquivada, noticiaNaoEncontrada } from "./erros";
-import { jaFoiAoAr, mesmoConteudoNoSite } from "./publicacao";
+import { mesmosDados } from "./publicacao";
 import { midiasDaNoticia, validarNoticia, type UrlDoArquivo } from "./validar";
+import { acompanharVersaoNoAr } from "./versao-no-ar";
 
 export type DepsDoSalvamento = {
   quem: QuemDaEquipe;
@@ -61,9 +62,11 @@ export async function salvarRascunhoNoticia(
       return { tipo: "conflito", servidor };
     }
     // Nada mudou (Ctrl+S sem mexer, mudar e desfazer antes do salvamento automático): não grava,
-    // não sobe a revisão e não vai para a Atividade (E47).
-    if (mesmoConteudoNoSite(servidor.dados, dados)) {
-      return { tipo: "salvo", id, revisao: atual.revisao, salvoEm: atual.atualizadoEm, revisaoPublicada: atual.revisaoPublicada };
+    // não sobe a revisão e não vai para a Atividade (E47). Se a cópia já era igual à versão no ar
+    // (aviso preso de antes do E47), a `revisao_publicada` acompanha.
+    if (mesmosDados(servidor.dados, dados)) {
+      const linha = await acompanharVersaoNoAr(tx, atual, dados, await retratoNoAr(tx, id));
+      return { tipo: "salvo", id, revisao: linha.revisao, salvoEm: linha.atualizadoEm, revisaoPublicada: linha.revisaoPublicada };
     }
     const salvo = await gravarPorCima(tx, id, dados, deps.quem);
     if (!(await sessaoJaRegistrada(tx, id, deps.sessaoEdicao))) {
@@ -148,7 +151,7 @@ export async function travarNoticia(tx: Transacao, id: string) {
  * o aviso de alterações não publicadas some (E47).
  */
 export async function gravarPorCima(tx: Transacao, id: string, dados: DadosNoticia, quem: QuemDaEquipe) {
-  let [salvo] = await tx
+  const [gravado] = await tx
     .update(conteudo)
     .set({
       titulo: dados.titulo,
@@ -161,10 +164,8 @@ export async function gravarPorCima(tx: Transacao, id: string, dados: DadosNotic
   await tx.update(noticia).set(colunasDaNoticia(dados)).where(eq(noticia.conteudoId, id));
   const noAr = await retratoNoAr(tx, id);
   await gravarLinksEUsos(tx, id, dados, noAr);
-  if (noAr && jaFoiAoAr(salvo!.estado) && mesmoConteudoNoSite(noAr.dados, dados)) {
-    [salvo] = await tx.update(conteudo).set({ revisaoPublicada: salvo!.revisao }).where(eq(conteudo.id, id)).returning();
-  }
-  return { tipo: "salvo" as const, id, revisao: salvo!.revisao, salvoEm: salvo!.atualizadoEm, revisaoPublicada: salvo!.revisaoPublicada };
+  const salvo = await acompanharVersaoNoAr(tx, gravado!, dados, noAr);
+  return { tipo: "salvo" as const, id, revisao: salvo.revisao, salvoEm: salvo.atualizadoEm, revisaoPublicada: salvo.revisaoPublicada };
 }
 
 async function criar(tx: Transacao, dados: DadosNoticia, quem: QuemDaEquipe): Promise<Extract<ResultadoSalvar, { tipo: "salvo" }>> {

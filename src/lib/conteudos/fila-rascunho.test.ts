@@ -39,7 +39,7 @@ function servidorFalso() {
         return { tipo: "conflito", servidor: { revisao, dados: dados("Do servidor"), salvoPorNome: "Carlos", salvoEm: "2026-11-09T13:38:00Z" } };
       }
       revisao += 1;
-      return { tipo: "salvo", id: pedido.id ?? "noticia-1", revisao, salvoEm: "2026-11-09T13:42:00Z" };
+      return { tipo: "salvo", id: pedido.id ?? "noticia-1", revisao, salvoEm: "2026-11-09T13:42:00Z", revisaoPublicada: null };
     }),
   };
 }
@@ -106,7 +106,7 @@ describe("salvamento automático (RF38, CA-US21.1)", () => {
       (pedido) =>
         new Promise((resolve) => {
           servidor.recebidos.push(structuredClone(pedido));
-          liberar = () => resolve({ tipo: "salvo", id: "noticia-1", revisao: servidor.salvarPorFora(), salvoEm: "x" });
+          liberar = () => resolve({ tipo: "salvo", id: "noticia-1", revisao: servidor.salvarPorFora(), salvoEm: "x", revisaoPublicada: null });
         }),
     );
     fila.alterar(dados("Antes"));
