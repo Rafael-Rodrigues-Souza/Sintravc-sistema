@@ -128,7 +128,8 @@ for (const tema of ["claro", "escuro"] as const) {
         await expect(status).toContainText("Salvo automaticamente às");
         const cabecalho = page.locator("main header").first();
         const titulo = cabecalho.getByRole("heading", { level: 1 });
-        await expect(cabecalho.getByTestId("selo-estado")).toBeVisible();
+        // No topo compacto do celular (E49), o estado fica no resumo da Publicação, e não no topo.
+        if (!telaEstreita(page)) await expect(cabecalho.getByTestId("selo-estado")).toBeVisible();
 
         await emCadaLargura(page, testInfo, async (largura) => {
           expect(
@@ -136,13 +137,16 @@ for (const tema of ["claro", "escuro"] as const) {
             `a ${largura} px, nada se sobrepõe no cabeçalho`,
           ).toEqual([]);
           expect(await textoCortado(titulo), `a ${largura} px, o título não é cortado`).toBe(false);
-          expect(await linhasDoTexto(status), `a ${largura} px, “Salvo automaticamente” não passa de 2 linhas`).toBeLessThanOrEqual(2);
+          // Abaixo do lg o texto é o curto (“Salvo às …”), que cabe numa linha.
+          expect(await linhasDoTexto(status), `a ${largura} px, o status do salvamento não passa de 2 linhas`).toBeLessThanOrEqual(2);
         });
       });
     }
 
     test("editor de documento: “Texto pesquisável” tem altura máxima e rola por dentro, sem empurrar a página", async ({ page, hasTouch }) => {
       await entrarComoAdm(page, "/painel/conteudos/documento/nova?tipo=edital", { toque: hasTouch });
+      // No celular e no tablet em pé, o arquivo fica numa seção que abre ao tocar (E49).
+      if (telaEstreita(page)) await apertar(page.getByRole("button", { name: /^Arquivo oficial/ }), hasTouch);
       const campo = page.getByLabel("Texto pesquisável");
       const alturaDaPagina = () => page.evaluate(() => document.documentElement.scrollHeight);
       const antes = await alturaDaPagina();
@@ -313,6 +317,8 @@ for (const tema of ["claro", "escuro"] as const) {
       await page.keyboard.press("Escape");
       await expect(seletor).toBeHidden();
 
+      // No celular e no tablet em pé, Fontes fica numa seção que abre ao tocar (E49).
+      if (telaEstreita(page)) await apertar(page.getByRole("button", { name: /^Fontes, links e anexos/ }), hasTouch);
       await apertar(page.getByRole("button", { name: "Adicionar link" }), hasTouch);
       const link = page.getByRole("dialog", { name: "Adicionar link" });
       await expect(link).toBeVisible();

@@ -62,7 +62,19 @@ import { acaoCancelarAgendamento, acaoReagendar } from "../acoes";
 import { ConfirmarAcao, MenuDeAcoes, type PedidoDeAcao } from "../ciclo-de-vida";
 import { HistoricoDeVersoes } from "../noticia/historico";
 import { ModalCancelarAgendamento, ModalDescartarAlteracoes, ModalSair } from "../noticia/modais";
-import { BotaoTravado, CampoComContador, Cartao, CamposDeData, mesmaData, StatusDoSalvamento, type CamposDaData } from "../pecas-do-editor";
+import {
+  BarraDoEditor,
+  BotaoTravado,
+  CampoComContador,
+  Cartao,
+  CamposDeData,
+  mesmaData,
+  resumoDasFaltas,
+  SecaoQueAbre,
+  StatusDoSalvamento,
+  useSecoesAbertas,
+  type CamposDaData,
+} from "../pecas-do-editor";
 import { SeloEstado, SeloVigencia } from "../selos";
 import {
   acaoAgendarDocumento,
@@ -122,6 +134,21 @@ const ELEMENTO_DO_CAMPO: Record<CampoObrigatorioDocumento, string> = {
   pdfMidiaId: "#enviar-pdf",
   categoriaId: "#categoria",
 };
+
+/** No celular, a seção que precisa abrir antes de levar o foco ao campo (E49, E50). */
+type SecaoDoDocumento = "datas" | "abrangencia" | "arquivo" | "publicacao";
+const SECAO_DO_CAMPO: Partial<Record<CampoObrigatorioDocumento, SecaoDoDocumento>> = {
+  dataDocumento: "datas",
+  vigenciaInicio: "datas",
+  vigenciaFim: "datas",
+  abrangencia: "abrangencia",
+  partesSignatarias: "abrangencia",
+  pdfMidiaId: "arquivo",
+  categoriaId: "publicacao",
+};
+
+/** "2026-11-14" vira "14/11/2026". */
+const dataEmTexto = (data: string) => data.split("-").reverse().join("/");
 
 const MENSAGEM_DO_CAMPO: Partial<Record<CampoObrigatorioDocumento, string>> = {
   titulo: "Escreva o título oficial para publicar.",
@@ -364,6 +391,8 @@ export function EditorDocumento({
   const [confirmarDescarte, setConfirmarDescarte] = React.useState(false);
   const [descartando, setDescartando] = React.useState(false);
   const botaoPublicar = React.useRef<HTMLButtonElement>(null);
+  const botaoPublicarDaBarra = React.useRef<HTMLButtonElement>(null);
+  const secoes = useSecoesAbertas<SecaoDoDocumento>();
 
   const noAr = publicacao.estado === "publicado";
   const agendado = publicacao.estado === "agendado";
@@ -377,11 +406,19 @@ export function EditorDocumento({
   const focarCampo = (campo: string) => {
     const seletor = ELEMENTO_DO_CAMPO[campo as CampoObrigatorioDocumento];
     if (!seletor) return;
+    const secao = SECAO_DO_CAMPO[campo as CampoObrigatorioDocumento];
+    if (secao) secoes.abrir(secao);
     requestAnimationFrame(() => {
       const alvo = document.querySelector<HTMLElement>(seletor);
       alvo?.scrollIntoView({ block: "center", behavior: "smooth" });
       alvo?.focus({ preventScroll: true });
     });
+  };
+
+  /** A data do agendamento fica na Publicação, que no celular pode estar fechada. */
+  const focarData = () => {
+    secoes.abrir("publicacao");
+    requestAnimationFrame(() => document.getElementById("data-agendada")?.focus());
   };
 
   const mostrarConflito = async () => {
@@ -408,7 +445,7 @@ export function EditorDocumento({
     if (!conectado || preparando || publicando) return;
     if (vaiAgendar && (!campos.data || !campos.hora)) {
       setErroDaData("Escolha a data e a hora.");
-      document.getElementById("data-agendada")?.focus();
+      focarData();
       return;
     }
     const pronto = await salvarAntes("publicar");
@@ -441,7 +478,7 @@ export function EditorDocumento({
       if (resposta.campos[0]) focarCampo(resposta.campos[0]);
     } else if (resposta.campo === "agendadoPara") {
       setErroDaData(resposta.mensagem);
-      document.getElementById("data-agendada")?.focus();
+      focarData();
     } else {
       toast.error(vaiAgendar ? "Não foi possível agendar" : "Não foi possível publicar", {
         description: resposta.mensagem,
@@ -625,12 +662,40 @@ export function EditorDocumento({
         ? "Nada novo para publicar: o site já mostra esta versão"
         : null;
   const pdfSincronizado = !!estado.id && estado.situacao === "sincronizado" && !!pdf;
+  // Resumos das seções fechadas no celular (padrão do editor de notícia, Figma M 120:3836; E50).
+  const faltasDa = (secao: SecaoDoDocumento) => faltas.filter((f) => SECAO_DO_CAMPO[f.campo] === secao);
+  const situacaoDa = (secao: SecaoDoDocumento) => (faltasDa(secao).length > 0 ? "falta" : "ok");
+  const resumoDa = (secao: SecaoDoDocumento, senao: string) =>
+    faltasDa(secao).length > 0 ? resumoDasFaltas(faltasDa(secao).map((f) => f.rotulo)) : senao;
+  const nomeDaCategoria = categorias.find((c) => c.id === dados.categoriaId)?.nome;
+  const resumoDaPublicacao = resumoDa(
+    "publicacao",
+    [
+      nomeDaCategoria,
+      noAr && publicacao.publicadoEm
+        ? `No site desde ${dataHoraNaBahia(new Date(publicacao.publicadoEm))}`
+        : agendado && publicacao.agendadoPara
+          ? `Agendado para ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}`
+          : vaiAgendar
+            ? "Agendar"
+            : "Rascunho",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  );
+  const focarPublicar = () => {
+    // O botão visível: o do topo (desktop) ou o da barra de baixo (celular).
+    botaoPublicarDaBarra.current?.focus();
+    botaoPublicar.current?.focus();
+  };
 
   return (
     <div data-editor-documento className="flex flex-1 flex-col">
-      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48). */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 lg:px-10">
-        <div className="flex min-w-0 flex-[1_1_max-content] items-center gap-3">
+      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48).
+          Abaixo do lg, o mesmo topo compacto do editor de notícia (E49, E50): Salvar e Publicar vão
+          para a barra de baixo. */}
+      <header className="sticky top-0 z-30 flex items-center gap-x-3 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:flex-wrap lg:gap-x-4 lg:px-10">
+        <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-[1_1_max-content]">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
@@ -640,13 +705,13 @@ export function EditorDocumento({
           </Link>
           <div className="flex min-w-0 flex-col">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate texto-titulo-card text-texto-primario">
+              <h1 className="texto-titulo-card text-texto-primario lg:truncate">
                 {estado.id ? `Editar ${tipo === "edital" ? "edital" : "acordo ou convenção"}` : tipo === "edital" ? "Novo edital" : "Novo acordo ou convenção"}
               </h1>
-              <SeloEstado estado={publicacao.estado} />
+              <SeloEstado estado={publicacao.estado} className="max-lg:hidden" />
               <SeloVigencia selo={selos.noSite} />
               {selos.mudaAoPublicar ? (
-                <span className="texto-pequeno text-texto-secundario">
+                <span className="texto-pequeno text-texto-secundario max-lg:hidden">
                   Depois de publicar: {selos.depois ? ROTULO_DO_SELO[selos.depois] : "sem selo"}
                 </span>
               ) : null}
@@ -654,22 +719,37 @@ export function EditorDocumento({
             <StatusDoSalvamento estado={estado} temId={!!estado.id} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
+        <div className="flex shrink-0 items-center gap-1 max-lg:pointer-coarse:vao-toque-10 lg:flex-wrap lg:gap-2">
           {estado.id ? (
-            <Button type="button" variant="secundario" size="pequeno" disabled={!!preparando} onClick={() => void abrirPrevia()}>
+            <Button
+              type="button"
+              variant="secundario"
+              size="pequeno"
+              disabled={!!preparando}
+              onClick={() => void abrirPrevia()}
+              className="max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0"
+            >
               <Eye aria-hidden />
-              {preparando === "previa" ? "Salvando…" : "Pré-visualizar"}
+              <span className="max-lg:sr-only">{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
             </Button>
           ) : (
-            <BotaoTravado rotulo="Pré-visualizar" dica="Preencha o documento para pré-visualizar" icone={<Eye aria-hidden />} />
+            <BotaoTravado rotulo="Pré-visualizar" dica="Preencha o documento para pré-visualizar" icone={<Eye aria-hidden />} compacto />
           )}
-          <Button type="button" variant="secundario" size="pequeno" onClick={() => void fila.salvarAgora()}>
+          <Button type="button" variant="secundario" size="pequeno" className="max-lg:hidden" onClick={() => void fila.salvarAgora()}>
             {jaFoiAoAr(publicacao.estado) ? "Salvar" : "Salvar rascunho"}
           </Button>
           {dicaPublicar ? (
-            <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} />
+            <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
           ) : (
-            <Button ref={botaoPublicar} type="button" size="pequeno" disabled={!!preparando || publicando} onClick={() => void pedirPublicacao()}>
+            <Button
+              ref={botaoPublicar}
+              type="button"
+              size="pequeno"
+              className="max-lg:hidden"
+              disabled={!!preparando || publicando}
+              onClick={() => void pedirPublicacao()}
+            >
               {vaiAgendar ? <CalendarDays aria-hidden /> : <Upload aria-hidden />}
               {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
             </Button>
@@ -680,7 +760,7 @@ export function EditorDocumento({
               aoPedir={(acao) => void pedirAcao(acao)}
               extras={[{ rotulo: "Histórico de versões", icone: History, aoSelecionar: () => setHistoricoAberto(true) }]}
             >
-              <Button type="button" variant="secundario" size="pequeno" aria-label="Mais ações" className="px-3 has-[>svg]:pl-3">
+              <Button type="button" variant="secundario" size="pequeno" aria-label="Mais ações" className="px-3 has-[>svg]:pl-3 max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0">
                 <MoreHorizontal aria-hidden />
               </Button>
             </MenuDeAcoes>
@@ -688,8 +768,8 @@ export function EditorDocumento({
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 px-5 pt-6 pb-12 lg:px-10 xl:flex-row xl:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
+      <div className="flex flex-1 flex-col gap-4 px-4 pt-5 pb-12 lg:gap-6 lg:px-10 lg:pt-6 xl:flex-row xl:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 lg:gap-6">
           <SeletorDeTipo tipo={tipo} novo={!estado.id} />
 
           {mostrarFaltas && faltas.length > 0 ? (
@@ -785,9 +865,20 @@ export function EditorDocumento({
             </div>
           </Cartao>
 
-          <Cartao
+          <SecaoQueAbre
             titulo="Datas e vigência"
             descricao="O site mostra os selos “Prazo”, “Vigente” e “Encerrado”, calculados pelas datas. O documento continua publicado."
+            situacao={situacaoDa("datas")}
+            resumo={resumoDa(
+              "datas",
+              [
+                dados.dataDocumento ? `Documento de ${dataEmTexto(dados.dataDocumento)}` : null,
+                vigencia && dados.vigenciaInicio && dados.vigenciaFim ? `Vigência ${dataEmTexto(dados.vigenciaInicio)} a ${dataEmTexto(dados.vigenciaFim)}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+            )}
+            {...secoes.secao("datas")}
           >
             <div className="grid gap-4 md:grid-cols-2">
               <CampoDeData id="data-documento" rotulo="Data do documento" valor={dados.dataDocumento} erro={erroDoCampo("dataDocumento")} aoMudar={(dataDocumento) => mudar({ dataDocumento })} />
@@ -836,10 +927,16 @@ export function EditorDocumento({
                 <CampoDeData id="vigencia-fim" rotulo="Fim da vigência" valor={dados.vigenciaFim} erro={erroDoCampo("vigenciaFim")} aoMudar={(vigenciaFim) => mudar({ vigenciaFim })} />
               </div>
             ) : null}
-          </Cartao>
+          </SecaoQueAbre>
 
           {tipo === "acordo" ? (
-            <Cartao titulo="Abrangência e partes" descricao="Quem o acordo ou convenção alcança e quem assinou.">
+            <SecaoQueAbre
+              titulo="Abrangência e partes"
+              descricao="Quem o acordo ou convenção alcança e quem assinou."
+              situacao={situacaoDa("abrangencia")}
+              resumo={resumoDa("abrangencia", "Abrangência e partes preenchidas")}
+              {...secoes.secao("abrangencia")}
+            >
               <CampoComContador
                 id="abrangencia"
                 rotulo="Abrangência"
@@ -859,14 +956,20 @@ export function EditorDocumento({
                 aoMudar={(partesSignatarias) => mudar({ partesSignatarias })}
                 multilinha
               />
-            </Cartao>
+            </SecaoQueAbre>
           ) : null}
 
           <Cartao titulo="Descrição pública" descricao="Explique em poucas linhas do que se trata e a quem se aplica.">
             <CampoComContador id="resumo" rotulo="Resumo" limite={LIMITE_RESUMO} valor={dados.resumo} erro={erroDoCampo("resumo")} aoMudar={(resumo) => mudar({ resumo })} multilinha />
           </Cartao>
 
-          <Cartao titulo="Arquivo oficial (PDF)" descricao="É o documento que o visitante baixa. Use sempre a versão assinada.">
+          <SecaoQueAbre
+            titulo="Arquivo oficial (PDF)"
+            descricao="É o documento que o visitante baixa. Use sempre a versão assinada."
+            situacao={situacaoDa("arquivo")}
+            resumo={resumoDa("arquivo", "PDF enviado")}
+            {...secoes.secao("arquivo")}
+          >
             <EnvioDoPdf
               pdf={pdf}
               documentoId={estado.id}
@@ -903,11 +1006,17 @@ export function EditorDocumento({
                 Lido do PDF quando você envia. Corrija se algo saiu errado: é o que a busca do site usa.
               </p>
             </div>
-          </Cartao>
+          </SecaoQueAbre>
         </div>
 
-        <aside className="flex flex-col gap-6 xl:sticky xl:top-[88px] xl:w-[320px]">
-          <Cartao titulo="Publicação" acao={<SeloEstado estado={publicacao.estado} />}>
+        <aside className="flex flex-col gap-4 lg:gap-6 xl:sticky xl:top-[88px] xl:w-[320px]">
+          <SecaoQueAbre
+            titulo="Publicação"
+            acao={<SeloEstado estado={publicacao.estado} />}
+            situacao={situacaoDa("publicacao")}
+            resumo={resumoDaPublicacao}
+            {...secoes.secao("publicacao")}
+          >
             <p className="flex items-start gap-3 rounded-[12px] bg-fundo-superficie-alt p-3">
               <FolderOpen aria-hidden className="mt-0.5 size-5 shrink-0 text-destaque-azul" />
               <span className="flex flex-col">
@@ -975,7 +1084,7 @@ export function EditorDocumento({
                 No site desde {dataHoraNaBahia(new Date(publicacao.publicadoEm))}. O que você muda aqui só vai ao site quando publicar as alterações.
               </p>
             ) : null}
-          </Cartao>
+          </SecaoQueAbre>
           <Cartao titulo="Antes de publicar" descricao="Conferido automaticamente enquanto você preenche.">
             <AntesDePublicarDocumento tipo={tipo} dados={dados} />
           </Cartao>
@@ -991,6 +1100,20 @@ export function EditorDocumento({
           </section>
         </aside>
       </div>
+
+      <BarraDoEditor>
+        <Button type="button" variant="secundario" onClick={() => void fila.salvarAgora()}>
+          Salvar
+        </Button>
+        {dicaPublicar ? (
+          <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} avisarAoTocar />
+        ) : (
+          <Button ref={botaoPublicarDaBarra} type="button" disabled={!!preparando || publicando} onClick={() => void pedirPublicacao()}>
+            {vaiAgendar ? <CalendarDays aria-hidden /> : <Upload aria-hidden />}
+            {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
+          </Button>
+        )}
+      </BarraDoEditor>
 
       <ModalSair
         aberto={!!saida}
@@ -1013,7 +1136,7 @@ export function EditorDocumento({
         publicando={publicando}
         aoFechar={() => {
           setConfirmar(false);
-          botaoPublicar.current?.focus();
+          focarPublicar();
         }}
         aoConfirmar={(confirmo) => void publicar(confirmo)}
       />
