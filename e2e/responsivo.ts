@@ -14,10 +14,21 @@ export const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8"
 export const MENU_PELO_BOTAO = ["celular", "tablet-em-pe"];
 
 /** A menor altura da varredura da janela: a “tela baixa” (notebook baixo, tela dividida). */
-/** Área mínima de toque, em px (RESPONSIVO.alvoDeToque). */
-export const ALVO_DE_TOQUE = RESPONSIVO.alvoDeToque;
-
 export const ALTURA_BAIXA = Math.min(...RESPONSIVO.varredura.alturas);
+
+/** Folgas das medidas, em px. Não são tamanhos de tela (esses ficam em RESPONSIVO). */
+export const TOLERANCIA = {
+  /** Arredondamento de subpixel: diferenças até aqui são a mesma medida. */
+  arredondamento: 1,
+  /** Item de coluna até isso mais baixo que o natural não conta como esmagado. */
+  encolhimento: 2,
+  /** Pedaços de texto com o topo a menos disso estão na mesma linha de texto. */
+  linhaDeTexto: 4,
+  /** Itens de alturas diferentes, centrados, com o topo a menos disso estão na mesma linha. */
+  mesmaLinha: 8,
+  /** Espaço livre numa coluna abaixo disso não dá para usar (vãos e arredondamento). */
+  sobraDesprezivel: 8,
+} as const;
 
 /** As larguras da varredura da janela, de RESPONSIVO.varredura.de até .ate, de passo em passo. */
 export function largurasDaVarredura(): number[] {
@@ -55,7 +66,7 @@ export async function assentar(page: Page) {
  * tira o encolhimento, mede de novo e devolve como estava. Devolve o texto de cada um.
  */
 export async function itensEsmagados(area: Locator): Promise<string[]> {
-  return area.evaluate((raiz) => {
+  return area.evaluate((raiz, tolerancia) => {
     const candidatos = [raiz, ...raiz.querySelectorAll<HTMLElement>("*")].filter((el) => {
       const pai = el.parentElement;
       if (el === raiz || !pai || el.getClientRects().length === 0) return false;
@@ -69,9 +80,9 @@ export async function itensEsmagados(area: Locator): Promise<string[]> {
     candidatos.forEach((el, i) => (inline[i] ? el.style.setProperty("flex-shrink", inline[i]) : el.style.removeProperty("flex-shrink")));
     return candidatos.flatMap((el, i) => {
       const [a = 0, n = 0] = [antes[i], natural[i]];
-      return n - a > 2 ? [`${el.tagName.toLowerCase()} “${(el.textContent ?? "").trim().slice(0, 40)}” (${Math.round(a)} de ${Math.round(n)} px)`] : [];
+      return n - a > tolerancia ? [`${el.tagName.toLowerCase()} “${(el.textContent ?? "").trim().slice(0, 40)}” (${Math.round(a)} de ${Math.round(n)} px)`] : [];
     });
-  });
+  }, TOLERANCIA.encolhimento);
 }
 
 /**
@@ -96,7 +107,7 @@ export async function emCadaLargura(page: Page, testInfo: TestInfo, conferir: (l
  * Um elemento e o que está dentro dele não contam como par. Devolve “A × B” de cada par.
  */
 export async function caixasQueSeCruzam(area: Locator, seletor: string): Promise<string[]> {
-  return area.evaluate((raiz, sel) => {
+  return area.evaluate((raiz, { sel, tolerancia }) => {
     const els = [...raiz.querySelectorAll<HTMLElement>(sel)].filter((el) => el.getClientRects().length > 0);
     const nome = (el: Element) => `${el.tagName.toLowerCase()} “${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30)}”`;
     const pares: string[] = [];
@@ -107,11 +118,11 @@ export async function caixasQueSeCruzam(area: Locator, seletor: string): Promise
         const s = b.getBoundingClientRect();
         const x = Math.min(r.right, s.right) - Math.max(r.left, s.left);
         const y = Math.min(r.bottom, s.bottom) - Math.max(r.top, s.top);
-        if (x > 1 && y > 1) pares.push(`${nome(a)} × ${nome(b)}`);
+        if (x > tolerancia && y > tolerancia) pares.push(`${nome(a)} × ${nome(b)}`);
       }),
     );
     return pares;
-  }, seletor);
+  }, { sel: seletor, tolerancia: TOLERANCIA.arredondamento });
 }
 
 /**
@@ -123,7 +134,7 @@ export async function textoVisivelCruza(a: Locator, b: Locator): Promise<boolean
     const r = el.getBoundingClientRect();
     return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
   });
-  return a.evaluate((raiz, outra) => {
+  return a.evaluate((raiz, { outra, tolerancia }) => {
     const andar = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
     for (let texto = andar.nextNode(); texto; texto = andar.nextNode()) {
       // A caixa que recorta: o ancestral mais próximo (até a raiz) com overflow escondido.
@@ -137,36 +148,39 @@ export async function textoVisivelCruza(a: Locator, b: Locator): Promise<boolean
         const right = Math.min(r.right, c?.right ?? Infinity);
         const top = Math.max(r.top, c?.top ?? -Infinity);
         const bottom = Math.min(r.bottom, c?.bottom ?? Infinity);
-        if (right - left <= 1 || bottom - top <= 1) continue;
+        if (right - left <= tolerancia || bottom - top <= tolerancia) continue;
         const x = Math.min(right, outra.right) - Math.max(left, outra.left);
         const y = Math.min(bottom, outra.bottom) - Math.max(top, outra.top);
-        if (x > 1 && y > 1) return true;
+        if (x > tolerancia && y > tolerancia) return true;
       }
     }
     return false;
-  }, caixaB);
+  }, { outra: caixaB, tolerancia: TOLERANCIA.arredondamento });
 }
 
 /** Quantas linhas o texto do elemento ocupa na tela. */
 export async function linhasDoTexto(el: Locator): Promise<number> {
-  return el.evaluate((no) => {
-    // Só os nós de texto (um ícone ao lado do texto não é uma linha); linhas a menos de 4 px são a mesma.
+  return el.evaluate((no, tolerancia) => {
+    // Só os nós de texto (um ícone ao lado do texto não é uma linha); topos próximos são a mesma linha.
     const topos: number[] = [];
     const andar = document.createTreeWalker(no, NodeFilter.SHOW_TEXT);
     for (let texto = andar.nextNode(); texto; texto = andar.nextNode()) {
       const intervalo = document.createRange();
       intervalo.selectNodeContents(texto);
       for (const r of intervalo.getClientRects()) {
-        if (r.width > 0 && !topos.some((t) => Math.abs(t - r.top) < 4)) topos.push(r.top);
+        if (r.width > 0 && !topos.some((t) => Math.abs(t - r.top) < tolerancia)) topos.push(r.top);
       }
     }
     return topos.length;
-  });
+  }, TOLERANCIA.linhaDeTexto);
 }
 
 /** O texto foi cortado (reticências ou overflow escondido): o conteúdo é mais largo que a caixa. */
 export async function textoCortado(el: Locator): Promise<boolean> {
-  return el.evaluate((no) => no.scrollWidth > no.clientWidth + 1 || no.scrollHeight > no.clientHeight + 1);
+  return el.evaluate(
+    (no, tolerancia) => no.scrollWidth > no.clientWidth + tolerancia || no.scrollHeight > no.clientHeight + tolerancia,
+    TOLERANCIA.arredondamento,
+  );
 }
 
 /** Largura que a barra de rolagem vertical ocupa dentro do elemento (0 quando ela não ocupa espaço). */

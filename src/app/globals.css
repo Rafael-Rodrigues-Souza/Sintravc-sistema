@@ -365,19 +365,32 @@
 }
 
 /*
- * Área de toque de pelo menos 44 px (RNF10, E48) sem mudar o desenho: um pseudo-elemento
- * invisível, centrado no alvo, que só cresce quando o alvo é menor que isso. É o mesmo mínimo de
- * RESPONSIVO.alvoDeToque, conferido pelos e2e @responsivo. Vizinhos precisam de espaço entre si
- * (centro a centro, 44 px), senão um cobre a área do outro.
+ * Área de toque mínima (RNF10, E48), só no toque (pointer: coarse); com o mouse nada muda. O valor
+ * fica em --alvo-toque e precisa ser igual a RESPONSIVO.alvoDeToque, do playwright.config.ts (um
+ * e2e confere). Um pseudo-elemento invisível, centrado no alvo, cresce até esse tamanho quando o alvo
+ * é menor, sem mudar o desenho. Vizinhos precisam de espaço entre si (centro a centro, --alvo-toque),
+ * senão um cobre a área do outro: use vao-toque-N / vao-y-toque-N com pointer-coarse:.
  */
+:root {
+  --alvo-toque: 44px;
+}
 @utility alvo-toque {
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    inset-block: min(0px, calc((100% - 44px) / 2));
-    inset-inline: min(0px, calc((100% - 44px) / 2));
+  @media (pointer: coarse) {
+    position: relative;
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block: min(0px, calc((100% - var(--alvo-toque)) / 2));
+      inset-inline: min(0px, calc((100% - var(--alvo-toque)) / 2));
+    }
   }
+}
+/* Vão entre itens de tamanho N (na escala do Tailwind) para os centros ficarem a --alvo-toque. */
+@utility vao-toque-* {
+  gap: calc(var(--alvo-toque) - var(--spacing) * --value(integer));
+}
+@utility vao-y-toque-* {
+  row-gap: calc(var(--alvo-toque) - var(--spacing) * --value(integer));
 }
 
 /*

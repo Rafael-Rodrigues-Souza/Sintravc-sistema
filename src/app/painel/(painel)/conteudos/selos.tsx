@@ -14,7 +14,7 @@ export const ESTADO: Record<EstadoConteudo, { rotulo: string; classe: string; po
 export function SeloEstado({ estado, className }: { estado: EstadoConteudo; className?: string }) {
   const { rotulo, classe, ponto } = ESTADO[estado];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 texto-etiqueta uppercase", classe, className)}>
+    <span data-testid="selo-estado" className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 texto-etiqueta uppercase", classe, className)}>
       <span aria-hidden className={cn("size-1.5 rounded-full", ponto)} />
       {rotulo}
     </span>

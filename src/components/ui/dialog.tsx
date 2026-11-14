@@ -47,7 +47,7 @@ function DialogHeader({ titulo, descricao }: { titulo: string; descricao?: strin
       </div>
       <DialogPrimitive.Close
         aria-label="Fechar"
-        className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
+        className="alvo-toque flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
       >
         <IconeFigma src="/painel/icone-fechar.svg" tamanho={18} />
       </DialogPrimitive.Close>

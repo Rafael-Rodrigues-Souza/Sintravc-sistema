@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Campo } from "@/components/ui/campo";
+import { enquadramentoDaImagem } from "@/lib/midia/apresentacao";
 import type { UsoDaMidia } from "@/lib/midia/erros";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +29,8 @@ export type ArquivoDetalhado = {
   nomeArquivo: string;
   tipo: "imagem" | "pdf" | "documento";
   sigla: string;
-  /** PNG ou WebP: pode ser logo com fundo transparente (mostrado inteiro, sobre o xadrez). */
-  logo: boolean;
+  /** PNG ou WebP (logos): a prévia mostra a imagem inteira, sobre o xadrez. */
+  mostrarInteira: boolean;
   alt: string | null;
   legenda: string | null;
   informacoes: { rotulo: string; valor: string }[];
@@ -181,13 +182,14 @@ export function DetalhesArquivo({
 
 function Previa({ arquivo }: { arquivo: ArquivoDetalhado }) {
   if (arquivo.tipo === "imagem") {
+    const { fundo, imagem } = enquadramentoDaImagem(arquivo.mostrarInteira);
     return (
       // A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next.
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={arquivo.url}
         alt={arquivo.alt ?? ""}
-        className={cn("h-[170px] w-full rounded-[14px]", arquivo.logo ? "fundo-xadrez object-contain" : "object-cover")}
+        className={cn("h-[170px] w-full rounded-[14px]", fundo, imagem)}
       />
     );
   }

@@ -197,10 +197,10 @@ function Linha({
             <Link
               href={linha.hrefEditor}
               className={cn(
-                // Área de toque de 44 px pelo padding, com margem negativa para manter o desenho; o link
+                // No toque, área mínima (--alvo-toque) pelo padding, com margem negativa para manter o desenho; o link
                 // fica por cima da linha do autor. O corte (line-clamp) fica no texto de dentro: no
                 // próprio link, o padding deixaria a linha escondida vazar sobre o autor (E48).
-                "relative z-[1] -my-[11px] block py-[11px] texto-titulo-card-pequeno outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring",
+                "relative z-[1] block texto-titulo-card-pequeno pointer-coarse:-my-[calc((var(--alvo-toque)_-_1lh)/2)] pointer-coarse:py-[calc((var(--alvo-toque)_-_1lh)/2)] outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring",
                 linha.semTitulo ? "text-texto-terciario italic" : "text-texto-primario",
               )}
             >
@@ -233,8 +233,8 @@ function Linha({
         {linha.atualizado}
       </td>
       <td className="md:px-5 md:py-4">
-        {/* No toque, 8 px entre os ícones: a área de 44 px de um não cobre a do vizinho (E48). */}
-        <div className="flex items-center gap-1 pointer-coarse:gap-2">
+        {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
+        <div className="flex items-center gap-1 pointer-coarse:vao-toque-9">
           {linha.hrefRapida ? (
             <Link href={linha.hrefRapida} scroll={false} aria-label={`Edição rápida de “${linha.titulo}”`} title="Edição rápida" className={BOTAO_ICONE}>
               <SlidersHorizontal aria-hidden className="size-[18px]" />

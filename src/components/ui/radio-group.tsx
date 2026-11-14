@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 
 /** Grupo de opções em cartão (Figma 168:19100: perfil do convite). */
 function RadioGroup({ className, ...props }: React.ComponentProps<typeof RadioGroupPrimitive.Root>) {
-  // No toque, 20 px entre as opções: a área de 44 px de um marcador não cobre a do vizinho (E48).
-  return <RadioGroupPrimitive.Root data-slot="radio-group" className={cn("flex flex-col gap-2.5 pointer-coarse:gap-5", className)} {...props} />;
+  // No toque, vão para a área de toque de um marcador não cobrir a do vizinho (alvo-toque, E48).
+  return <RadioGroupPrimitive.Root data-slot="radio-group" className={cn("flex flex-col gap-2.5 pointer-coarse:vao-toque-5", className)} {...props} />;
 }
 
 /** Marcador de 20 px: borda forte; marcado, azul com o ponto no meio. */

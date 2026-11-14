@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { linhaDoCartao, podeTerLogo, tamanhoLegivel, tipoLegivel } from "./apresentacao";
+import { linhaDoCartao, mostrarInteira, tamanhoLegivel, tipoLegivel } from "./apresentacao";
 
 describe("apresentação da Mídia (Figma 116:2727)", () => {
   it.each([
@@ -49,7 +49,7 @@ describe("apresentação da Mídia (Figma 116:2727)", () => {
     ["image/webp", true],
     ["image/jpeg", false],
     ["application/pdf", false],
-  ])("podeTerLogo(%s) = %s", (mime, esperado) => {
-    expect(podeTerLogo(mime)).toBe(esperado);
+  ])("mostrarInteira(%s) = %s", (mime, esperado) => {
+    expect(mostrarInteira(mime)).toBe(esperado);
   });
 });

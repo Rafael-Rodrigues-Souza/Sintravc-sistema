@@ -1085,7 +1085,7 @@ function SeletorDeTipo({ tipo, novo }: { tipo: TipoDocumento; novo: boolean }) {
   return (
     <nav aria-label="Tipo de conteúdo" className="flex flex-wrap items-center gap-2">
       <span className="texto-pequeno text-texto-secundario">Tipo:</span>
-      <div className="flex flex-wrap gap-1 rounded-full bg-fundo-superficie-alt p-1 pointer-coarse:gap-y-2">
+      <div className="flex flex-wrap gap-1 rounded-full bg-fundo-superficie-alt p-1 pointer-coarse:vao-y-toque-9">
         {opcoes.map(({ valor, rotulo, href, Icone }) => {
           const atual = valor === tipo;
           const classe = cn(
@@ -1190,7 +1190,7 @@ function Interruptor({ ligado, rotuloId, aoMudar }: { ligado: boolean; rotuloId:
       aria-labelledby={rotuloId}
       onClick={() => aoMudar(!ligado)}
       className={cn(
-        "alvo-toque inline-flex h-7 w-12 shrink-0 items-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring motion-reduce:transition-none",
+        "relative alvo-toque inline-flex h-7 w-12 shrink-0 items-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring motion-reduce:transition-none",
         // Contraste ≥ 3:1 com o cartão e com a bolinha nos dois temas (WCAG 1.4.11).
         ligado ? "bg-destaque-azul" : "bg-texto-terciario",
       )}

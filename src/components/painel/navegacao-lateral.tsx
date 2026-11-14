@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { MenuCriar } from "@/components/painel/menu-criar";
@@ -56,6 +56,22 @@ export function NavegacaoLateral({
   const [abertoEm, setAbertoEm] = useState<string | null>(null);
   const aberta = abertoEm === caminho;
   const setAberta = (abrir: boolean) => setAbertoEm(abrir ? caminho : null);
+  // A barra de rolagem fica escondida: quando há itens abaixo, um esmaecido no pé do menu mostra que ele rola (E48).
+  const menu = useRef<HTMLElement>(null);
+  const [temMaisAbaixo, setTemMaisAbaixo] = useState(false);
+  useEffect(() => {
+    const nav = menu.current;
+    if (!nav) return;
+    const medir = () => setTemMaisAbaixo(nav.scrollHeight - nav.scrollTop - nav.clientHeight > 1);
+    // O ResizeObserver mede logo ao começar a observar e de novo quando a tela muda de tamanho.
+    const observador = new ResizeObserver(medir);
+    observador.observe(nav);
+    nav.addEventListener("scroll", medir, { passive: true });
+    return () => {
+      observador.disconnect();
+      nav.removeEventListener("scroll", medir);
+    };
+  }, []);
   const ativo = (href: string) => (href === "/painel" ? caminho === href : caminho === href || caminho.startsWith(`${href}/`));
 
   return (
@@ -75,6 +91,7 @@ export function NavegacaoLateral({
       </button>
     </header>
     <nav
+      ref={menu}
       id="menu-do-painel"
       aria-label="Menu do painel"
       className={cn(
@@ -179,6 +196,13 @@ export function NavegacaoLateral({
           </button>
         </form>
       </div>
+
+      {temMaisAbaixo ? (
+        // Preso ao pé da área visível do menu, sem ocupar espaço (-mt-6 desfaz o vão) e sem pegar o toque.
+        <div aria-hidden data-testid="menu-tem-mais-abaixo" className="pointer-events-none sticky -bottom-5 -mx-4 -mt-6 h-0">
+          <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-fundo-marinho-profundo to-transparent" />
+        </div>
+      ) : null}
     </nav>
     </>
   );

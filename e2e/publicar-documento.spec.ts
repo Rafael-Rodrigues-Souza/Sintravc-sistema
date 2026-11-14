@@ -204,3 +204,40 @@ test("CA-US23.2 · a Comunicação abre o edital para ver e baixar, sem editar, 
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Baixar PDF" }).click()]);
   expect(download.suggestedFilename()).toBe("edital-012-2026.pdf");
 });
+
+test("RNF06 · evento do edital às 23h30 na Bahia: continua no mesmo dia, grava 02h30 do dia seguinte em UTC e aparece como 15/03/2027", async ({ page }) => {
+  await entrar(page, pessoas.adm, "/painel/conteudos/documento/nova?tipo=edital");
+  await page.getByLabel("Título oficial").fill("Edital de convocação para a assembleia da noite");
+  await page.getByLabel("Número ou identificação").fill("Edital nº 031/2027");
+  await page.getByLabel("Tipo de edital").selectOption({ label: "Convocação" });
+  await page.getByLabel("Data do documento").fill(daquiA(-1));
+  // Perto da meia-noite: em UTC já é o dia seguinte.
+  await page.getByLabel("Data do evento ou prazo").fill("2027-03-15");
+  await page.getByLabel("Hora do evento ou prazo").fill("23:30");
+  await page.getByLabel("Resumo").fill("Convoca os trabalhadores rodoviários para a assembleia da noite.");
+  await page.getByLabel("Categoria").selectOption({ label: "Assembleias" });
+  await salvo(page);
+  await expect(page).toHaveURL(/\/painel\/conteudos\/documento\/[0-9a-f-]+$/);
+  const id = idDaUrl(page);
+
+  await page.reload();
+  await expect(page.getByLabel("Data do evento ou prazo")).toHaveValue("2027-03-15");
+  await expect(page.getByLabel("Hora do evento ou prazo")).toHaveValue("23:30");
+
+  const [linha] = await consultar((sql) => sql<{ utc: string }[]>`
+    select to_char(data_evento at time zone 'UTC', 'YYYY-MM-DD HH24:MI') as utc from documento where conteudo_id = ${id}`);
+  expect(linha?.utc, "gravado em UTC: 02h30 do dia 16").toBe("2027-03-16 02:30");
+
+  // Publicado, a Comunicação vê o documento com a data em dd/mm/aaaa, no dia certo.
+  await enviarPdf(page, "edital-031-2027.pdf", ["EDITAL DE CONVOCACAO", "Assembleia da noite"]);
+  await salvo(page);
+  await page.getByRole("button", { name: "Publicar…" }).click();
+  const modal = page.getByRole("alertdialog", { name: "Publicar documento oficial?" });
+  await modal.getByLabel("Confirmo que o PDF é a versão oficial e assinada").check();
+  await modal.getByRole("button", { name: "Publicar documento" }).click();
+  await expect(page.getByText("Documento publicado.")).toBeVisible();
+
+  await page.context().clearCookies();
+  await entrar(page, pessoas.com, `/painel/conteudos/documento/${id}`);
+  await expect(page.getByText("15/03/2027 · 23h30")).toBeVisible();
+});
