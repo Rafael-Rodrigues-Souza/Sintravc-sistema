@@ -76,7 +76,7 @@ Para conferir o menu aberto, um diálogo ou outro estado, rode um passo extra co
 
 ## 4. Exemplos já encontrados no painel
 
-São problemas reais, achados pelo Rafael e confirmados pelo script em 13/11/2026. Servem para calibrar o que procurar; se ainda estiverem lá, entram na lista.
+São problemas reais, achados pelo Rafael e confirmados pelo script em 13/11/2026, e corrigidos na issue #44 (com e2e `@responsivo` em `e2e/responsivo-painel.spec.ts`). Servem para calibrar o que procurar; se voltarem, entram na lista.
 
 1. **“Criar conteúdo” esmagado no menu lateral em telas baixas.** No tablet deitado, no notebook, na tela dividida e em qualquer largura a partir de 1040 px com até 800 px de altura, o botão fica com 18 px em vez de 48. Os itens do `<nav>` encolhem em vez de o menu rolar. O script mostra como `esmagado · <button> “Criar conteúdo” · altura 18 px, o natural é 48 px`.
 2. **Barra de rolagem na borda do menu lateral.** Nas mesmas alturas, com mouse, a barra aparece na borda direita do menu (15 px de barra). O script mostra como `barra de rolagem · <nav#menu-do-painel>`.
