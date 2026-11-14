@@ -674,7 +674,8 @@ export function EditorNoticia({
             <ChevronLeft aria-hidden className="size-5" />
           </Link>
           <div className="flex min-w-0 flex-col">
-            <div className="flex items-center gap-2">
+            {/* O selo desce para baixo do título quando não cabe ao lado, como no editor de documento (E48). */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="truncate texto-titulo-card text-texto-primario">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
               <SeloEstado estado={publicacao.estado} />
             </div>
