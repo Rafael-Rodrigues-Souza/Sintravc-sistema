@@ -21,7 +21,7 @@ Repo: `Rafael-Rodrigues-Souza/Sintravc-sistema` (privado). Infer the repo from `
 - **Labels:** `area:*` para a área, e `fase-1` ou `fase-2` para a fase.
 - **Corpo:**
   - os IDs (US, RF, RN, CA, E);
-  - os frames do Figma;
+  - os frames do Figma: o desktop e o mobile, ou `sem frame mobile: segue o E50` (issue de tela do painel);
   - as correções de `docs/correcoes-figma.md` que afetam a tela;
   - os critérios de aceitação como checklist.
 - **Idioma:** issues, comentários e commits em português do Brasil.

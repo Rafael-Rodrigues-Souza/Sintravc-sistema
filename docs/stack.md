@@ -29,7 +29,7 @@ O núcleo do sistema são as regras de negócio e as permissões, não o visual.
 | Banco | **PostgreSQL** | Dados relacionais (associado, dependente, serviço, agendamento, presença), transações para evitar dois agendamentos no mesmo horário e restrições que garantem as regras. |
 | Acesso ao banco | **Drizzle ORM** (ou Prisma) | Tipagem forte e migrações versionadas. |
 | Login | **Better Auth** | Login da equipe por e-mail e senha com 2FA por app autenticador (TOTP), bloqueio após 5 tentativas, e login próprio do associado, que valida CPF e matrícula na API do sindicato. |
-| Interface | **Tailwind CSS + shadcn/ui** (base Radix) | As variáveis de cor do Figma viram variáveis CSS, e o claro/escuro sai quase de graça. Radix entrega modais, menus, tooltips e foco acessíveis prontos. |
+| Interface | **Tailwind CSS + shadcn/ui** (base Radix; a folha inferior do celular é o Drawer do shadcn, com `vaul`, isolado em `src/components/ui/drawer.tsx` por estar sem manutenção, E49) | As variáveis de cor do Figma viram variáveis CSS, e o claro/escuro sai quase de graça. Radix entrega modais, menus, tooltips e foco acessíveis prontos. |
 | Formulários | **React Hook Form + Zod** | O mesmo esquema Zod valida no formulário e no servidor. |
 | Tabelas e gráficos | **TanStack Table** e **Recharts** | Relatórios, Equipe e Atividade com filtros e ordenação. |
 | Editor de notícias | **Tiptap** | Editor de texto rico com controle do HTML gerado. |
