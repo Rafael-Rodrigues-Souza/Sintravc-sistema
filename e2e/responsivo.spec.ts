@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 import { apertar, entrarNoPainel } from "./entrar";
-import { MENU_PELO_BOTAO, pessoas, semRolagemLateral } from "./responsivo";
+import { pessoas, semRolagemLateral, telaEstreita } from "./responsivo";
 
 // Roda no desktop e em cada perfil de RESPONSIVO do playwright.config.ts (E48).
 test.describe("em qualquer tamanho de tela", { tag: "@responsivo" }, () => {
-  test("entrar no painel e chegar a Conteúdos pelo menu, sem rolagem lateral", async ({ page, hasTouch }, testInfo) => {
+  test("entrar no painel e chegar a Conteúdos pelo menu, sem rolagem lateral", async ({ page, hasTouch }) => {
     await page.goto("/painel/entrar");
     await semRolagemLateral(page);
     await entrarNoPainel(page, pessoas.adm, { toque: hasTouch });
@@ -14,7 +14,7 @@ test.describe("em qualquer tamanho de tela", { tag: "@responsivo" }, () => {
 
     const menu = page.getByRole("navigation", { name: "Menu do painel" });
     const botaoMenu = page.getByRole("button", { name: "Menu", exact: true });
-    if (MENU_PELO_BOTAO.includes(testInfo.project.name)) {
+    if (telaEstreita(page)) {
       // Tela estreita: o menu começa fechado e só abre pelo botão.
       await expect(menu).toBeHidden();
       await apertar(botaoMenu, hasTouch);

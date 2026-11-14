@@ -99,6 +99,7 @@ Regras que valem também aqui: 5 tentativas erradas (senha ou código) bloqueiam
 - `pnpm test` roda os testes de unidade e os de integração. Os de integração (`*.int.test.ts`) usam um banco próprio, `sintravc_teste`, que é apagado e recriado a cada rodada. O banco de desenvolvimento não é tocado: a Atividade não deixa apagar nada (RN18).
 - Por padrão, o banco de teste fica no mesmo Postgres de `DATABASE_URL`, com o sufixo `_teste`. Para usar outro, defina `DATABASE_URL_TESTE`.
 - `pnpm test:e2e` compila o app numa pasta própria (`.next-e2e`, sem atrapalhar o `pnpm dev`), sobe na porta 3100 com o banco `sintravc_e2e` (recriado a cada rodada) e testa no Chromium o login, o bloqueio, o menu por perfil, o 403, a sessão expirada e o convite do e-mail ao painel. O convite chega pelo Mailpit: suba o compose antes (`docker compose up -d`). Na primeira vez, instale o navegador: `pnpm exec playwright install chromium`.
+- Os testes marcados com `@responsivo` rodam também em cada perfil de `RESPONSIVO` (celulares, tablets e iPads em pé e deitados, notebook e computador, todos no Chromium), um projeto do Playwright por perfil. O CI roda todos. No computador, rode um perfil de cada vez, com um worker: `pnpm test:e2e --project=celular --workers=1` (ou `--project=chromium` para o desktop com a varredura da janela). Para um arquivo só, junte o caminho: `pnpm test:e2e e2e/responsivo.spec.ts --project=tablet-em-pe`.
 
 ## Chave do acesso (`BETTER_AUTH_SECRET`)
 

@@ -45,15 +45,23 @@ export const URL_MAILPIT = process.env.URL_MAILPIT ?? "http://localhost:8025";
  * - varredura: a janela com mouse que a skill percorre (janela reduzida, tela dividida, telas baixas).
  */
 export const RESPONSIVO = {
+  // Celulares e tablets Android, iPads e computador (E48). Todos no Chromium: o aparelho dá só o
+  // tamanho, a densidade de tela e o toque (o iPad do Playwright usaria o WebKit).
   perfis: {
-    celular: { largura: 375, altura: 667, toque: true, dispositivo: "Pixel 5" },
+    "celular-pequeno": { largura: 360, altura: 640, toque: true, dispositivo: "Galaxy S8" },
+    celular: { largura: 390, altura: 844, toque: true, dispositivo: "Pixel 7" },
     "tablet-em-pe": { largura: 800, altura: 1280, toque: true, dispositivo: "Galaxy Tab S4" },
+    "ipad-em-pe": { largura: 820, altura: 1180, toque: true, dispositivo: "iPad Pro 11" },
+    "ipad-deitado": { largura: 1180, altura: 820, toque: true, dispositivo: "iPad Pro 11 landscape" },
     "tablet-deitado": { largura: 1280, altura: 800, toque: true, dispositivo: "Galaxy Tab S4 landscape" },
     notebook: { largura: 1280, altura: 720, toque: false, dispositivo: "Desktop Chrome" },
+    computador: { largura: 1920, altura: 1080, toque: false, dispositivo: "Desktop Chrome" },
   },
   varredura: { de: 320, ate: 1920, passo: 40, alturas: [600, 700, 800, 1080] },
   /** Área mínima de toque (largura e altura), no celular e no tablet. */
   alvoDeToque: 44,
+  /** A partir desta largura (o `lg` do Tailwind) o painel tem o menu lateral; abaixo, a barra de baixo (E49). */
+  menuLateralAPartirDe: 1024,
 } as const;
 
 export default defineConfig({
@@ -80,6 +88,7 @@ export default defineConfig({
         viewport: { width: p.largura, height: p.altura },
         isMobile: p.toque,
         hasTouch: p.toque,
+        defaultBrowserType: "chromium" as const,
       },
     })),
   ],

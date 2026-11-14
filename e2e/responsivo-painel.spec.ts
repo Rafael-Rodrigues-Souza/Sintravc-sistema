@@ -13,8 +13,9 @@ import {
   itensEsmagados,
   larguraDaBarra,
   linhasDoTexto,
-  menuPeloBotao,
   pessoas,
+  semAnimacao,
+  telaEstreita,
   textoCortado,
   textoVisivelCruza,
   TOLERANCIA,
@@ -44,11 +45,11 @@ for (const tema of ["claro", "escuro"] as const) {
   test.describe(`painel no tema ${tema}`, { tag: "@responsivo" }, () => {
     test.use({ colorScheme: tema === "escuro" ? "dark" : "light" });
 
-    test("menu lateral: em tela baixa rola sem encolher os itens, sem barra na borda e com o rodapé inteiro", async ({ page, hasTouch }, testInfo) => {
+    test("menu lateral: em tela baixa rola sem encolher os itens, sem barra na borda e com o rodapé inteiro", async ({ page, hasTouch }) => {
       await entrarComoAdm(page, "/painel", { toque: hasTouch });
       const menu = page.getByRole("navigation", { name: "Menu do painel" });
 
-      if (menuPeloBotao(testInfo)) {
+      if (telaEstreita(page)) {
         // Celular e tablet em pé: o menu abre por cima da tela inteira.
         await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
       } else {
@@ -249,7 +250,8 @@ for (const tema of ["claro", "escuro"] as const) {
       test.skip(!hasTouch, "só nos perfis com toque (celular e tablet)");
       await entrarComoAdm(page, "/painel/midia", { toque: hasTouch });
       // Arquivos próprios na Mídia (logo em PNG e foto em JPG), sem depender de outro teste.
-      const sufixo = `${tema}-${testInfo.project.name}`;
+      // Com a tentativa no nome: na segunda, os arquivos da primeira já estão na Mídia.
+      const sufixo = `${tema}-${testInfo.project.name}-${testInfo.retry}`;
       const cor = { width: 320, height: 200, channels: 3 as const, background: "#02488d" };
       // O campo de arquivo já vem no HTML: antes de a página carregar os scripts, a escolha se perde.
       await page.waitForLoadState("networkidle");
@@ -269,6 +271,7 @@ for (const tema of ["claro", "escuro"] as const) {
 
       const porTela: Record<string, string[]> = {};
       const medir = async (onde: string) => {
+        await semAnimacao(page);
         const pequenos = await alvosPequenos(page);
         if (pequenos.length > 0) porTela[onde] = pequenos;
       };
@@ -303,7 +306,7 @@ for (const tema of ["claro", "escuro"] as const) {
       await page.keyboard.press("Escape");
       await expect(link).toBeHidden();
 
-      if (menuPeloBotao(testInfo)) {
+      if (telaEstreita(page)) {
         await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
         await medir("menu aberto");
       }

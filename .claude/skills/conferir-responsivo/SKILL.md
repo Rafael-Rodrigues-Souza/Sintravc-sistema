@@ -1,6 +1,6 @@
 ---
 name: conferir-responsivo
-description: Confere a responsividade de telas do SINTRAVC com o Playwright do projeto. Varre a janela com mouse (janela reduzida, tela dividida, telas baixas) e testa os perfis de celular, tablet em pé e deitado com toque e notebook, nos temas claro e escuro, com os tamanhos de RESPONSIVO no playwright.config.ts. Compara com o Figma desktop e mobile. Entrega uma lista de pontos por tela e tamanho, sem corrigir. Use quando pedirem para conferir, testar ou revisar a responsividade, o celular, o tablet, telas baixas ou o tema escuro de uma tela, e antes de dar por pronta uma tela nova.
+description: Confere a responsividade de telas do SINTRAVC com o Playwright do projeto. Varre a janela com mouse (janela reduzida, tela dividida, telas baixas) e testa os perfis de celular, tablet e iPad em pé e deitados com toque, notebook e computador, nos temas claro e escuro, com os tamanhos de RESPONSIVO no playwright.config.ts. Compara com o Figma desktop e mobile. Entrega uma lista de pontos por tela e tamanho, sem corrigir. Use quando pedirem para conferir, testar ou revisar a responsividade, o celular, o tablet, telas baixas ou o tema escuro de uma tela, e antes de dar por pronta uma tela nova.
 ---
 
 # Conferir responsividade
@@ -35,7 +35,7 @@ O script faz duas passadas, nos temas claro e escuro:
 | Passada | Tamanhos | O que simula |
 |---|---|---|
 | Varredura com mouse | `RESPONSIVO.varredura`: larguras de passo em passo, em cada altura | janela reduzida, tela dividida, notebook baixo, monitor grande |
-| Perfis | `RESPONSIVO.perfis`: celular, tablet em pé e deitado (com `isMobile` e `hasTouch`) e notebook (mouse) | os mesmos tamanhos dos projetos `@responsivo`; o tablet também é girado para a posição do outro perfil sem recarregar a página |
+| Perfis | `RESPONSIVO.perfis`: celulares, tablets e iPads em pé e deitados (com `isMobile` e `hasTouch`), notebook e computador (mouse) | os mesmos tamanhos dos projetos `@responsivo`; o tablet também é girado para a posição do outro perfil sem recarregar a página |
 
 Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 
@@ -87,8 +87,8 @@ São problemas reais, achados pelo Rafael e confirmados pelo script em 13/11/202
 1. Antes, leia `docs/correcoes-figma.md`: o que está ali vale sobre o Figma.
 2. Procure a tela em `docs/analise-figma.md` §1. No site, a coluna “ID (D / M)” traz o desktop antes da barra e o mobile depois. No painel, a coluna “ID” traz o desktop e, entre parênteses, o mobile (ex.: Conteúdos `110:845 (M 120:3650)`). “—” ou a falta do “(M …)” quer dizer que aquela versão não existe, e a comparação dela fica de fora (diga isso no relatório).
 3. Abra os frames pelo MCP do Figma (arquivo `2mlqSKCNy170C8y0CyL5de`, `create_session` e depois `get_screenshot`). Só leitura: não edite o Figma.
-4. Compare com os prints de referência (`ref-*.png`): o frame desktop com o do notebook e o do tablet deitado, e o mobile com o do celular. Use o tema claro (e o frame escuro, se existir). Olhe a ordem dos blocos, o que aparece e o que some, os tamanhos de botão e de texto e os espaçamentos grandes.
-5. O Figma não tem tablet em pé nem telas baixas. Nesses tamanhos, o critério é não quebrar: nada esmagado, cortado, sobreposto ou fora da tela, e as ações ao alcance do toque.
+4. Compare com os prints de referência (`ref-*.png`). Abaixo de `RESPONSIVO.menuLateralAPartirDe` o painel usa a versão mobile: o frame mobile se compara com os celulares e os tablets em pé; o desktop, com os deitados, o notebook e o computador. Use o tema claro (e o frame escuro, se existir). Olhe a ordem dos blocos, o que aparece e o que some, os tamanhos de botão e de texto e os espaçamentos grandes.
+5. O Figma não tem tablet nem telas baixas. Nesses tamanhos, além de seguir a versão (mobile ou desktop) do frame, o critério é não quebrar: nada esmagado, cortado, sobreposto ou fora da tela, e as ações ao alcance do toque.
 
 ## 6. Entregar
 

@@ -10,8 +10,6 @@ import { entrarNoPainel } from "./entrar";
 
 export const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm", PessoaDeTeste>;
 
-/** Projetos em que o painel é estreito (abaixo de lg) e o menu lateral vira o botão “Menu”. */
-export const MENU_PELO_BOTAO = ["celular", "tablet-em-pe"];
 
 /** A menor altura da varredura da janela: a “tela baixa” (notebook baixo, tela dividida). */
 export const ALTURA_BAIXA = Math.min(...RESPONSIVO.varredura.alturas);
@@ -38,7 +36,8 @@ export function largurasDaVarredura(): number[] {
   return larguras;
 }
 
-export const menuPeloBotao = (testInfo: TestInfo) => MENU_PELO_BOTAO.includes(testInfo.project.name);
+/** A janela é estreita (abaixo de RESPONSIVO.menuLateralAPartirDe): o painel usa a versão mobile. */
+export const telaEstreita = (page: Page) => page.viewportSize()!.width < RESPONSIVO.menuLateralAPartirDe;
 
 export async function semRolagemLateral(page: Page) {
   const { conteudo, tela } = await page.evaluate(() => ({
@@ -53,6 +52,14 @@ export async function entrarComoAdm(page: Page, destino: string, { toque = false
   await page.goto(`/painel/entrar`);
   await entrarNoPainel(page, pessoas.adm, { toque });
   if (destino !== "/painel") await page.goto(destino);
+}
+
+/**
+ * Espera as animações em andamento terminarem (diálogo e menu abrem com zoom de 95%: medido no meio,
+ * o alvo parece menor do que é).
+ */
+export async function semAnimacao(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
 }
 
 /** Espera dois quadros, para a tela assentar depois de mudar o tamanho da janela. */
