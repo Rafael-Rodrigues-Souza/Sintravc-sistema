@@ -4,7 +4,7 @@
  Os tamanhos vêm de RESPONSIVO, no playwright.config.ts (E48), nos temas claro e escuro:
  * 1. Varredura com mouse (janela reduzida, tela dividida, telas baixas): RESPONSIVO.varredura.
  * 2. Perfis (os mesmos dos projetos @responsivo): RESPONSIVO.perfis. Nos perfis com toque também
- *    entram alvos menores que 44 px e ações que só aparecem com o mouse por cima; o tablet é girado
+ *    entram alvos com área de toque menor que RESPONSIVO.alvoDeToque e ações que só aparecem com o mouse por cima; o tablet é girado
  *    para a posição do outro perfil sem recarregar a página.
  *
  * Na varredura, salva print só dos tamanhos com problema (um por problema novo). De cada perfil,
@@ -30,12 +30,12 @@ import { parseArgs } from "node:util";
 
 import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
+import { alvosDeToquePequenos } from "../../../e2e/alvo-de-toque";
 import { entrarNoPainel } from "../../../e2e/entrar";
 import { RESPONSIVO } from "../../../playwright.config";
 
 const TEMAS = ["claro", "escuro"] as const;
 type Tema = (typeof TEMAS)[number];
-const ALVO_MINIMO = 44;
 const PERFIS = Object.entries(RESPONSIVO.perfis).map(([nome, p]) => ({ nome, ...p }));
 
 /**
@@ -87,8 +87,16 @@ async function guardarSessao(browser: Browser): Promise<string> {
 
 /** Medições feitas dentro da página. `toque` liga as conferências de celular e tablet. */
 async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
+  const pontos = await medirNaPagina(page, toque);
+  if (!toque) return pontos;
+  // A área que responde ao toque, e não só o desenho (e2e/alvo-de-toque.ts, a mesma medida dos e2e).
+  const pequenos = await page.evaluate(alvosDeToquePequenos, RESPONSIVO.alvoDeToque);
+  return [...pontos, ...pequenos.map((p) => ({ tipo: "alvo pequeno", alvo: p.alvo, molde: p.molde, medida: p.tamanho }))];
+}
+
+async function medirNaPagina(page: Page, toque: boolean): Promise<Ponto[]> {
   return page.evaluate(
-    ({ alvoMinimo, toque }) => {
+    ({ toque }) => {
       const pontos: { tipo: string; alvo: string; molde: string; medida: string }[] = [];
       const molde = (el: Element) => `${el.tagName.toLowerCase()}.${(el.getAttribute("class") ?? "").slice(0, 120)}`;
       const add = (tipo: string, el: Element | Element[] | null, medida = "") => {
@@ -312,14 +320,7 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
           el.closest("[aria-hidden=true], [inert]") !== null ||
           (el instanceof HTMLInputElement && [...(el.labels ?? [])].some(visivel));
 
-        // Alvos de toque menores que 44 px. Link no meio de um parágrafo fica de fora (o WCAG dispensa).
-        const linkNoTexto = (el: Element) =>
-          el.matches("a") && getComputedStyle(el).display === "inline" && el.closest("p, li, dd, td, blockquote") !== null;
-        for (const el of visiveis.filter(ehClicavel)) {
-          if (linkNoTexto(el) || dePropósito(el)) continue;
-          const r = el.getBoundingClientRect();
-          if (r.width < alvoMinimo || r.height < alvoMinimo) add("alvo pequeno", el, `${Math.round(r.width)}×${Math.round(r.height)} px`);
-        }
+        // Alvos de toque pequenos: medidos fora daqui, por alvosDeToquePequenos (a mesma dos e2e).
 
         const nomeAcessivel = (el: Element) => (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " ");
         // Há alternativa quando outro clicável visível tem o mesmo nome (ex.: a mesma ação no menu ⋯).
@@ -383,7 +384,7 @@ async function medir(page: Page, toque: boolean): Promise<Ponto[]> {
       const unicos = new Map(pontos.map((p) => [`${p.tipo}|${p.alvo}`, p]));
       return [...unicos.values()];
     },
-    { alvoMinimo: ALVO_MINIMO, toque },
+    { toque },
   );
 }
 

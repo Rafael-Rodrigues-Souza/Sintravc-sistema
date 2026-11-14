@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { linhaDoCartao, tamanhoLegivel, tipoLegivel } from "./apresentacao";
+import { linhaDoCartao, mostrarInteira, tamanhoLegivel, tipoLegivel } from "./apresentacao";
 
 describe("apresentação da Mídia (Figma 116:2727)", () => {
   it.each([
@@ -40,5 +40,16 @@ describe("apresentação da Mídia (Figma 116:2727)", () => {
     expect(tipoLegivel("application/pdf")).toBe("PDF");
     expect(tipoLegivel("application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe("Documento Word");
     expect(tipoLegivel("application/vnd.oasis.opendocument.spreadsheet")).toBe("Planilha LibreOffice");
+  });
+
+  // Logo com fundo transparente vem em PNG ou WebP: a miniatura mostra inteira, sobre o xadrez (E48).
+  // Foto em JPG continua preenchendo a miniatura.
+  it.each([
+    ["image/png", true],
+    ["image/webp", true],
+    ["image/jpeg", false],
+    ["application/pdf", false],
+  ])("mostrarInteira(%s) = %s", (mime, esperado) => {
+    expect(mostrarInteira(mime)).toBe(esperado);
   });
 });

@@ -7,7 +7,7 @@ import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
 import { dataNaBahia } from "@/lib/datas";
 import { lerEnvArmazenamento } from "@/lib/env";
-import { linhaDoCartao, siglaDoFormato, tamanhoLegivel, tipoLegivel } from "@/lib/midia/apresentacao";
+import { linhaDoCartao, enquadramentoDaImagem, mostrarInteira, siglaDoFormato, tamanhoLegivel, tipoLegivel } from "@/lib/midia/apresentacao";
 import { limitesDaMidia } from "@/lib/midia/enviar";
 import { erroDeTamanho } from "@/lib/midia/erros";
 import {
@@ -72,6 +72,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
         nomeArquivo: detalhe.nomeArquivo,
         tipo: detalhe.tipo,
         sigla: siglaDoFormato(detalhe.mime),
+        mostrarInteira: mostrarInteira(detalhe.mime),
         alt: detalhe.alt,
         legenda: detalhe.legenda,
         usos: detalhe.usos,
@@ -123,7 +124,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
                 href={endereco({ filtro: aba.valor, pagina: "1", arquivo: undefined })}
                 aria-current={filtro === aba.valor ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                  "alvo-toque flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                   filtro === aba.valor
                     ? "bg-destaque-amarelo text-destaque-marinho-fixo"
                     : "border border-borda-padrao bg-fundo-superficie text-texto-secundario hover:bg-fundo-superficie-alt",
@@ -139,7 +140,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
               href={endereco({ filtro: "sem_alt", pagina: "1", arquivo: undefined })}
               aria-current={filtro === "sem_alt" ? "page" : undefined}
               className={cn(
-                "flex items-center gap-1.5 rounded-full py-[9px] pr-4 pl-3.5 texto-titulo-card-pequeno text-status-perigo-texto outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                "alvo-toque flex items-center gap-1.5 rounded-full py-[9px] pr-4 pl-3.5 texto-titulo-card-pequeno text-status-perigo-texto outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                 "bg-status-perigo-fundo",
                 filtro === "sem_alt" && "ring-2 ring-status-perigo-texto",
               )}
@@ -225,6 +226,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
 
 function Cartao({ item, url, href, selecionado }: { item: ItemMidia; url: string; href: string; selecionado: boolean }) {
   const semAlt = item.tipo === "imagem" && !item.alt?.trim();
+  const enquadramento = enquadramentoDaImagem(mostrarInteira(item.mime));
   return (
     <Link
       href={href}
@@ -235,10 +237,11 @@ function Cartao({ item, url, href, selecionado }: { item: ItemMidia; url: string
         selecionado ? "border-2 border-destaque-azul" : "border border-borda-padrao hover:border-borda-forte",
       )}
     >
-      <div className="relative h-28 w-full overflow-hidden rounded-[10px]">
+      <div className={cn("relative h-28 w-full overflow-hidden rounded-[10px]", item.tipo === "imagem" && enquadramento.fundo)}>
         {item.tipo === "imagem" ? (
+          // PNG e WebP (logos) inteiros e sobre o xadrez, nos dois temas; JPG (foto) preenche (E48).
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="" loading="lazy" className="size-full object-cover" />
+          <img src={url} alt="" loading="lazy" className={cn("size-full", enquadramento.imagem)} />
         ) : (
           <MiniaturaDeArquivo sigla={siglaDoFormato(item.mime)} tipo={item.tipo} className="h-full" />
         )}

@@ -130,8 +130,10 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-5 pt-8 pb-12 lg:px-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-1.5">
+      {/* O grupo de botões desce inteiro para baixo do título quando não cabe ao lado; só se quebra
+          por dentro quando não cabe nem na linha toda (E48). */}
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-1.5">
           <h1 className="texto-titulo-card-grande text-texto-primario">Conteúdos</h1>
           <p className="max-w-[640px] texto-corpo text-texto-secundario">
             {calendario
@@ -141,7 +143,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               : "Notícias, editais e acordos coletivos em um só lugar. Comunicados, Rádio Chofer e benefícios têm áreas próprias no menu."}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 self-start">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-3">
           <nav aria-label="Modo de ver" className="flex items-center gap-1 rounded-full border border-borda-padrao bg-fundo-superficie-alt p-1">
             {[
               { rotulo: "Lista", icone: List, ativo: !calendario, href: endereco({ visao: undefined, mes: undefined, pagina: "1" }) },
@@ -152,7 +154,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
                 href={modo.href}
                 aria-current={modo.ativo ? "page" : undefined}
                 className={cn(
-                  "flex h-10 items-center gap-2 rounded-full px-4 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                  "alvo-toque flex h-10 items-center gap-2 rounded-full px-4 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                   modo.ativo ? "bg-fundo-superficie text-texto-primario shadow-sm" : "text-texto-secundario hover:text-texto-primario",
                 )}
               >
@@ -181,7 +183,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               href={endereco({ tipo: aba.valor === "todos" ? undefined : aba.valor, pagina: "1", arquivados: undefined })}
               aria-current={atual ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                "alvo-toque flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                 atual
                   ? "bg-destaque-amarelo text-destaque-marinho-fixo"
                   : "border border-borda-padrao bg-fundo-superficie text-texto-secundario hover:bg-fundo-superficie-alt",
@@ -197,7 +199,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
             href={endereco({ arquivados: "1", tipo: undefined, estado: undefined, pagina: "1" })}
             aria-current={arquivados ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring sm:ml-auto",
+              "alvo-toque flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring sm:ml-auto",
               arquivados
                 ? "bg-destaque-marinho-fixo text-texto-invertido"
                 : "border border-borda-padrao bg-fundo-superficie text-texto-secundario hover:bg-fundo-superficie-alt",

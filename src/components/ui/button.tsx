@@ -33,7 +33,8 @@ const buttonVariants = cva(
       },
       size: {
         padrao: "h-12 px-6 has-[>svg]:pl-5",
-        pequeno: "h-10 px-5 has-[>svg]:pl-4",
+        // 40 px no desenho; no toque, a área chega ao mínimo sem mudar o desenho (alvo-toque, E48).
+        pequeno: "alvo-toque h-10 px-5 has-[>svg]:pl-4",
         icone: "size-12",
       },
     },

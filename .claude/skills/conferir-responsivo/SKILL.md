@@ -54,7 +54,7 @@ Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 | Quebrou a linha | todos | linha flex com `wrap` cujos itens foram para baixo uns dos outros |
 | Barra de rolagem | todos | área com rolagem interna cuja barra aparece e ocupa espaço (o script mostra as barras, que o Playwright esconde por padrão) |
 | Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele |
-| Alvo pequeno | toque | link, botão, campo ou papel clicável com largura ou altura abaixo de 44 px; link no meio de um parágrafo fica de fora (o WCAG dispensa) |
+| Alvo pequeno | toque | link, botão, campo ou papel clicável cuja **área de toque** é menor que `RESPONSIVO.alvoDeToque`: o centro e os cantos de um quadrado desse tamanho, centrado no alvo, precisam acertar o próprio alvo. Uma área invisível maior que o desenho (o utilitário `alvo-toque`) passa; um vizinho que cobre a área, não. A medida é a mesma dos e2e (`e2e/alvo-de-toque.ts`). Link no meio de um parágrafo fica de fora (o WCAG dispensa) |
 | Só com o mouse | toque | regra `:hover` que mostra uma ação que no toque continua escondida, sem a mesma ação visível em outro lugar (o Tailwind põe o `hover:` dentro de `@media (hover: hover)`) |
 | Conferir à mão | toque | clicável transparente ou invisível sem regra `:hover` que explique: o script não sabe se há outro caminho pelo toque |
 | Ao girar | tablet | ponto que só aparece depois de girar o tablet sem recarregar, e não ao abrir a página já na outra posição |
@@ -76,7 +76,7 @@ Para conferir o menu aberto, um diálogo ou outro estado, rode um passo extra co
 
 ## 4. Exemplos já encontrados no painel
 
-São problemas reais, achados pelo Rafael e confirmados pelo script em 13/11/2026. Servem para calibrar o que procurar; se ainda estiverem lá, entram na lista.
+São problemas reais, achados pelo Rafael e confirmados pelo script em 13/11/2026, e corrigidos na issue #44 (com e2e `@responsivo` em `e2e/responsivo-painel.spec.ts`). Servem para calibrar o que procurar; se voltarem, entram na lista.
 
 1. **“Criar conteúdo” esmagado no menu lateral em telas baixas.** No tablet deitado, no notebook, na tela dividida e em qualquer largura a partir de 1040 px com até 800 px de altura, o botão fica com 18 px em vez de 48. Os itens do `<nav>` encolhem em vez de o menu rolar. O script mostra como `esmagado · <button> “Criar conteúdo” · altura 18 px, o natural é 48 px`.
 2. **Barra de rolagem na borda do menu lateral.** Nas mesmas alturas, com mouse, a barra aparece na borda direita do menu (15 px de barra). O script mostra como `barra de rolagem · <nav#menu-do-painel>`.

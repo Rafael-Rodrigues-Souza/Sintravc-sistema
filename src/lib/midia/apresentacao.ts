@@ -17,6 +17,22 @@ export function siglaDoFormato(mime: string): string {
   return FORMATOS[mime]?.sigla ?? "ARQUIVO";
 }
 
+/**
+ * A imagem aparece inteira na miniatura? Sim em PNG e WebP, os formatos em que costuma vir logo com
+ * fundo transparente. Foto em JPG continua preenchendo a miniatura (E48).
+ */
+export function mostrarInteira(mime: string): boolean {
+  return mime === "image/png" || mime === "image/webp";
+}
+
+/**
+ * Como a imagem ocupa a miniatura. Inteira: sobre o fundo xadrez, para o logo branco e o escuro
+ * aparecerem nos dois temas. Senão, preenche a caixa e o fundo fica a cargo de quem chama (`null`).
+ */
+export function enquadramentoDaImagem(inteira: boolean): { fundo: string | null; imagem: string } {
+  return inteira ? { fundo: "fundo-xadrez", imagem: "object-contain" } : { fundo: null, imagem: "object-cover" };
+}
+
 export function tipoLegivel(mime: string): string {
   return FORMATOS[mime]?.nome ?? "Arquivo";
 }

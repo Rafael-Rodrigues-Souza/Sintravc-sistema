@@ -52,6 +52,8 @@ export const RESPONSIVO = {
     notebook: { largura: 1280, altura: 720, toque: false, dispositivo: "Desktop Chrome" },
   },
   varredura: { de: 320, ate: 1920, passo: 40, alturas: [600, 700, 800, 1080] },
+  /** Área mínima de toque (largura e altura), no celular e no tablet. */
+  alvoDeToque: 44,
 } as const;
 
 export default defineConfig({

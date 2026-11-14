@@ -175,7 +175,7 @@ function BarraDeFerramentas({
     <div
       role="toolbar"
       aria-label="Formatação do corpo"
-      className="flex flex-wrap items-center gap-1 border-b border-borda-padrao bg-fundo-superficie-alt px-2 py-1.5"
+      className="flex flex-wrap items-center gap-1 border-b border-borda-padrao bg-fundo-superficie-alt px-2 py-1.5 pointer-coarse:vao-toque-9"
     >
       <Botao rotulo="Desfazer (Ctrl+Z)" desativado={!ativo.podeDesfazer} aoClicar={() => cadeia().undo().run()}>
         <Undo2 />
@@ -193,7 +193,7 @@ function BarraDeFerramentas({
         onChange={(evento) =>
           evento.target.value === "h2" ? cadeia().setHeading({ level: 2 }).run() : cadeia().setParagraph().run()
         }
-        className="h-9 rounded-[8px] border border-borda-padrao bg-fundo-superficie px-2 texto-pequeno text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+        className="h-9 rounded-[8px] border border-borda-padrao bg-fundo-superficie px-2 texto-pequeno pointer-coarse:h-(--alvo-toque) text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
       >
         <option value="p">Parágrafo</option>
         <option value="h2">Subtítulo</option>
@@ -286,7 +286,7 @@ function Botao({
         if (!desativado) aoClicar();
       }}
       className={cn(
-        "flex size-9 items-center justify-center rounded-[8px] text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]",
+        "alvo-toque flex size-9 items-center justify-center rounded-[8px] text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]",
         ligado ? "bg-fundo-marinho text-texto-invertido" : "hover:bg-fundo-superficie",
         desativado && "cursor-not-allowed opacity-40 hover:bg-transparent",
       )}

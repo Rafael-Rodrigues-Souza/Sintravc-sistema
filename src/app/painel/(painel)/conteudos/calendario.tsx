@@ -175,7 +175,7 @@ export function Calendario({
               href={hrefMesAnterior}
               scroll={false}
               aria-label="Mês anterior"
-              className="flex size-10 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
+              className="alvo-toque flex size-10 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
             >
               <ChevronLeft aria-hidden className="size-5" />
             </Link>
@@ -183,7 +183,7 @@ export function Calendario({
               href={hrefProximoMes}
               scroll={false}
               aria-label="Próximo mês"
-              className="flex size-10 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
+              className="alvo-toque flex size-10 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
             >
               <ChevronRight aria-hidden className="size-5" />
             </Link>
@@ -312,7 +312,7 @@ export function Calendario({
                       }}
                       aria-label={`${rotuloDaNoticia(r.titulo)}: abrir no editor`}
                       className={cn(
-                        "flex items-center gap-2 rounded-[12px] border border-borda-padrao px-3 py-2.5 texto-pequeno text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring",
+                        "alvo-toque flex items-center gap-2 rounded-[12px] border border-borda-padrao px-3 py-2.5 texto-pequeno text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring",
                         podeAgendar && "md:cursor-grab",
                       )}
                     >
@@ -323,7 +323,7 @@ export function Calendario({
                 ))}
               </ul>
               {totalDeRascunhos > rascunhos.length ? (
-                <Link href="/painel/conteudos?estado=rascunho" className="self-start texto-pequeno font-semibold text-destaque-azul underline underline-offset-2">
+                <Link href="/painel/conteudos?estado=rascunho" className="alvo-toque self-start texto-pequeno pointer-coarse:mt-1 font-semibold text-destaque-azul underline underline-offset-2">
                   Ver todos os rascunhos
                 </Link>
               ) : null}
@@ -417,7 +417,7 @@ function Dia({
       onDragLeave={aoSair}
       onDrop={(e) => aoSoltar(e, dia.data)}
       className={cn(
-        "flex min-h-[112px] flex-col gap-1.5 rounded-[12px] border p-2",
+        "flex min-h-[112px] flex-col gap-1.5 rounded-[12px] border p-2 pointer-coarse:relative",
         dia.doMes ? "border-borda-padrao bg-fundo-superficie" : "border-transparent bg-fundo-superficie-alt",
         escolhido && "border-destaque-azul",
         ehHoje && "bg-destaque-azul-suave",
@@ -431,6 +431,9 @@ function Dia({
         aria-label={`${nomeDoDia(dia.data)}${ehHoje ? " (hoje)" : ""}: ${itens.length === 0 ? "nada no ar" : itens.length === 1 ? "1 publicação" : `${itens.length} publicações`}`}
         className={cn(
           "self-start rounded-sm texto-corpo outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+          // No toque, o dia inteiro escolhe o dia (os itens, pequenos demais para o dedo, ficam na lista
+          // do dia, ao lado); o número ocupa a largura e a altura mínima de toque (E48).
+          "pointer-coarse:min-h-(--alvo-toque) pointer-coarse:self-stretch pointer-coarse:text-left pointer-coarse:after:absolute pointer-coarse:after:inset-0",
           ehHoje ? "font-semibold text-destaque-azul" : dia.doMes && !passado ? "text-texto-primario" : "text-texto-terciario",
         )}
       >
@@ -503,7 +506,7 @@ function ListaDoMes({
                     <Link
                       href={hrefEditar(item.id)}
                       scroll={false}
-                      className={cn("flex gap-2 rounded-[10px] px-3 py-2 texto-pequeno outline-none focus-visible:ring-[3px] focus-visible:ring-ring", COR_DO_ITEM[item.estado])}
+                      className={cn("alvo-toque flex gap-2 rounded-[10px] px-3 py-2 texto-pequeno outline-none focus-visible:ring-[3px] focus-visible:ring-ring", COR_DO_ITEM[item.estado])}
                     >
                       <span className="shrink-0 font-semibold">{horaNaBahia(new Date(item.quando))}</span>
                       <span className="min-w-0">{rotuloDaNoticia(item.titulo)}</span>

@@ -126,7 +126,7 @@ export function FontesEAnexos({
         <button
           type="button"
           onClick={() => setLinkAberto(true)}
-          className="inline-flex items-center gap-1.5 texto-titulo-card-pequeno text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
+          className="alvo-toque inline-flex items-center gap-1.5 texto-titulo-card-pequeno text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
         >
           <Plus aria-hidden className="size-4" />
           Adicionar link
@@ -137,7 +137,7 @@ export function FontesEAnexos({
           aria-describedby={conectado ? undefined : "dica-anexo-sem-internet"}
           onClick={() => conectado && setSeletorAberto(true)}
           className={cn(
-            "inline-flex items-center gap-1.5 texto-titulo-card-pequeno text-destaque-azul outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+            "alvo-toque inline-flex items-center gap-1.5 texto-titulo-card-pequeno text-destaque-azul outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
             conectado ? "hover:underline" : "cursor-not-allowed opacity-50",
           )}
         >

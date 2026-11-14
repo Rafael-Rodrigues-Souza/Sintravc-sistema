@@ -628,12 +628,13 @@ export function EditorDocumento({
 
   return (
     <div data-editor-documento className="flex flex-1 flex-col">
-      <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 sm:flex-row sm:items-center lg:px-10">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48). */}
+      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 lg:px-10">
+        <div className="flex min-w-0 flex-[1_1_max-content] items-center gap-3">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
+            className="alvo-toque flex size-9 shrink-0 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
           >
             <ChevronLeft aria-hidden className="size-5" />
           </Link>
@@ -892,7 +893,8 @@ export function EditorDocumento({
               <Label htmlFor="texto-pesquisavel">Texto pesquisável</Label>
               <Textarea
                 id="texto-pesquisavel"
-                className="min-h-[120px]"
+                // O texto de um PDF longo rola dentro do campo, sem empurrar a página (E48).
+                className="max-h-80 min-h-[120px] overflow-y-auto"
                 value={dados.textoPesquisavel}
                 aria-describedby="texto-pesquisavel-ajuda"
                 onChange={(evento) => mudar({ textoPesquisavel: evento.target.value })}
@@ -1083,11 +1085,11 @@ function SeletorDeTipo({ tipo, novo }: { tipo: TipoDocumento; novo: boolean }) {
   return (
     <nav aria-label="Tipo de conteúdo" className="flex flex-wrap items-center gap-2">
       <span className="texto-pequeno text-texto-secundario">Tipo:</span>
-      <div className="flex flex-wrap gap-1 rounded-full bg-fundo-superficie-alt p-1">
+      <div className="flex flex-wrap gap-1 rounded-full bg-fundo-superficie-alt p-1 pointer-coarse:vao-y-toque-9">
         {opcoes.map(({ valor, rotulo, href, Icone }) => {
           const atual = valor === tipo;
           const classe = cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 texto-botao outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-4",
+            "alvo-toque inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 texto-botao outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-4",
             atual ? "bg-fundo-superficie text-texto-primario shadow-sm" : "text-texto-secundario",
           );
           if (atual || !novo) {
@@ -1188,7 +1190,7 @@ function Interruptor({ ligado, rotuloId, aoMudar }: { ligado: boolean; rotuloId:
       aria-labelledby={rotuloId}
       onClick={() => aoMudar(!ligado)}
       className={cn(
-        "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring motion-reduce:transition-none",
+        "relative alvo-toque inline-flex h-7 w-12 shrink-0 items-center rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring motion-reduce:transition-none",
         // Contraste ≥ 3:1 com o cartão e com a bolinha nos dois temas (WCAG 1.4.11).
         ligado ? "bg-destaque-azul" : "bg-texto-terciario",
       )}

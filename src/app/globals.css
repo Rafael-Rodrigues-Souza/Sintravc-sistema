@@ -364,6 +364,46 @@
   text-transform: uppercase;
 }
 
+/*
+ * Área de toque mínima (RNF10, E48), só no toque (pointer: coarse); com o mouse nada muda. O valor
+ * fica em --alvo-toque e precisa ser igual a RESPONSIVO.alvoDeToque, do playwright.config.ts (um
+ * e2e confere). Um pseudo-elemento invisível, centrado no alvo, cresce até esse tamanho quando o alvo
+ * é menor, sem mudar o desenho. Vizinhos precisam de espaço entre si (centro a centro, --alvo-toque),
+ * senão um cobre a área do outro: use vao-toque-N / vao-y-toque-N com pointer-coarse:.
+ */
+:root {
+  --alvo-toque: 44px;
+}
+@utility alvo-toque {
+  @media (pointer: coarse) {
+    position: relative;
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block: min(0px, calc((100% - var(--alvo-toque)) / 2));
+      inset-inline: min(0px, calc((100% - var(--alvo-toque)) / 2));
+    }
+  }
+}
+/* Vão entre itens de tamanho N (na escala do Tailwind) para os centros ficarem a --alvo-toque. */
+@utility vao-toque-* {
+  gap: calc(var(--alvo-toque) - var(--spacing) * --value(integer));
+}
+@utility vao-y-toque-* {
+  row-gap: calc(var(--alvo-toque) - var(--spacing) * --value(integer));
+}
+
+/*
+ * Fundo xadrez das miniaturas de imagem da Mídia (E48): logo branco e logo escuro com fundo
+ * transparente aparecem nos dois temas. Os dois cinzas são médios e não mudam com o tema de propósito:
+ * um fundo que acompanha o tema esconderia o logo branco no claro e o escuro no escuro.
+ */
+@utility fundo-xadrez {
+  background-color: #c3cad5;
+  background-image: repeating-conic-gradient(#9ea8b7 0% 25%, transparent 0% 50%);
+  background-size: 16px 16px;
+}
+
 @layer base {
   * {
     @apply border-border;

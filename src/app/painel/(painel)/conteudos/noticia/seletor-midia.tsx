@@ -6,6 +6,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { enquadramentoDaImagem } from "@/lib/midia/apresentacao";
 import { cn } from "@/lib/utils";
 
 import { BotaoEnviarArquivos, ListaDeEnvios, ProvedorDeEnvios } from "../../midia/envios";
@@ -165,10 +166,16 @@ function ConteudoDoSeletor({
                       marcado ? "border-2 border-destaque-azul" : "border border-borda-padrao hover:border-borda-forte",
                     )}
                   >
-                    <span className="relative flex h-24 w-full items-center justify-center overflow-hidden rounded-[8px] bg-fundo-superficie-alt">
+                    <span
+                      className={cn(
+                        "relative flex h-24 w-full items-center justify-center overflow-hidden rounded-[8px]",
+                        (item.tipo === "imagem" && enquadramentoDaImagem(item.mostrarInteira).fundo) || "bg-fundo-superficie-alt",
+                      )}
+                    >
                       {item.tipo === "imagem" ? (
+                        // PNG e WebP (logos) inteiros e sobre o xadrez, nos dois temas; JPG (foto) preenche (E48).
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.url} alt="" loading="lazy" className="size-full object-cover" />
+                        <img src={item.url} alt="" loading="lazy" className={cn("size-full", enquadramentoDaImagem(item.mostrarInteira).imagem)} />
                       ) : (
                         <FileText aria-hidden className="size-8 text-texto-terciario" />
                       )}

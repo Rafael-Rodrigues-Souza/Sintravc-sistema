@@ -663,17 +663,19 @@ export function EditorNoticia({
 
   return (
     <div data-editor-noticia className="flex flex-1 flex-col">
-      <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 sm:flex-row sm:items-center lg:px-10">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48). */}
+      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 lg:px-10">
+        <div className="flex min-w-0 flex-[1_1_max-content] items-center gap-3">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
+            className="alvo-toque flex size-9 shrink-0 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
           >
             <ChevronLeft aria-hidden className="size-5" />
           </Link>
           <div className="flex min-w-0 flex-col">
-            <div className="flex items-center gap-2">
+            {/* O selo desce para baixo do título quando não cabe ao lado, como no editor de documento (E48). */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="truncate texto-titulo-card text-texto-primario">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
               <SeloEstado estado={publicacao.estado} />
             </div>
@@ -1174,9 +1176,9 @@ function DesfazerRefazer({ editor }: { editor: Editor | null }) {
     selector: ({ editor: e }) => (e ? { desfazer: e.can().undo(), refazer: e.can().redo() } : null),
   });
   const classe =
-    "flex size-10 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-5";
+    "alvo-toque flex size-10 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-5";
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         aria-label="Desfazer no corpo (Ctrl+Z)"

@@ -43,7 +43,7 @@ const NOME_DO_TIPO: Record<TipoConteudo, { rotulo: string; icone: typeof FileTex
 };
 
 const BOTAO_ICONE =
-  "inline-flex size-9 items-center justify-center rounded-[10px] text-texto-secundario outline-none hover:bg-fundo-superficie-alt hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring";
+  "alvo-toque inline-flex size-9 items-center justify-center rounded-[10px] text-texto-secundario outline-none hover:bg-fundo-superficie-alt hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring";
 
 /**
  * Tabela de Conteúdos (RF35, Figma 110:845): seleção em lote com a barra "N itens selecionados"
@@ -197,11 +197,14 @@ function Linha({
             <Link
               href={linha.hrefEditor}
               className={cn(
-                "line-clamp-2 texto-titulo-card-pequeno outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring md:line-clamp-1",
+                // No toque, área mínima (--alvo-toque) pelo padding, com margem negativa para manter o desenho; o link
+                // fica por cima da linha do autor. O corte (line-clamp) fica no texto de dentro: no
+                // próprio link, o padding deixaria a linha escondida vazar sobre o autor (E48).
+                "relative z-[1] block texto-titulo-card-pequeno pointer-coarse:-my-[calc((var(--alvo-toque)_-_1lh)/2)] pointer-coarse:py-[calc((var(--alvo-toque)_-_1lh)/2)] outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring",
                 linha.semTitulo ? "text-texto-terciario italic" : "text-texto-primario",
               )}
             >
-              {linha.titulo}
+              <span className="line-clamp-2 md:line-clamp-1">{linha.titulo}</span>
             </Link>
           ) : (
             <span className="texto-titulo-card-pequeno text-texto-primario">{linha.titulo}</span>
@@ -230,7 +233,8 @@ function Linha({
         {linha.atualizado}
       </td>
       <td className="md:px-5 md:py-4">
-        <div className="flex items-center gap-1">
+        {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
+        <div className="flex items-center gap-1 pointer-coarse:vao-toque-9">
           {linha.hrefRapida ? (
             <Link href={linha.hrefRapida} scroll={false} aria-label={`Edição rápida de “${linha.titulo}”`} title="Edição rápida" className={BOTAO_ICONE}>
               <SlidersHorizontal aria-hidden className="size-[18px]" />
