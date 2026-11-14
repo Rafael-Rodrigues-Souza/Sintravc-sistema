@@ -251,12 +251,25 @@ async function medirNaPagina(page: Page, toque: boolean): Promise<Ponto[]> {
           if (x2 - x1 > 4 && y2 - y1 > 4) caixas.push({ r: new DOMRect(x1, y1, x2 - x1, y2 - y1), dono });
         }
       }
+      // A camada presa na tela (fixed ou sticky) de um elemento: a página rola por baixo dela de
+      // propósito (barra de baixo do painel, cabeçalho do editor). Só textos da mesma camada contam.
+      const camadas = new Map<Element, Element | null>();
+      const camada = (el: Element): Element | null => {
+        if (camadas.has(el)) return camadas.get(el)!;
+        let presa: Element | null = null;
+        for (let a: Element | null = el; a && a !== document.body; a = a.parentElement) {
+          if (/^(fixed|sticky)$/.test(getComputedStyle(a).position)) presa = a;
+        }
+        camadas.set(el, presa);
+        return presa;
+      };
       const vistos = new Set<string>();
       for (let i = 0; i < caixas.length; i++) {
         for (let j = i + 1; j < caixas.length; j++) {
           const a = caixas[i]!;
           const b = caixas[j]!;
           if (a.dono === b.dono || a.dono.contains(b.dono) || b.dono.contains(a.dono)) continue;
+          if (camada(a.dono) !== camada(b.dono)) continue;
           const x = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
           const y = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
           if (x > 3 && y > 3) {
@@ -301,13 +314,16 @@ async function medirNaPagina(page: Page, toque: boolean): Promise<Ponto[]> {
         }
       }
 
-      // Menu escondido sem botão visível que o abra. Só conta como botão o que tem aria-controls
-      // apontando para o id do menu (menu sem id não tem como ser apontado).
+      // Menu escondido sem botão visível que o abra nem outra navegação visível no lugar dele. Só
+      // conta como botão o que tem aria-controls apontando para o id do menu; como substituto, a
+      // navegação com data-substitui="<id>" (a barra de baixo do painel no lugar do menu lateral, E49).
       for (const nav of document.querySelectorAll("nav")) {
         if (visivel(nav)) continue;
-        const abre = nav.id !== "" && [...document.querySelectorAll(`[aria-controls="${CSS.escape(nav.id)}"]`)].some(visivel);
-        if (!abre) {
-          add("menu sem botão", nav, nav.id ? "escondido e nenhum botão visível aponta para ele (aria-controls)" : "escondido e sem id para um botão apontar");
+        const id = nav.id !== "" ? CSS.escape(nav.id) : null;
+        const abre = id !== null && [...document.querySelectorAll(`[aria-controls="${id}"]`)].some(visivel);
+        const substituto = id !== null && [...document.querySelectorAll(`[data-substitui="${id}"]`)].some(visivel);
+        if (!abre && !substituto) {
+          add("menu sem botão", nav, nav.id ? "escondido, sem botão visível que aponte para ele (aria-controls) e sem navegação no lugar dele (data-substitui)" : "escondido e sem id para um botão apontar");
         }
       }
 

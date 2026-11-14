@@ -13,7 +13,7 @@ import { NOME_DO_PERFIL, type Perfil } from "@/lib/permissoes";
 import type { GrupoDoMenu } from "@/lib/permissoes/menu";
 
 /** Ícones do Figma (107:715), por nome do item. */
-const ICONES: Record<string, string> = {
+export const ICONES: Record<string, string> = {
   LayoutGrid: "/painel/menu-grade.svg",
   FileText: "/painel/menu-documento.svg",
   Megaphone: "/painel/menu-megafone.svg",
@@ -29,7 +29,7 @@ const ICONES: Record<string, string> = {
   ChartColumn: "/painel/menu-documento.svg",
 };
 
-function iniciais(nome: string) {
+export function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/);
   return ((partes[0]?.[0] ?? "") + (partes.length > 1 ? (partes.at(-1)?.[0] ?? "") : "")).toUpperCase();
 }
@@ -52,10 +52,6 @@ export function NavegacaoLateral({
   sair: () => Promise<void>;
 }) {
   const caminho = usePathname();
-  // No celular, o menu abre sobre a página atual e fecha sozinho quando a página muda.
-  const [abertoEm, setAbertoEm] = useState<string | null>(null);
-  const aberta = abertoEm === caminho;
-  const setAberta = (abrir: boolean) => setAbertoEm(abrir ? caminho : null);
   // A barra de rolagem fica escondida: quando há itens abaixo, um esmaecido no pé do menu mostra que ele rola (E48).
   const menu = useRef<HTMLElement>(null);
   const [temMaisAbaixo, setTemMaisAbaixo] = useState(false);
@@ -75,45 +71,23 @@ export function NavegacaoLateral({
   const ativo = (href: string) => (href === "/painel" ? caminho === href : caminho === href || caminho.startsWith(`${href}/`));
 
   return (
-    <>
-    <header className="flex h-16 items-center justify-between bg-fundo-marinho-profundo px-4 lg:hidden">
-      <Link href="/painel" className="alvo-toque">
-        <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-9 w-auto" />
-      </Link>
-      <button
-        type="button"
-        onClick={() => setAberta(true)}
-        aria-expanded={aberta}
-        aria-controls="menu-do-painel"
-        className="alvo-toque rounded-full border-[1.5px] border-sobre-escuro-borda px-4 py-2 texto-botao text-texto-invertido"
-      >
-        Menu
-      </button>
-    </header>
     <nav
       ref={menu}
       id="menu-do-painel"
       aria-label="Menu do painel"
+      // A partir de lg, o menu lateral fica no lugar da barra de baixo (e abaixo, o contrário; E49).
+      data-substitui="barra-de-baixo"
       className={cn(
         // Em tela baixa o menu rola e os itens não encolhem; a barra fica escondida para não ocupar
         // a borda do menu (a roda do mouse, o toque e o teclado continuam rolando) (E48).
-        "w-full shrink-0 flex-col gap-6 overflow-y-auto bg-fundo-marinho-profundo px-4 pt-6 pb-5 [scrollbar-width:none] *:shrink-0",
+        "hidden w-full shrink-0 flex-col gap-6 overflow-y-auto bg-fundo-marinho-profundo px-4 pt-6 pb-5 [scrollbar-width:none] *:shrink-0",
+        // Abaixo de lg, a navegação é a barra de baixo (E49).
         "lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[264px]",
-        aberta ? "fixed inset-0 z-50 flex" : "hidden",
       )}
     >
-      <div className="flex items-center justify-between">
-        <Link href="/painel" className="alvo-toque self-start">
-          <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-11 w-auto" />
-        </Link>
-        <button
-          type="button"
-          onClick={() => setAberta(false)}
-          className="alvo-toque rounded-full border-[1.5px] border-sobre-escuro-borda px-4 py-2 texto-botao text-texto-invertido lg:hidden"
-        >
-          Fechar
-        </button>
-      </div>
+      <Link href="/painel" className="alvo-toque self-start">
+        <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-11 w-auto" />
+      </Link>
 
       {podeCriarConteudo ? (
         <MenuCriar podeCriarDocumento={podeCriarDocumento} alinhar="start">
@@ -184,17 +158,11 @@ export function NavegacaoLateral({
           <p className="wrap-break-word texto-titulo-card-pequeno text-texto-invertido">{pessoa.nome}</p>
           <p className="wrap-break-word texto-pequeno text-texto-invertido-sec">{NOME_DO_PERFIL[pessoa.perfil]}</p>
         </div>
-        {/* Computador compartilhado (E40): ao sair, apaga os rascunhos já salvos desta pessoa; os pendentes ficam só para ela. */}
-        <form action={sair} onSubmit={() => limparAoSair(armazemDoNavegador(), pessoa.id)}>
-          <button
-            type="submit"
-            aria-label="Sair do painel"
-            title="Sair"
-            className="alvo-toque flex size-9 items-center justify-center rounded-full text-texto-invertido-sec outline-none hover:text-texto-invertido focus-visible:ring-2 focus-visible:ring-destaque-amarelo"
-          >
-            <IconeFigma src="/painel/icone-sair.svg" tamanho={18} />
-          </button>
-        </form>
+        <BotaoSair
+          sair={sair}
+          pessoaId={pessoa.id}
+          className="text-texto-invertido-sec hover:text-texto-invertido focus-visible:ring-destaque-amarelo"
+        />
       </div>
 
       {temMaisAbaixo ? (
@@ -204,6 +172,21 @@ export function NavegacaoLateral({
         </div>
       ) : null}
     </nav>
-    </>
+  );
+}
+
+/** Sair do painel. Computador compartilhado (E40): apaga os rascunhos já salvos desta pessoa; os pendentes ficam só para ela. */
+export function BotaoSair({ sair, pessoaId, className }: { sair: () => Promise<void>; pessoaId: string; className?: string }) {
+  return (
+    <form action={sair} onSubmit={() => limparAoSair(armazemDoNavegador(), pessoaId)}>
+      <button
+        type="submit"
+        aria-label="Sair do painel"
+        title="Sair"
+        className={cn("alvo-toque flex size-9 items-center justify-center rounded-full outline-none focus-visible:ring-2", className)}
+      >
+        <IconeFigma src="/painel/icone-sair.svg" tamanho={18} />
+      </button>
+    </form>
   );
 }

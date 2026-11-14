@@ -4,6 +4,7 @@ import { FileText, FolderClosed, Lock, Megaphone, Scale, SquarePlay } from "luci
 import Link from "next/link";
 import { DropdownMenu } from "radix-ui";
 
+import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
 type Item = { rotulo: string; descricao: string; icone: typeof FileText; href: string };
@@ -75,14 +76,74 @@ export function MenuCriar({
               </DropdownMenu.Item>
             ),
           )}
-          {podeCriarDocumento ? null : (
-            <p className="m-1 rounded-[10px] bg-fundo-superficie-alt px-3 py-2.5 texto-pequeno text-texto-secundario">
-              Para falar de um acordo ou edital, escreva uma notícia e coloque o link do documento oficial.
-            </p>
-          )}
+          {podeCriarDocumento ? null : <Orientacao />}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  );
+}
+
+/**
+ * O mesmo menu Criar no celular (E49): folha inferior aberta pelo “+” da barra de baixo, com os
+ * mesmos itens e travas do menu suspenso.
+ */
+export function FolhaCriar({
+  podeCriarDocumento,
+  aberta,
+  aoMudar,
+}: {
+  podeCriarDocumento: boolean;
+  aberta: boolean;
+  aoMudar: (aberta: boolean) => void;
+}) {
+  const linha = "flex items-start gap-3 rounded-[12px] p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  return (
+    <Drawer open={aberta} onOpenChange={aoMudar}>
+      <DrawerContent aria-describedby={undefined}>
+        <DrawerHeader titulo="Criar conteúdo" />
+        <DrawerBody>
+          <ul className="flex flex-col gap-1">
+            {ITENS.map((item) => (
+              <li key={item.rotulo}>
+                <Link href={item.href} onClick={() => aoMudar(false)} className={cn(linha, "active:bg-fundo-superficie-alt")}>
+                  <Icone icone={item.icone} />
+                  <Textos rotulo={item.rotulo} descricao={item.descricao} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mx-2 my-1 h-px bg-borda-padrao" />
+          {podeCriarDocumento ? null : <p className="px-3 pt-1 pb-0.5 texto-etiqueta text-texto-terciario">Só Administrador geral</p>}
+          <ul className="flex flex-col gap-1">
+            {DOCUMENTOS.map((item) => (
+              <li key={item.rotulo}>
+                {podeCriarDocumento ? (
+                  <Link href={item.href} onClick={() => aoMudar(false)} className={cn(linha, "active:bg-fundo-superficie-alt")}>
+                    <Icone icone={item.icone} />
+                    <Textos rotulo={item.rotulo} descricao={item.descricao} />
+                  </Link>
+                ) : (
+                  <div aria-disabled="true" className={cn(linha, "opacity-60")}>
+                    <Icone icone={item.icone} apagado />
+                    <Textos rotulo={item.rotulo} descricao={item.descricao} />
+                    <Lock aria-label="Só Administrador geral" className="mt-1 size-4 shrink-0 text-texto-terciario" />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          {podeCriarDocumento ? null : <Orientacao />}
+        </DrawerBody>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function Orientacao() {
+  return (
+    <p className="m-1 rounded-[10px] bg-fundo-superficie-alt px-3 py-2.5 texto-pequeno text-texto-secundario">
+      Para falar de um acordo ou edital, escreva uma notícia e coloque o link do documento oficial.
+    </p>
   );
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { areaDoCaminho, itensDoMenu } from "./menu";
+import { areaDoCaminho, itensDoMenu, menuDoCelular, telaComBarraPropria, type GrupoDoMenu } from "./menu";
 import type { Quem } from ".";
 
 const adm: Quem = { tipo: "equipe", id: "adm-1", perfil: "ADM" };
@@ -62,5 +62,53 @@ describe("areaDoCaminho", () => {
 
   it("fora do painel, nenhuma área", () => {
     expect(areaDoCaminho("/noticias")).toBeUndefined();
+  });
+});
+
+describe("menuDoCelular (E49; Figma M 119:3528)", () => {
+  const rotulos = (grupos: GrupoDoMenu[]) => grupos.map((g) => [g.titulo, g.itens.map((i) => i.rotulo)]);
+
+  it("Comunicação: Início, Conteúdos e Comunicados na barra; o resto no “Mais”, com os grupos", () => {
+    const { barra, mais } = menuDoCelular(itensDoMenu(com));
+    expect(barra.map((i) => [i.rotulo, i.href])).toEqual([
+      ["Início", "/painel"],
+      ["Conteúdos", "/painel/conteudos"],
+      ["Comunicados", "/painel/comunicados"],
+    ]);
+    expect(rotulos(mais)).toEqual([
+      ["Publicações", ["Rádio Chofer"]],
+      ["Site", ["Página inicial", "Mídia"]],
+    ]);
+  });
+
+  it("Administrador geral: a Administração também vai para o “Mais”", () => {
+    expect(rotulos(menuDoCelular(itensDoMenu(adm)).mais)).toEqual([
+      ["Publicações", ["Rádio Chofer"]],
+      ["Site", ["Página inicial", "Benefícios", "Mídia"]],
+      ["Administração", ["Atividade", "Equipe e perfis", "Configurações"]],
+    ]);
+  });
+
+  it("a barra só tem o que veio de itensDoMenu: sem Comunicados no menu, sem Comunicados na barra", () => {
+    const semComunicados = itensDoMenu(com).map((g) => ({ ...g, itens: g.itens.filter((i) => i.area !== "comunicados") }));
+    expect(menuDoCelular(semComunicados).barra.map((i) => i.rotulo)).toEqual(["Início", "Conteúdos"]);
+  });
+
+  it("sem menu, nada na barra nem no “Mais”", () => {
+    expect(menuDoCelular([])).toEqual({ barra: [], mais: [] });
+  });
+});
+
+describe("telaComBarraPropria (E49)", () => {
+  it.each([
+    ["/painel/conteudos/noticia/nova", true],
+    ["/painel/conteudos/noticia/0193b1c2-aaaa-7bbb-8ccc-1234567890ab", true],
+    ["/painel/conteudos/documento/nova", true],
+    ["/painel/conteudos/documento/0193b1c2-aaaa-7bbb-8ccc-1234567890ab", true],
+    ["/painel", false],
+    ["/painel/conteudos", false],
+    ["/painel/midia", false],
+  ])("%s → %s", (caminho, esperado) => {
+    expect(telaComBarraPropria(caminho)).toBe(esperado);
   });
 });

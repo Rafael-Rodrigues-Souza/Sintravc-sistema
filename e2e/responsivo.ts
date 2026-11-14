@@ -8,7 +8,7 @@ import { entrarNoPainel } from "./entrar";
 
 /** Apoio dos e2e @responsivo (E48). Os tamanhos vêm sempre de RESPONSIVO, no playwright.config.ts. */
 
-export const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm", PessoaDeTeste>;
+export const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm" | "com", PessoaDeTeste>;
 
 
 /** A menor altura da varredura da janela: a “tela baixa” (notebook baixo, tela dividida). */
@@ -49,8 +49,13 @@ export async function semRolagemLateral(page: Page) {
 
 /** Abre o painel já com a sessão do ADM e vai para o endereço pedido. */
 export async function entrarComoAdm(page: Page, destino: string, { toque = false } = {}) {
+  await entrarComo(page, pessoas.adm, destino, { toque });
+}
+
+/** Abre o painel já com a sessão da pessoa e vai para o endereço pedido. */
+export async function entrarComo(page: Page, pessoa: PessoaDeTeste, destino: string, { toque = false } = {}) {
   await page.goto(`/painel/entrar`);
-  await entrarNoPainel(page, pessoas.adm, { toque });
+  await entrarNoPainel(page, pessoa, { toque });
   if (destino !== "/painel") await page.goto(destino);
 }
 

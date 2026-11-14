@@ -12,16 +12,10 @@ test.describe("em qualquer tamanho de tela", { tag: "@responsivo" }, () => {
     await expect(page).toHaveURL(/\/painel$/);
     await semRolagemLateral(page);
 
-    const menu = page.getByRole("navigation", { name: "Menu do painel" });
-    const botaoMenu = page.getByRole("button", { name: "Menu", exact: true });
-    if (telaEstreita(page)) {
-      // Tela estreita: o menu começa fechado e só abre pelo botão.
-      await expect(menu).toBeHidden();
-      await apertar(botaoMenu, hasTouch);
-    } else {
-      // Tela larga: o menu lateral fica à vista e não há botão.
-      await expect(botaoMenu).toBeHidden();
-    }
+    // Abaixo do menu lateral, a navegação é a barra de baixo (E49); acima, o menu lateral.
+    const menu = telaEstreita(page)
+      ? page.getByRole("navigation", { name: "Navegação do painel" })
+      : page.getByRole("navigation", { name: "Menu do painel" });
     await expect(menu).toBeVisible();
     await apertar(menu.getByRole("link", { name: "Conteúdos" }), hasTouch);
 

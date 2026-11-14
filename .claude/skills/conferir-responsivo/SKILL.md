@@ -50,10 +50,10 @@ Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 | Rolagem lateral | todos | a página é mais larga que a tela, e quais elementos passam da borda |
 | Texto cortado | todos | reticências, `line-clamp` ou `overflow` escondido com texto próprio maior que a caixa (ignora o `sr-only`) |
 | Esmagado | todos | item de flex que encolheu abaixo do tamanho natural (na coluna, a altura de qualquer item; na linha, a largura do que é clicável); item de grid menor que o conteúdo; caixa de altura fixa que corta o conteúdo |
-| Texto sobreposto | todos | linhas de texto de elementos diferentes que se cruzam, já recortadas pelo `overflow` dos pais; com diálogo aberto, só conta o texto de dentro dele |
+| Texto sobreposto | todos | linhas de texto de elementos diferentes que se cruzam, já recortadas pelo `overflow` dos pais; com diálogo aberto, só conta o texto de dentro dele; o texto que passa por baixo de uma camada presa na tela (`fixed` ou `sticky`, como a barra de baixo do painel) não conta |
 | Quebrou a linha | todos | linha flex com `wrap` cujos itens foram para baixo uns dos outros |
 | Barra de rolagem | todos | área com rolagem interna cuja barra aparece e ocupa espaço (o script mostra as barras, que o Playwright esconde por padrão) |
-| Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele |
+| Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele e sem navegação visível com `data-substitui` igual ao id (a barra de baixo do painel no lugar do menu lateral, E49) |
 | Alvo pequeno | toque | link, botão, campo ou papel clicável cuja **área de toque** é menor que `RESPONSIVO.alvoDeToque`: o centro e os cantos de um quadrado desse tamanho, centrado no alvo, precisam acertar o próprio alvo. Uma área invisível maior que o desenho (o utilitário `alvo-toque`) passa; um vizinho que cobre a área, não. A medida é a mesma dos e2e (`e2e/alvo-de-toque.ts`). Link no meio de um parágrafo fica de fora (o WCAG dispensa) |
 | Só com o mouse | toque | regra `:hover` que mostra uma ação que no toque continua escondida, sem a mesma ação visível em outro lugar (o Tailwind põe o `hover:` dentro de `@media (hover: hover)`) |
 | Conferir à mão | toque | clicável transparente ou invisível sem regra `:hover` que explique: o script não sabe se há outro caminho pelo toque |
@@ -70,7 +70,7 @@ Abra os prints com a ferramenta de leitura de imagem e procure o que o script n�
 - **Itens que não empilham:** colunas, cards, filtros e botões lado a lado que ficaram espremidos em vez de irem um embaixo do outro.
 - **Telas baixas:** o menu lateral e os painéis fixos precisam rolar, e não encolher os itens.
 - Tema escuro: texto sem contraste, fundo branco esquecido, ícone ou logo que some no fundo escuro.
-- Menu: nos perfis estreitos, o botão de abrir aparece e, aberto, mostra todos os itens.
+- Menu: nos perfis estreitos, a barra de baixo aparece no lugar do menu lateral e o “Mais” mostra o resto dos itens.
 
 Para conferir o menu aberto, um diálogo ou outro estado, rode um passo extra com o Playwright (clicar e tirar o print) em vez de supor.
 

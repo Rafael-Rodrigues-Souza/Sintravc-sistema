@@ -58,3 +58,37 @@ export function areaDoCaminho(caminho: string): ItemDoMenu | undefined {
   }
   return melhor;
 }
+
+/** Itens da barra de baixo do celular, na ordem do Figma (M 119:3528), com o rótulo curto dela. */
+const NA_BARRA: Partial<Record<AreaDoPainel, string>> = {
+  visao_geral: "Início",
+  conteudos: "Conteúdos",
+  comunicados: "Comunicados",
+};
+
+export type MenuDoCelular = { barra: ItemDoMenu[]; mais: GrupoDoMenu[] };
+
+/**
+ * O menu no celular (E49): Início, Conteúdos e Comunicados vão para a barra de baixo; o resto, com
+ * os títulos dos grupos, para o “Mais”. Recebe o resultado de itensDoMenu(): a barra nunca mostra
+ * uma área que pode() negaria.
+ */
+export function menuDoCelular(grupos: GrupoDoMenu[]): MenuDoCelular {
+  const itens = grupos.flatMap((g) => g.itens);
+  const barra = (Object.keys(NA_BARRA) as AreaDoPainel[]).flatMap((area) => {
+    const item = itens.find((i) => i.area === area);
+    return item ? [{ ...item, rotulo: NA_BARRA[area]! }] : [];
+  });
+  const mais = grupos
+    .map((g) => ({ ...g, itens: g.itens.filter((i) => !(i.area in NA_BARRA)) }))
+    .filter((g) => g.itens.length > 0);
+  return { barra, mais };
+}
+
+/**
+ * Telas com barra própria embaixo (os editores, Figma M 120:3836): nelas, abaixo de lg, o topo e a
+ * barra de navegação do celular somem (E49). Decidido pelo endereço, igual no servidor e no cliente.
+ */
+export function telaComBarraPropria(caminho: string): boolean {
+  return /^\/painel\/conteudos\/(noticia|documento)\/[^/]+\/?$/.test(caminho.split(/[?#]/)[0]!);
+}

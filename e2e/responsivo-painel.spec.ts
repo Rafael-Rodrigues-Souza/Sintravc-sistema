@@ -50,13 +50,24 @@ for (const tema of ["claro", "escuro"] as const) {
       const menu = page.getByRole("navigation", { name: "Menu do painel" });
 
       if (telaEstreita(page)) {
-        // Celular e tablet em pé: o menu abre por cima da tela inteira.
-        await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
-      } else {
-        // Menu lateral fixo: na tela baixa da varredura (e no tamanho do próprio perfil).
-        const { width, height } = page.viewportSize()!;
-        await page.setViewportSize({ width, height: Math.min(height, ALTURA_BAIXA) });
+        // Celular e tablet em pé: o resto do menu fica na folha do “Mais”, que rola por dentro sem
+        // encolher os itens e mostra a conta inteira no fim (E49).
+        await apertar(page.getByRole("navigation", { name: "Navegação do painel" }).getByRole("button", { name: "Mais" }), hasTouch);
+        const folha = page.getByRole("dialog", { name: "Mais" });
+        await expect(folha).toBeVisible();
+        await semAnimacao(page);
+        // O corpo da folha é o que rola (encolhe de propósito); os itens dentro dele, não.
+        expect(await itensEsmagados(folha.locator("[data-slot=drawer-body]")), "nenhum item do “Mais” encolhe").toEqual([]);
+        const nome = folha.getByText(pessoas.adm.nome, { exact: true });
+        await nome.scrollIntoViewIfNeeded();
+        await expect(nome).toBeInViewport({ ratio: 1 });
+        await expect(folha.getByRole("button", { name: "Sair do painel" })).toBeInViewport({ ratio: 1 });
+        expect(await textoCortado(nome), "o nome aparece inteiro, sem reticências").toBe(false);
+        return;
       }
+      // Menu lateral fixo: na tela baixa da varredura (e no tamanho do próprio perfil).
+      const { width, height } = page.viewportSize()!;
+      await page.setViewportSize({ width, height: Math.min(height, ALTURA_BAIXA) });
       await expect(menu).toBeVisible();
       await assentar(page);
 
@@ -307,8 +318,17 @@ for (const tema of ["claro", "escuro"] as const) {
       await expect(link).toBeHidden();
 
       if (telaEstreita(page)) {
-        await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
-        await medir("menu aberto");
+        const barra = page.getByRole("navigation", { name: "Navegação do painel" });
+        await page.goto("/painel");
+        await medir("barra de baixo e topo");
+        await apertar(barra.getByRole("button", { name: "Mais" }), hasTouch);
+        await expect(page.getByRole("dialog", { name: "Mais" })).toBeVisible();
+        await medir("“Mais” aberto");
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("dialog", { name: "Mais" })).toBeHidden();
+        await apertar(barra.getByRole("button", { name: "Criar conteúdo" }), hasTouch);
+        await expect(page.getByRole("dialog", { name: "Criar conteúdo" })).toBeVisible();
+        await medir("“+” aberto");
       }
       expect(porTela, `alvos com área de toque menor que ${RESPONSIVO.alvoDeToque} px, por tela`).toEqual({});
     });

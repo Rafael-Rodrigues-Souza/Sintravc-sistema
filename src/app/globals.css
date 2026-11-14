@@ -374,6 +374,19 @@
 :root {
   --alvo-toque: 44px;
 }
+
+/*
+ * Barra de baixo do painel no celular e no tablet em pé (E49). Os avisos (Sonner) sobem acima dela;
+ * 64rem é o lg, a mesma largura de RESPONSIVO.menuLateralAPartirDe.
+ */
+:root {
+  --altura-barra-de-baixo: 68px;
+}
+@media (width < 64rem) {
+  body:has([data-barra-de-baixo]) [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(16px + var(--altura-barra-de-baixo) + env(safe-area-inset-bottom)) !important;
+  }
+}
 @utility alvo-toque {
   @media (pointer: coarse) {
     position: relative;
