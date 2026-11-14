@@ -25,6 +25,8 @@ export type LinhaDaTabela = {
   categoria: { nome: string; cor: string } | null;
   autorNome: string;
   noSite: string;
+  /** A linha de data do cartão no celular (Figma M 120:3650). */
+  resumo: string;
   atualizado: string;
   hrefEditor: string | null;
   hrefRapida: string | null;
@@ -50,6 +52,9 @@ const BOTAO_ICONE =
  * (Ocultar, Arquivar, Limpar seleção) e o menu ⋯ de cada linha. A seleção vale só para a página
  * que está na tela e se limpa ao mudar de aba, filtro ou página (a página monta a tabela de novo)
  * e com Esc. Na aba Arquivados não há seleção: cada item tem "Restaurar como rascunho".
+ * Abaixo do lg (celular e tablet em pé, E49), cada linha vira um cartão como no Figma M 120:3650:
+ * tipo e estado em cima, título com as ações e a linha de data. A caixa de seleção continua no cartão
+ * (o Figma não a desenha, mas a seleção em lote é do RF35; ver correcoes-figma.md).
  */
 export function TabelaConteudos({
   linhas,
@@ -114,9 +119,12 @@ export function TabelaConteudos({
         </section>
       ) : null}
 
-      <section aria-label={arquivados ? "Conteúdos arquivados" : "Lista de conteúdos"} className="overflow-hidden rounded-[16px] border border-borda-padrao bg-fundo-superficie">
-        <table className="w-full border-collapse text-left">
-          <thead className="hidden bg-fundo-superficie-alt md:table-header-group">
+      <section
+        aria-label={arquivados ? "Conteúdos arquivados" : "Lista de conteúdos"}
+        className="lg:overflow-hidden lg:rounded-[16px] lg:border lg:border-borda-padrao lg:bg-fundo-superficie"
+      >
+        <table className="w-full border-collapse text-left max-lg:block">
+          <thead className="hidden bg-fundo-superficie-alt lg:table-header-group">
             <tr className="texto-etiqueta text-texto-secundario uppercase">
               {comSelecao ? (
                 <th scope="col" className="w-12 py-3.5 pl-5">
@@ -139,7 +147,7 @@ export function TabelaConteudos({
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="max-lg:flex max-lg:flex-col max-lg:gap-3">
             {linhas.map((linha) => (
               <Linha
                 key={linha.id}
@@ -184,14 +192,20 @@ function Linha({
   return (
     <tr
       data-selecionada={marcada || undefined}
-      className="relative flex flex-col gap-2 border-t border-borda-padrao px-5 py-4 first:border-t-0 data-[selecionada]:bg-destaque-azul-suave/60 md:table-row md:px-0 md:py-0"
+      className={cn(
+        // Cartão (abaixo do lg): grade de 3 colunas, [seleção] tipo · estado / título · ações / data. No toque, a
+        // célula da seleção tem o tamanho da área de toque e as linhas se afastam, para o título não cobrir a caixa (E48).
+        "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-2 max-lg:pointer-coarse:gap-y-3 rounded-[16px] border border-borda-padrao bg-fundo-superficie px-4 py-3.5",
+        "data-[selecionada]:bg-destaque-azul-suave/60",
+        "lg:table-row lg:rounded-none lg:border-x-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0 lg:first:border-t-0",
+      )}
     >
       {comSelecao ? (
-        <td className="absolute top-4 right-5 md:static md:w-12 md:py-4 md:pl-5">
+        <td className="col-start-1 row-start-1 flex items-center justify-center max-lg:pointer-coarse:size-11 lg:table-cell lg:w-12 lg:py-4 lg:pl-5">
           <Checkbox aria-label={`Selecionar “${linha.titulo}”`} checked={marcada} onCheckedChange={(sim) => aoMarcar(sim === true)} />
         </td>
       ) : null}
-      <td className={cn("pr-10 md:py-4 md:pr-3", comSelecao ? "md:pl-2" : "md:pl-5")}>
+      <td className={cn("col-span-2 col-start-1 row-start-2 lg:py-4 lg:pr-3", comSelecao ? "lg:pl-2" : "lg:pl-5")}>
         <div className="flex min-w-0 flex-col gap-1">
           {linha.hrefEditor ? (
             <Link
@@ -204,7 +218,7 @@ function Linha({
                 linha.semTitulo ? "text-texto-terciario italic" : "text-texto-primario",
               )}
             >
-              <span className="line-clamp-2 md:line-clamp-1">{linha.titulo}</span>
+              <span className="line-clamp-2 lg:line-clamp-1">{linha.titulo}</span>
             </Link>
           ) : (
             <span className="texto-titulo-card-pequeno text-texto-primario">{linha.titulo}</span>
@@ -215,25 +229,26 @@ function Linha({
           </span>
         </div>
       </td>
-      <td className="texto-pequeno text-texto-secundario md:px-3 md:py-4">
+      <td className={cn("row-start-1 texto-pequeno text-texto-secundario lg:px-3 lg:py-4", comSelecao ? "col-start-2" : "col-span-2 col-start-1")}>
         <span className="inline-flex items-center gap-1.5">
           <tipo.icone aria-hidden className="size-4" />
           {tipo.rotulo}
         </span>
       </td>
-      <td className="md:px-3 md:py-4">
-        <span className="inline-flex flex-wrap items-center gap-1.5">
+      <td className="col-start-3 row-start-1 justify-self-end lg:px-3 lg:py-4">
+        <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:justify-start">
           <SeloEstado estado={linha.estado} />
           <SeloVigencia selo={linha.seloVigencia ?? null} />
         </span>
       </td>
-      <td className="hidden texto-pequeno text-texto-secundario md:px-3 md:py-4 xl:table-cell">{linha.noSite}</td>
-      <td className="texto-pequeno text-texto-secundario md:px-3 md:py-4">
-        <span className="md:hidden">Atualizado em </span>
-        {linha.atualizado}
+      <td className="hidden texto-pequeno text-texto-secundario lg:px-3 lg:py-4 xl:table-cell">{linha.noSite}</td>
+      <td className="col-span-3 col-start-1 row-start-3 texto-pequeno text-texto-secundario lg:px-3 lg:py-4">
+        <span className="lg:hidden">{linha.resumo}</span>
+        <span className="hidden lg:inline">{linha.atualizado}</span>
       </td>
-      <td className="md:px-5 md:py-4">
-        {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
+      <td className="col-start-3 row-start-2 self-start max-lg:pointer-coarse:py-1 lg:px-5 lg:py-4">
+        {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48); no cartão, o py
+            guarda a área de toque, que passa 4 px dos ícones. */}
         <div className="flex items-center gap-1 pointer-coarse:vao-toque-9">
           {linha.hrefRapida ? (
             <Link href={linha.hrefRapida} scroll={false} aria-label={`Edição rápida de “${linha.titulo}”`} title="Edição rápida" className={BOTAO_ICONE}>

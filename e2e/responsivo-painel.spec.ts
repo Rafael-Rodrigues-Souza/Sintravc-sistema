@@ -95,12 +95,15 @@ for (const tema of ["claro", "escuro"] as const) {
 
     test("Conteúdos: “Criar conteúdo” fica ao lado de Lista/Calendário e só desce quando falta espaço", async ({ page, hasTouch }, testInfo) => {
       await entrarComoAdm(page, "/painel/conteudos", { toque: hasTouch });
+      // Abaixo do menu lateral, criar é pelo “+” da barra de baixo (E49; e2e/conteudos-celular.spec.ts).
+      test.skip(telaEstreita(page), "no celular e no tablet em pé, o topo de Conteúdos não tem esses botões");
       const cabecalho = page.locator("main header").first();
       const modo = cabecalho.getByRole("navigation", { name: "Modo de ver" });
       const criar = cabecalho.getByRole("button", { name: "Criar conteúdo" });
       await expect(criar).toBeVisible();
 
       await emCadaLargura(page, testInfo, async (largura) => {
+        if (largura < RESPONSIVO.menuLateralAPartirDe) return;
         const medida = await cabecalho.evaluate((header, mesmaLinha) => {
           const nav = header.querySelector("nav[aria-label='Modo de ver']")!.getBoundingClientRect();
           const botao = [...header.querySelectorAll("button")].find((b) => b.textContent?.includes("Criar conteúdo"))!;
