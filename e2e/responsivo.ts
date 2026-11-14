@@ -114,6 +114,39 @@ export async function caixasQueSeCruzam(area: Locator, seletor: string): Promise
   }, seletor);
 }
 
+/**
+ * O texto que aparece de `a` (linhas recortadas pela caixa que esconde o que passa, como o
+ * line-clamp) cruza a caixa de `b`. Pega a linha escondida que vaza por cima do vizinho.
+ */
+export async function textoVisivelCruza(a: Locator, b: Locator): Promise<boolean> {
+  const caixaB = await b.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+  });
+  return a.evaluate((raiz, outra) => {
+    const andar = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+    for (let texto = andar.nextNode(); texto; texto = andar.nextNode()) {
+      // A caixa que recorta: o ancestral mais próximo (até a raiz) com overflow escondido.
+      let recorte: Element | null = texto.parentElement;
+      while (recorte && recorte !== raiz.parentElement && getComputedStyle(recorte).overflow === "visible") recorte = recorte.parentElement;
+      const c = recorte && recorte !== raiz.parentElement ? recorte.getBoundingClientRect() : null;
+      const intervalo = document.createRange();
+      intervalo.selectNodeContents(texto);
+      for (const r of intervalo.getClientRects()) {
+        const left = Math.max(r.left, c?.left ?? -Infinity);
+        const right = Math.min(r.right, c?.right ?? Infinity);
+        const top = Math.max(r.top, c?.top ?? -Infinity);
+        const bottom = Math.min(r.bottom, c?.bottom ?? Infinity);
+        if (right - left <= 1 || bottom - top <= 1) continue;
+        const x = Math.min(right, outra.right) - Math.max(left, outra.left);
+        const y = Math.min(bottom, outra.bottom) - Math.max(top, outra.top);
+        if (x > 1 && y > 1) return true;
+      }
+    }
+    return false;
+  }, caixaB);
+}
+
 /** Quantas linhas o texto do elemento ocupa na tela. */
 export async function linhasDoTexto(el: Locator): Promise<number> {
   return el.evaluate((no) => {

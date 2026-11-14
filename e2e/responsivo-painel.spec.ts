@@ -15,6 +15,7 @@ import {
   menuPeloBotao,
   pessoas,
   textoCortado,
+  textoVisivelCruza,
 } from "./responsivo";
 
 /**
@@ -53,7 +54,10 @@ for (const tema of ["claro", "escuro"] as const) {
       const nome = menu.getByText(pessoas.adm.nome, { exact: true });
       await nome.scrollIntoViewIfNeeded();
       await expect(nome).toBeInViewport({ ratio: 1 });
-      await expect(menu.getByText("Administrador geral", { exact: true })).toBeInViewport({ ratio: 1 });
+      const perfil = menu.getByText("Administrador geral", { exact: true });
+      await expect(perfil).toBeInViewport({ ratio: 1 });
+      expect(await textoCortado(nome), "o nome aparece inteiro, sem reticências").toBe(false);
+      expect(await textoCortado(perfil), "o perfil aparece inteiro, sem reticências").toBe(false);
     });
 
     test("Conteúdos: “Criar conteúdo” fica ao lado de Lista/Calendário e só desce quando falta espaço", async ({ page, hasTouch }, testInfo) => {
@@ -112,7 +116,7 @@ for (const tema of ["claro", "escuro"] as const) {
       expect(caixa.height, "o campo cabe na tela").toBeLessThan(page.viewportSize()!.height);
     });
 
-    test("Conteúdos, lista: o título usa o espaço livre da linha antes de cortar com reticências", async ({ page, hasTouch }, testInfo) => {
+    test("Conteúdos, lista: o título usa o espaço livre da linha antes de cortar com reticências, sem vazar sobre o autor", async ({ page, hasTouch }, testInfo) => {
       const manchete = `Assembleia geral aprova a pauta de reajuste dos rodoviários (${tema}, ${testInfo.project.name})`;
       await entrarComoAdm(page, "/painel/conteudos/noticia/nova", { toque: hasTouch });
       await page.getByLabel("Manchete").fill(manchete);
@@ -120,6 +124,8 @@ for (const tema of ["claro", "escuro"] as const) {
       await page.goto("/painel/conteudos");
       const titulo = page.getByRole("link", { name: manchete, exact: true });
       await expect(titulo).toBeVisible();
+      // A linha de baixo do título: categoria e autor.
+      const autor = titulo.locator("xpath=following-sibling::*[1]");
 
       await emCadaLargura(page, testInfo, async (largura) => {
         const medida = await titulo.evaluate((link) => {
@@ -137,8 +143,11 @@ for (const tema of ["claro", "escuro"] as const) {
               intervalo.selectNodeContents(td);
               return total + Math.max(0, dentro - intervalo.getBoundingClientRect().width);
             }, 0);
-          return { cortado: link.scrollWidth > link.clientWidth + 1, sobra };
+          // O corte é medido na caixa que esconde o que passa (o link ou o texto dentro dele).
+          const caixa = [link, ...link.querySelectorAll("*")].find((el) => getComputedStyle(el).overflow !== "visible") ?? link;
+          return { cortado: caixa.scrollWidth > caixa.clientWidth + 1, sobra };
         });
+        expect(await textoVisivelCruza(titulo, autor), `a ${largura} px, o título não vaza por cima da linha do autor`).toBe(false);
         if (medida.cortado) {
           expect(medida.sobra, `a ${largura} px, o título foi cortado com ${Math.round(medida.sobra)} px livres nas outras colunas`).toBeLessThan(8);
         }

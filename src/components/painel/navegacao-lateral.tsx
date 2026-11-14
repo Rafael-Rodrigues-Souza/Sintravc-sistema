@@ -162,9 +162,10 @@ export function NavegacaoLateral({
         <span className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-destaque-amarelo texto-titulo-card-pequeno text-destaque-marinho-fixo">
           {iniciais(pessoa.nome)}
         </span>
+        {/* Nome e perfil quebram a linha em vez de cortar: o menu tem largura fixa (E48). */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <p className="truncate texto-titulo-card-pequeno text-texto-invertido">{pessoa.nome}</p>
-          <p className="truncate texto-pequeno text-texto-invertido-sec">{NOME_DO_PERFIL[pessoa.perfil]}</p>
+          <p className="wrap-break-word texto-titulo-card-pequeno text-texto-invertido">{pessoa.nome}</p>
+          <p className="wrap-break-word texto-pequeno text-texto-invertido-sec">{NOME_DO_PERFIL[pessoa.perfil]}</p>
         </div>
         {/* Computador compartilhado (E40): ao sair, apaga os rascunhos já salvos desta pessoa; os pendentes ficam só para ela. */}
         <form action={sair} onSubmit={() => limparAoSair(armazemDoNavegador(), pessoa.id)}>

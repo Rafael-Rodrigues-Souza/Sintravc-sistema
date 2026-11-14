@@ -197,13 +197,14 @@ function Linha({
             <Link
               href={linha.hrefEditor}
               className={cn(
-                // Área de toque de 44 px pelo padding (o line-clamp cortaria o alvo-toque); a margem
-                // negativa mantém o desenho, e o link fica por cima da linha do autor (E48).
-                "relative z-[1] -my-[11px] line-clamp-2 py-[11px] texto-titulo-card-pequeno outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring md:line-clamp-1",
+                // Área de toque de 44 px pelo padding, com margem negativa para manter o desenho; o link
+                // fica por cima da linha do autor. O corte (line-clamp) fica no texto de dentro: no
+                // próprio link, o padding deixaria a linha escondida vazar sobre o autor (E48).
+                "relative z-[1] -my-[11px] block py-[11px] texto-titulo-card-pequeno outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring",
                 linha.semTitulo ? "text-texto-terciario italic" : "text-texto-primario",
               )}
             >
-              {linha.titulo}
+              <span className="line-clamp-2 md:line-clamp-1">{linha.titulo}</span>
             </Link>
           ) : (
             <span className="texto-titulo-card-pequeno text-texto-primario">{linha.titulo}</span>
