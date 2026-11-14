@@ -124,7 +124,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
                 href={endereco({ filtro: aba.valor, pagina: "1", arquivo: undefined })}
                 aria-current={filtro === aba.valor ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                  "alvo-toque flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                   filtro === aba.valor
                     ? "bg-destaque-amarelo text-destaque-marinho-fixo"
                     : "border border-borda-padrao bg-fundo-superficie text-texto-secundario hover:bg-fundo-superficie-alt",
@@ -140,7 +140,7 @@ export default async function PaginaMidia({ searchParams }: { searchParams: Prom
               href={endereco({ filtro: "sem_alt", pagina: "1", arquivo: undefined })}
               aria-current={filtro === "sem_alt" ? "page" : undefined}
               className={cn(
-                "flex items-center gap-1.5 rounded-full py-[9px] pr-4 pl-3.5 texto-titulo-card-pequeno text-status-perigo-texto outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                "alvo-toque flex items-center gap-1.5 rounded-full py-[9px] pr-4 pl-3.5 texto-titulo-card-pequeno text-status-perigo-texto outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                 "bg-status-perigo-fundo",
                 filtro === "sem_alt" && "ring-2 ring-status-perigo-texto",
               )}

@@ -178,6 +178,7 @@ for (const tema of ["claro", "escuro"] as const) {
       await page.getByLabel("Manchete").fill(`Plantão jurídico no toque (${tema}, ${testInfo.project.name})`);
       await expect(page.getByTestId("status-do-salvamento")).toContainText("Salvo automaticamente às");
 
+      const porTela: Record<string, string[]> = {};
       for (const endereco of [
         "/painel",
         "/painel/conteudos",
@@ -189,14 +190,15 @@ for (const tema of ["claro", "escuro"] as const) {
         await page.goto(endereco);
         await page.waitForLoadState("networkidle");
         const pequenos = await page.evaluate(alvosDeToquePequenos, ALVO_DE_TOQUE);
-        expect(pequenos, `${endereco}: alvos com área de toque menor que ${ALVO_DE_TOQUE} px`).toEqual([]);
+        if (pequenos.length > 0) porTela[endereco] = pequenos.map((p) => `${p.alvo} · ${p.tamanho}`);
       }
 
       if (menuPeloBotao(testInfo)) {
         await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
         const pequenos = await page.evaluate(alvosDeToquePequenos, ALVO_DE_TOQUE);
-        expect(pequenos, `menu aberto: alvos com área de toque menor que ${ALVO_DE_TOQUE} px`).toEqual([]);
+        if (pequenos.length > 0) porTela["menu aberto"] = pequenos.map((p) => `${p.alvo} · ${p.tamanho}`);
       }
+      expect(porTela, `alvos com área de toque menor que ${ALVO_DE_TOQUE} px, por tela`).toEqual({});
     });
 
     test("edital: a data do evento continua no mesmo dia depois de salvar e abrir de novo (pt-BR, America/Bahia)", async ({ page, hasTouch }) => {

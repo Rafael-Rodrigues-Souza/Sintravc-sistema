@@ -34,12 +34,14 @@ export default async function PaginaEquipe() {
       </header>
 
       <section aria-label="Pessoas da equipe" className="overflow-hidden rounded-[16px] border border-borda-padrao bg-fundo-superficie">
+        {/* A mesma grade no cabeçalho e nas linhas. Pessoa fica com o espaço que sobra; “Último acesso”
+            só vira coluna no xl e, entre md e xl, aparece embaixo do e-mail (E48). */}
         <div role="table" aria-label="Equipe" className="flex flex-col">
-          <div role="row" className="hidden items-center gap-4 bg-fundo-superficie-alt px-6 py-2.5 md:flex">
-            <span role="columnheader" className="flex-1 texto-etiqueta text-texto-terciario">Pessoa</span>
-            <span role="columnheader" className="w-[190px] texto-etiqueta text-texto-terciario">Perfil</span>
-            <span role="columnheader" className="w-[190px] texto-etiqueta text-texto-terciario">Duas etapas</span>
-            <span role="columnheader" className="w-[170px] texto-etiqueta text-texto-terciario">Último acesso</span>
+          <div role="row" className={cn("hidden bg-fundo-superficie-alt px-6 py-2.5", GRADE)}>
+            <span role="columnheader" className="texto-etiqueta text-texto-terciario">Pessoa</span>
+            <span role="columnheader" className="texto-etiqueta text-texto-terciario">Perfil</span>
+            <span role="columnheader" className="texto-etiqueta text-texto-terciario">Duas etapas</span>
+            <span role="columnheader" className="hidden texto-etiqueta text-texto-terciario xl:block">Último acesso</span>
           </div>
           {equipe.map((integrante) => {
             const ehVoce = integrante.id === pessoa.id;
@@ -48,9 +50,9 @@ export default async function PaginaEquipe() {
               <div
                 key={integrante.id}
                 role="row"
-                className="flex flex-col gap-3 border-b border-borda-padrao px-6 py-3.5 last:border-b-0 md:flex-row md:items-center md:gap-4"
+                className={cn("flex flex-col gap-3 border-b border-borda-padrao px-6 py-3.5 last:border-b-0", GRADE)}
               >
-                <div role="cell" className="flex min-w-0 flex-1 items-center gap-3">
+                <div role="cell" className="flex min-w-0 items-center gap-3">
                   <span
                     aria-hidden
                     className={cn(
@@ -63,15 +65,18 @@ export default async function PaginaEquipe() {
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <p className="truncate texto-titulo-card-pequeno text-texto-primario">{integrante.nome}</p>
                     <p className="truncate texto-pequeno text-texto-secundario">{integrante.email}</p>
+                    <p className="hidden truncate texto-pequeno text-texto-terciario md:block xl:hidden">
+                      Último acesso: {ultimoAcessoNaLista(integrante, { agora, ehVoce })}
+                    </p>
                   </div>
                 </div>
-                <div role="cell" className="md:w-[190px]">
+                <div role="cell" className="min-w-0">
                   <SeloPerfil perfil={integrante.perfil} />
                 </div>
-                <div role="cell" className="md:w-[190px]">
+                <div role="cell" className="min-w-0">
                   <SeloSituacao selo={selo} />
                 </div>
-                <p role="cell" className="texto-pequeno text-texto-secundario md:w-[170px]">
+                <p role="cell" className="texto-pequeno text-texto-secundario md:hidden xl:block">
                   {ultimoAcessoNaLista(integrante, { agora, ehVoce })}
                 </p>
               </div>
@@ -82,6 +87,10 @@ export default async function PaginaEquipe() {
     </div>
   );
 }
+
+/** Colunas da Equipe a partir do md: Pessoa com o que sobra, as outras com largura fixa. */
+const GRADE =
+  "md:grid md:grid-cols-[minmax(0,1fr)_12rem_8rem] md:items-center md:gap-4 xl:grid-cols-[minmax(0,1fr)_12rem_8rem_9rem]";
 
 /** "Mariana Souza" → "MS". Ignora o que não começa com letra, como "(teste)". */
 function iniciais(nome: string) {

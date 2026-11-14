@@ -7,7 +7,8 @@
  * quadrado do tamanho mínimo, centrado no alvo, precisam acertar o próprio alvo (ou o rótulo dele).
  * Assim também se pega o alvo grande o bastante no desenho, mas coberto pelo vizinho.
  *
- * Ficam de fora: link no meio de um parágrafo (o WCAG dispensa), texto só para leitor de tela,
+ * Ficam de fora: o que está coberto por outra camada (menu aberto, diálogo: o centro do alvo não o
+ * acerta, então ele não está ao alcance agora), link no meio de um parágrafo (o WCAG dispensa), texto só para leitor de tela,
  * campo escondido sob um rótulo visível (o alvo é o rótulo), o que está com aria-hidden ou inert,
  * e o que está desativado.
  */
@@ -33,8 +34,14 @@ export function alvosDeToquePequenos(minimo: number): AlvoPequeno[] {
     el.closest("[aria-hidden=true], [inert]") !== null ||
     el.matches(":disabled, [aria-disabled=true]") ||
     (el instanceof HTMLInputElement && [...(el.labels ?? [])].some(visivel));
-  const nome = (el: Element) =>
-    `<${el.tagName.toLowerCase()}> “${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40)}”`;
+  // Nome para o relatório: aria-label, o texto, o rótulo ligado (label for), o title e, por fim, o id.
+  const nome = (el: Element) => {
+    const rotulos = "labels" in el ? [...((el as HTMLButtonElement).labels ?? [])].map((l) => l.textContent ?? "").join(" ") : "";
+    const texto = [el.getAttribute("aria-label"), el.textContent, rotulos, el.getAttribute("title")]
+      .map((t) => (t ?? "").trim().replace(/\s+/g, " "))
+      .find((t) => t !== "");
+    return `<${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}> “${(texto ?? "").slice(0, 40)}”`;
+  };
 
   /** O ponto acerta o alvo: o próprio elemento, algo dentro dele ou o rótulo ligado a ele. */
   const acerta = (el: Element, x: number, y: number) => {
@@ -58,9 +65,10 @@ export function alvosDeToquePequenos(minimo: number): AlvoPequeno[] {
     r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
+    // Coberto por outra camada (menu aberto, diálogo): não está ao alcance do toque agora.
+    if (!acerta(el, cx, cy)) continue;
     const meio = minimo / 2 - 1;
     const pontos = [
-      [cx, cy],
       [cx - meio, cy - meio],
       [cx + meio, cy - meio],
       [cx - meio, cy + meio],

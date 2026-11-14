@@ -669,7 +669,7 @@ export function EditorNoticia({
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
+            className="alvo-toque flex size-9 shrink-0 items-center justify-center rounded-full bg-fundo-superficie-alt text-texto-primario outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring"
           >
             <ChevronLeft aria-hidden className="size-5" />
           </Link>
@@ -1175,9 +1175,9 @@ function DesfazerRefazer({ editor }: { editor: Editor | null }) {
     selector: ({ editor: e }) => (e ? { desfazer: e.can().undo(), refazer: e.can().redo() } : null),
   });
   const classe =
-    "flex size-10 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-5";
+    "alvo-toque flex size-10 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-5";
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         aria-label="Desfazer no corpo (Ctrl+Z)"

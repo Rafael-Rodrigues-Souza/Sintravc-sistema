@@ -61,7 +61,7 @@ export function NavegacaoLateral({
   return (
     <>
     <header className="flex h-16 items-center justify-between bg-fundo-marinho-profundo px-4 lg:hidden">
-      <Link href="/painel">
+      <Link href="/painel" className="alvo-toque">
         <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-9 w-auto" />
       </Link>
       <button
@@ -69,7 +69,7 @@ export function NavegacaoLateral({
         onClick={() => setAberta(true)}
         aria-expanded={aberta}
         aria-controls="menu-do-painel"
-        className="rounded-full border-[1.5px] border-sobre-escuro-borda px-4 py-2 texto-botao text-texto-invertido"
+        className="alvo-toque rounded-full border-[1.5px] border-sobre-escuro-borda px-4 py-2 texto-botao text-texto-invertido"
       >
         Menu
       </button>
@@ -86,13 +86,13 @@ export function NavegacaoLateral({
       )}
     >
       <div className="flex items-center justify-between">
-        <Link href="/painel" className="self-start">
+        <Link href="/painel" className="alvo-toque self-start">
           <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-11 w-auto" />
         </Link>
         <button
           type="button"
           onClick={() => setAberta(false)}
-          className="rounded-full border-[1.5px] border-sobre-escuro-borda px-4 py-2 texto-botao text-texto-invertido lg:hidden"
+          className="alvo-toque rounded-full border-[1.5px] border-sobre-escuro-borda px-4 py-2 texto-botao text-texto-invertido lg:hidden"
         >
           Fechar
         </button>
@@ -125,7 +125,7 @@ export function NavegacaoLateral({
                       href={item.href}
                       aria-current={atual ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-[12px] px-3 py-[11px] texto-navegacao outline-none",
+                        "alvo-toque flex items-center gap-3 rounded-[12px] px-3 py-[11px] texto-navegacao outline-none",
                         "focus-visible:ring-2 focus-visible:ring-destaque-amarelo",
                         atual
                           ? "bg-sobre-escuro-chip text-texto-invertido"
@@ -150,7 +150,7 @@ export function NavegacaoLateral({
           <Link
             href="/"
             target="_blank"
-            className="flex items-center gap-3 rounded-[12px] px-3 py-[9px] texto-pequeno text-texto-invertido-sec hover:text-texto-invertido"
+            className="alvo-toque flex items-center gap-3 rounded-[12px] px-3 py-[9px] texto-pequeno text-texto-invertido-sec hover:text-texto-invertido"
           >
             <IconeFigma src="/painel/icone-seta-diagonal.svg" tamanho={18} />
             Ver site público
@@ -172,7 +172,7 @@ export function NavegacaoLateral({
             type="submit"
             aria-label="Sair do painel"
             title="Sair"
-            className="flex size-9 items-center justify-center rounded-full text-texto-invertido-sec outline-none hover:text-texto-invertido focus-visible:ring-2 focus-visible:ring-destaque-amarelo"
+            className="alvo-toque flex size-9 items-center justify-center rounded-full text-texto-invertido-sec outline-none hover:text-texto-invertido focus-visible:ring-2 focus-visible:ring-destaque-amarelo"
           >
             <IconeFigma src="/painel/icone-sair.svg" tamanho={18} />
           </button>

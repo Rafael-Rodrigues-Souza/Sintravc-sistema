@@ -43,7 +43,7 @@ const NOME_DO_TIPO: Record<TipoConteudo, { rotulo: string; icone: typeof FileTex
 };
 
 const BOTAO_ICONE =
-  "inline-flex size-9 items-center justify-center rounded-[10px] text-texto-secundario outline-none hover:bg-fundo-superficie-alt hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring";
+  "alvo-toque inline-flex size-9 items-center justify-center rounded-[10px] text-texto-secundario outline-none hover:bg-fundo-superficie-alt hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring";
 
 /**
  * Tabela de Conteúdos (RF35, Figma 110:845): seleção em lote com a barra "N itens selecionados"
@@ -197,7 +197,9 @@ function Linha({
             <Link
               href={linha.hrefEditor}
               className={cn(
-                "line-clamp-2 texto-titulo-card-pequeno outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring md:line-clamp-1",
+                // Área de toque de 44 px pelo padding (o line-clamp cortaria o alvo-toque); a margem
+                // negativa mantém o desenho, e o link fica por cima da linha do autor (E48).
+                "relative z-[1] -my-[11px] line-clamp-2 py-[11px] texto-titulo-card-pequeno outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring md:line-clamp-1",
                 linha.semTitulo ? "text-texto-terciario italic" : "text-texto-primario",
               )}
             >
@@ -230,7 +232,8 @@ function Linha({
         {linha.atualizado}
       </td>
       <td className="md:px-5 md:py-4">
-        <div className="flex items-center gap-1">
+        {/* No toque, 8 px entre os ícones: a área de 44 px de um não cobre a do vizinho (E48). */}
+        <div className="flex items-center gap-1 pointer-coarse:gap-2">
           {linha.hrefRapida ? (
             <Link href={linha.hrefRapida} scroll={false} aria-label={`Edição rápida de “${linha.titulo}”`} title="Edição rápida" className={BOTAO_ICONE}>
               <SlidersHorizontal aria-hidden className="size-[18px]" />
