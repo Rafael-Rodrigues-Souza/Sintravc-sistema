@@ -17,6 +17,15 @@ export function siglaDoFormato(mime: string): string {
   return FORMATOS[mime]?.sigla ?? "ARQUIVO";
 }
 
+/**
+ * Formatos em que costuma vir logo com fundo transparente (PNG e WebP). A miniatura mostra esses
+ * arquivos inteiros, sobre o fundo xadrez, para o logo branco e o escuro aparecerem nos dois temas
+ * (E48). Foto em JPG continua preenchendo a miniatura.
+ */
+export function podeTerLogo(mime: string): boolean {
+  return mime === "image/png" || mime === "image/webp";
+}
+
 export function tipoLegivel(mime: string): string {
   return FORMATOS[mime]?.nome ?? "Arquivo";
 }

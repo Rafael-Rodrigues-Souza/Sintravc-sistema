@@ -19,6 +19,7 @@ import { descartarAlteracoes, ErroFaltamCampos, publicarNoticia } from "@/lib/co
 import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/salvar";
 import { bahiaParaUtc } from "@/lib/datas";
 import { lerEnvArmazenamento } from "@/lib/env";
+import { podeTerLogo } from "@/lib/midia/apresentacao";
 import { listarMidia } from "@/lib/midia/listar";
 import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -114,6 +115,8 @@ export type ArquivoParaEscolher = {
   url: string;
   nomeArquivo: string;
   tipo: "imagem" | "pdf" | "documento";
+  /** PNG ou WebP: pode ser logo com fundo transparente (miniatura inteira, sobre o xadrez). */
+  logo: boolean;
   alt: string;
   legenda: string;
 };
@@ -138,6 +141,7 @@ export async function acaoBuscarMidia(
       url: urlPublica(item.chaveR2, env),
       nomeArquivo: item.nomeArquivo,
       tipo: item.tipo,
+      logo: podeTerLogo(item.mime),
       alt: item.alt ?? "",
       legenda: item.legenda ?? "",
     })),

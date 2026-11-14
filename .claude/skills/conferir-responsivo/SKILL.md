@@ -54,7 +54,7 @@ Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 | Quebrou a linha | todos | linha flex com `wrap` cujos itens foram para baixo uns dos outros |
 | Barra de rolagem | todos | área com rolagem interna cuja barra aparece e ocupa espaço (o script mostra as barras, que o Playwright esconde por padrão) |
 | Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele |
-| Alvo pequeno | toque | link, botão, campo ou papel clicável com largura ou altura abaixo de 44 px; link no meio de um parágrafo fica de fora (o WCAG dispensa) |
+| Alvo pequeno | toque | link, botão, campo ou papel clicável cuja **área de toque** é menor que `RESPONSIVO.alvoDeToque`: o centro e os cantos de um quadrado desse tamanho, centrado no alvo, precisam acertar o próprio alvo. Uma área invisível maior que o desenho (o utilitário `alvo-toque`) passa; um vizinho que cobre a área, não. A medida é a mesma dos e2e (`e2e/alvo-de-toque.ts`). Link no meio de um parágrafo fica de fora (o WCAG dispensa) |
 | Só com o mouse | toque | regra `:hover` que mostra uma ação que no toque continua escondida, sem a mesma ação visível em outro lugar (o Tailwind põe o `hover:` dentro de `@media (hover: hover)`) |
 | Conferir à mão | toque | clicável transparente ou invisível sem regra `:hover` que explique: o script não sabe se há outro caminho pelo toque |
 | Ao girar | tablet | ponto que só aparece depois de girar o tablet sem recarregar, e não ao abrir a página já na outra posição |

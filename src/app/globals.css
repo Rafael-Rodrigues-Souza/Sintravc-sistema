@@ -364,6 +364,33 @@
   text-transform: uppercase;
 }
 
+/*
+ * Área de toque de pelo menos 44 px (RNF10, E48) sem mudar o desenho: um pseudo-elemento
+ * invisível, centrado no alvo, que só cresce quando o alvo é menor que isso. É o mesmo mínimo de
+ * RESPONSIVO.alvoDeToque, conferido pelos e2e @responsivo. Vizinhos precisam de espaço entre si
+ * (centro a centro, 44 px), senão um cobre a área do outro.
+ */
+@utility alvo-toque {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: min(0px, calc((100% - 44px) / 2));
+    inset-inline: min(0px, calc((100% - 44px) / 2));
+  }
+}
+
+/*
+ * Fundo xadrez das miniaturas de imagem da Mídia (E48): logo branco e logo escuro com fundo
+ * transparente aparecem nos dois temas. Os dois cinzas são médios e não mudam com o tema de propósito:
+ * um fundo que acompanha o tema esconderia o logo branco no claro e o escuro no escuro.
+ */
+@utility fundo-xadrez {
+  background-color: #c3cad5;
+  background-image: repeating-conic-gradient(#9ea8b7 0% 25%, transparent 0% 50%);
+  background-size: 16px 16px;
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -78,7 +78,9 @@ export function NavegacaoLateral({
       id="menu-do-painel"
       aria-label="Menu do painel"
       className={cn(
-        "w-full shrink-0 flex-col gap-6 overflow-y-auto bg-fundo-marinho-profundo px-4 pt-6 pb-5",
+        // Em tela baixa o menu rola e os itens não encolhem; a barra fica escondida para não ocupar
+        // a borda do menu (a roda do mouse, o toque e o teclado continuam rolando) (E48).
+        "w-full shrink-0 flex-col gap-6 overflow-y-auto bg-fundo-marinho-profundo px-4 pt-6 pb-5 [scrollbar-width:none] *:shrink-0",
         "lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[264px]",
         aberta ? "fixed inset-0 z-50 flex" : "hidden",
       )}

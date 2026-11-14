@@ -663,8 +663,9 @@ export function EditorNoticia({
 
   return (
     <div data-editor-noticia className="flex flex-1 flex-col">
-      <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 sm:flex-row sm:items-center lg:px-10">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48). */}
+      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 lg:px-10">
+        <div className="flex min-w-0 flex-[1_1_max-content] items-center gap-3">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"

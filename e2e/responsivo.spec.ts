@@ -1,22 +1,7 @@
-import { readFileSync } from "node:fs";
+import { expect, test } from "@playwright/test";
 
-import { expect, test, type Page } from "@playwright/test";
-
-import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { apertar, entrarNoPainel } from "./entrar";
-
-const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm", PessoaDeTeste>;
-
-/** Projetos em que o painel é estreito (abaixo de lg) e o menu lateral vira o botão “Menu”. */
-const MENU_PELO_BOTAO = ["celular", "tablet-em-pe"];
-
-async function semRolagemLateral(page: Page) {
-  const { conteudo, tela } = await page.evaluate(() => ({
-    conteudo: document.documentElement.scrollWidth,
-    tela: document.documentElement.clientWidth,
-  }));
-  expect(conteudo, "a página não pode rolar para o lado").toBeLessThanOrEqual(tela);
-}
+import { MENU_PELO_BOTAO, pessoas, semRolagemLateral } from "./responsivo";
 
 // Roda no desktop e em cada perfil de RESPONSIVO do playwright.config.ts (E48).
 test.describe("em qualquer tamanho de tela", { tag: "@responsivo" }, () => {

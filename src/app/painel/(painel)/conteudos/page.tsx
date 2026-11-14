@@ -130,8 +130,10 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-5 pt-8 pb-12 lg:px-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-1.5">
+      {/* O grupo de botões desce inteiro para baixo do título quando não cabe ao lado; só se quebra
+          por dentro quando não cabe nem na linha toda (E48). */}
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-1.5">
           <h1 className="texto-titulo-card-grande text-texto-primario">Conteúdos</h1>
           <p className="max-w-[640px] texto-corpo text-texto-secundario">
             {calendario
@@ -141,7 +143,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               : "Notícias, editais e acordos coletivos em um só lugar. Comunicados, Rádio Chofer e benefícios têm áreas próprias no menu."}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 self-start">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-3">
           <nav aria-label="Modo de ver" className="flex items-center gap-1 rounded-full border border-borda-padrao bg-fundo-superficie-alt p-1">
             {[
               { rotulo: "Lista", icone: List, ativo: !calendario, href: endereco({ visao: undefined, mes: undefined, pagina: "1" }) },

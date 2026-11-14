@@ -165,10 +165,16 @@ function ConteudoDoSeletor({
                       marcado ? "border-2 border-destaque-azul" : "border border-borda-padrao hover:border-borda-forte",
                     )}
                   >
-                    <span className="relative flex h-24 w-full items-center justify-center overflow-hidden rounded-[8px] bg-fundo-superficie-alt">
+                    <span
+                      className={cn(
+                        "relative flex h-24 w-full items-center justify-center overflow-hidden rounded-[8px]",
+                        item.tipo === "imagem" && item.logo ? "fundo-xadrez" : "bg-fundo-superficie-alt",
+                      )}
+                    >
                       {item.tipo === "imagem" ? (
+                        // PNG e WebP (logos) inteiros e sobre o xadrez, nos dois temas; JPG (foto) preenche (E48).
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.url} alt="" loading="lazy" className="size-full object-cover" />
+                        <img src={item.url} alt="" loading="lazy" className={cn("size-full", item.logo ? "object-contain" : "object-cover")} />
                       ) : (
                         <FileText aria-hidden className="size-8 text-texto-terciario" />
                       )}

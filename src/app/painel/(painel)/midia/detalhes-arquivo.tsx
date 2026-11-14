@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Campo } from "@/components/ui/campo";
 import type { UsoDaMidia } from "@/lib/midia/erros";
+import { cn } from "@/lib/utils";
 
 import { acaoExcluirMidia, acaoSalvarDetalhes, type EstadoDetalhes } from "./acoes";
 
@@ -27,6 +28,8 @@ export type ArquivoDetalhado = {
   nomeArquivo: string;
   tipo: "imagem" | "pdf" | "documento";
   sigla: string;
+  /** PNG ou WebP: pode ser logo com fundo transparente (mostrado inteiro, sobre o xadrez). */
+  logo: boolean;
   alt: string | null;
   legenda: string | null;
   informacoes: { rotulo: string; valor: string }[];
@@ -181,7 +184,11 @@ function Previa({ arquivo }: { arquivo: ArquivoDetalhado }) {
     return (
       // A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next.
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={arquivo.url} alt={arquivo.alt ?? ""} className="h-[170px] w-full rounded-[14px] object-cover" />
+      <img
+        src={arquivo.url}
+        alt={arquivo.alt ?? ""}
+        className={cn("h-[170px] w-full rounded-[14px]", arquivo.logo ? "fundo-xadrez object-contain" : "object-cover")}
+      />
     );
   }
   return <MiniaturaDeArquivo sigla={arquivo.sigla} tipo={arquivo.tipo} className="h-[170px] rounded-[14px]" />;
