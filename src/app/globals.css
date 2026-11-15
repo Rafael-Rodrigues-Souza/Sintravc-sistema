@@ -10,8 +10,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Topo dos editores sem espaço para os rótulos (E48, #48): Desfazer, Refazer e Pré-visualizar só com
- * ícone e “Salvar rascunho” como “Salvar”, para título, status e botões ficarem numa linha só. O
+ * Topo dos editores sem espaço para os rótulos (E48, #48): Pré-visualizar só com ícone (também quando
+ * é o BotaoTravado compacto), “Salvar rascunho” como “Salvar” e o status curto (“Salvo às …”), para
+ * título, status e botões ficarem numa linha só. Desfazer e Refazer já são só ícone e não usam esta
+ * variante. As classes ficam em ICONE_COMPACTO e RotuloSalvar (pecas-do-editor.tsx). O
  * cabeçalho é o container “topo” (@container/topo). O limite é a largura do CONTEÚDO DO TOPO, e não
  * de aparelho (os aparelhos ficam no RESPONSIVO do playwright.config.ts). Calibração (#48): com os
  * rótulos inteiros, o pior caso (notícia já salva: Desfazer, Refazer, Pré-visualizar, Salvar

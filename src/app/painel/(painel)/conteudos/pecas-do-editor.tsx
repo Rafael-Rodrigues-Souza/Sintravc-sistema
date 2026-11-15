@@ -243,7 +243,7 @@ function textoDoStatus(estado: EstadoDaFila<unknown>, temId: boolean): string {
   }
 }
 
-/** O mesmo status, curto, para o topo compacto do celular (Figma M 120:3836: “Salvo às 10h42”). */
+/** O mesmo status, curto, para o topo compacto (celular, Figma M 120:3836: “Salvo às 10h42”; e topo-compacto, #48). */
 function textoCurtoDoStatus(estado: EstadoDaFila<unknown>, temId: boolean): string {
   switch (estado.situacao) {
     case "salvando":
@@ -275,8 +275,11 @@ export function StatusDoSalvamento({ estado, temId }: { estado: EstadoDaFila<unk
       )}
     >
       <Icone aria-hidden className={cn("size-4 shrink-0", estado.situacao === "salvando" && "animate-spin motion-reduce:animate-none")} />
-      <span className="max-lg:hidden">{textoDoStatus(estado, temId)}</span>
-      <span className="lg:hidden">{textoCurtoDoStatus(estado, temId)}</span>
+      {/* No celular e no topo sem espaço (topo-compacto, #48) aparece o texto curto; o leitor de tela lê sempre o completo. */}
+      <span className="max-lg:sr-only topo-compacto:sr-only">{textoDoStatus(estado, temId)}</span>
+      <span aria-hidden className="hidden max-lg:inline topo-compacto:inline">
+        {textoCurtoDoStatus(estado, temId)}
+      </span>
     </p>
   );
 }
@@ -294,6 +297,33 @@ export function StatusCurto({ estado }: { estado: EstadoDaFila<unknown> }) {
       {estado.situacao === "sem_internet" ? <CloudOff aria-hidden className="size-4" /> : <Cloud aria-hidden className="size-4" />}
       {texto}
     </span>
+  );
+}
+
+/**
+ * Botão do topo que fica só com o ícone abaixo do lg (E49) e no topo sem espaço para os rótulos
+ * (variante topo-compacto, globals.css, #48). `botao` vai no botão, `rotulo` no texto (continua para o
+ * leitor de tela) e `enfeite` no que some junto com o texto.
+ */
+export const ICONE_COMPACTO = {
+  botao: "max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0 topo-compacto:size-10 topo-compacto:px-0 topo-compacto:has-[>svg]:pl-0",
+  rotulo: "max-lg:sr-only topo-compacto:sr-only",
+  enfeite: "max-lg:hidden topo-compacto:hidden",
+} as const;
+
+/**
+ * Rótulo do “Salvar” do topo. Antes de ir ao ar, “Salvar rascunho”; no topo sem espaço (#48), só
+ * “Salvar” aparece, e o nome acessível continua “Salvar rascunho”.
+ */
+export function RotuloSalvar({ rascunho }: { rascunho: boolean }) {
+  if (!rascunho) return "Salvar";
+  return (
+    <>
+      <span className="topo-compacto:sr-only">Salvar rascunho</span>
+      <span aria-hidden className="hidden topo-compacto:inline">
+        Salvar
+      </span>
+    </>
   );
 }
 
@@ -332,12 +362,12 @@ export function BotaoTravado({
         className={cn(
           "inline-flex h-10 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-borda-forte bg-fundo-superficie-alt px-4 texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]",
           avisarAoTocar && "h-12",
-          compacto && "alvo-toque max-lg:size-10 max-lg:px-0 topo-compacto:size-10 topo-compacto:px-0",
+          compacto && cn("alvo-toque", ICONE_COMPACTO.botao),
         )}
       >
         {icone}
-        <span className={cn(compacto && "max-lg:sr-only topo-compacto:sr-only")}>{rotulo}</span>
-        <Lock aria-hidden className={cn("size-3.5", compacto && "max-lg:hidden topo-compacto:hidden")} />
+        <span className={cn(compacto && ICONE_COMPACTO.rotulo)}>{rotulo}</span>
+        <Lock aria-hidden className={cn("size-3.5", compacto && ICONE_COMPACTO.enfeite)} />
       </button>
       <span id={id} className="sr-only">
         {dica}

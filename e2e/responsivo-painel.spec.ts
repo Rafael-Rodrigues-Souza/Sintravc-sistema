@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import sharp from "sharp";
 
 import { RESPONSIVO } from "../playwright.config";
@@ -13,6 +13,7 @@ import {
   itensEsmagados,
   larguraDaBarra,
   linhasDoTexto,
+  pdfComTexto,
   pessoas,
   semAnimacao,
   telaEstreita,
@@ -63,6 +64,89 @@ test("o corte do celular no CSS (avisos acima da barra) e no “Mais” é RESPO
   await expect(page.getByRole("dialog", { name: "Mais" })).toBeHidden();
   await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeVisible();
 });
+
+const salvo = (page: Page) => expect(page.getByTestId("status-do-salvamento")).toContainText("Salvo automaticamente às");
+
+/**
+ * Os dois editores, com o que a pessoa preenche para publicar e o campo que ela altera depois. Tudo
+ * pela tela, clicando e escolhendo como uma pessoa faria.
+ */
+const EDITORES = [
+  {
+    nome: "notícia",
+    endereco: "/painel/conteudos/noticia/nova",
+    campo: "Manchete",
+    campoAlterado: "Lide",
+    async preencher(page: Page, sufixo: string, toque: boolean) {
+      await page.getByLabel("Manchete").fill(`Assembleia geral dos rodoviários (${sufixo})`);
+      await page.getByLabel("Lide").fill("A assembleia é na quarta, às 19h, na sede do sindicato.");
+      await apertar(page.getByRole("textbox", { name: "Corpo da notícia" }), toque);
+      await page.keyboard.type("Leve contracheques e documento com foto.");
+      await page.getByLabel("Assinatura").fill("Redação SINTRAVC");
+      await page.getByLabel("Categoria").selectOption({ label: "Jurídico" });
+    },
+    async publicar(page: Page, toque: boolean) {
+      await apertar(page.locator("main header").first().getByRole("button", { name: "Publicar…" }), toque);
+      const modal = page.getByRole("dialog", { name: "Publicar notícia?" });
+      await apertar(modal.getByRole("button", { name: "Publicar agora" }), toque);
+      await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
+    },
+  },
+  {
+    nome: "documento",
+    endereco: "/painel/conteudos/documento/nova?tipo=edital",
+    campo: "Título oficial",
+    campoAlterado: "Resumo",
+    async preencher(page: Page, sufixo: string, toque: boolean) {
+      await page.getByLabel("Título oficial").fill(`Edital de convocação · Assembleia geral (${sufixo})`);
+      await page.getByLabel("Número ou identificação").fill(`Edital ${sufixo}`);
+      await page.getByLabel("Tipo de edital").selectOption({ label: "Convocação" });
+      await page.getByLabel("Data do documento").fill(new Date(Date.now() - 86_400_000).toISOString().slice(0, 10));
+      await page.getByLabel("Resumo").fill("Convoca os trabalhadores rodoviários para a assembleia geral.");
+      await page.getByLabel("Categoria").selectOption({ label: "Assembleias" });
+      const arquivo = `edital-topo-${sufixo.replace(/\W+/g, "-")}.pdf`;
+      const [seletor] = await Promise.all([page.waitForEvent("filechooser"), apertar(page.getByRole("button", { name: "Enviar PDF" }), toque)]);
+      await seletor.setFiles({ name: arquivo, mimeType: "application/pdf", buffer: await pdfComTexto(["EDITAL DE CONVOCACAO"]) });
+      await expect(page.getByText(arquivo, { exact: true })).toBeVisible();
+    },
+    async publicar(page: Page, toque: boolean) {
+      await apertar(page.locator("main header").first().getByRole("button", { name: "Publicar…" }), toque);
+      const modal = page.getByRole("alertdialog", { name: "Publicar documento oficial?" });
+      await apertar(modal.getByLabel("Confirmo que o PDF é a versão oficial e assinada"), toque);
+      await apertar(modal.getByRole("button", { name: "Publicar documento" }), toque);
+      await expect(page.getByText("Documento publicado.")).toBeVisible();
+    },
+  },
+];
+
+/**
+ * A partir do corte (#48): título e status de um lado, botões do outro, numa linha só; o topo não
+ * passa da largura; o título não é cortado e fica em até 2 linhas; o status, numa linha.
+ */
+async function topoNumaLinha(page: Page, testInfo: TestInfo, cabecalho: Locator) {
+  const titulo = cabecalho.getByRole("heading", { level: 1 });
+  const status = cabecalho.getByTestId("status-do-salvamento");
+  await emCadaLargura(page, testInfo, async (largura) => {
+    if (largura < RESPONSIVO.menuLateralAPartirDe) return;
+    const medida = await cabecalho.evaluate((header, tolerancia) => {
+      const [bloco, acoes] = [...header.children] as [HTMLElement, HTMLElement];
+      const b = bloco.getBoundingClientRect();
+      const a = acoes.getBoundingClientRect();
+      const topos = [...acoes.querySelectorAll("button")].filter((el) => el.getClientRects().length > 0).map((el) => el.getBoundingClientRect().top);
+      return {
+        aoLado: a.left >= b.right - tolerancia.arredondamento && a.top < b.bottom && a.bottom > b.top,
+        botoesNumaLinha: Math.max(...topos) - Math.min(...topos) < tolerancia.mesmaLinha,
+        cabe: header.scrollWidth <= header.clientWidth,
+      };
+    }, TOLERANCIA);
+    expect(medida.aoLado, `a ${largura} px, os botões ficam ao lado do título e do status`).toBe(true);
+    expect(medida.botoesNumaLinha, `a ${largura} px, os botões ficam numa linha só`).toBe(true);
+    expect(medida.cabe, `a ${largura} px, o topo não passa da largura`).toBe(true);
+    expect(await textoCortado(titulo), `a ${largura} px, o título não é cortado`).toBe(false);
+    expect(await linhasDoTexto(titulo), `a ${largura} px, o título fica em até 2 linhas`).toBeLessThanOrEqual(2);
+    expect(await linhasDoTexto(status), `a ${largura} px, o status do salvamento fica numa linha`).toBe(1);
+  });
+}
 
 /** Alvos da tela com área de toque menor que RESPONSIVO.alvoDeToque, como “alvo · tamanho”. */
 async function alvosPequenos(page: Page) {
@@ -146,10 +230,7 @@ for (const tema of ["claro", "escuro"] as const) {
       await expect(modo).toBeVisible();
     });
 
-    for (const editor of [
-      { nome: "notícia", endereco: "/painel/conteudos/noticia/nova", campo: "Manchete" },
-      { nome: "documento", endereco: "/painel/conteudos/documento/nova?tipo=edital", campo: "Título oficial" },
-    ]) {
+    for (const editor of EDITORES) {
       test(`editor de ${editor.nome}: cabeçalho sem nada sobreposto, título legível e “Salvo automaticamente” em até 2 linhas`, async ({ page, hasTouch }, testInfo) => {
         await entrarComoAdm(page, editor.endereco, { toque: hasTouch });
         await page.getByLabel(editor.campo).fill("Assembleia geral dos rodoviários");
@@ -171,36 +252,32 @@ for (const tema of ["claro", "escuro"] as const) {
         });
       });
 
-      test(`editor de ${editor.nome}: a partir do corte, título, status e botões ficam numa linha só (#48)`, async ({ page, hasTouch }, testInfo) => {
+      test(`editor de ${editor.nome}: a partir do corte, título, status e botões ficam numa linha só, também já publicado (#48)`, async ({ page, hasTouch }, testInfo) => {
         await entrarComoAdm(page, editor.endereco, { toque: hasTouch });
         // Abaixo do corte, Salvar e Publicar ficam na barra de baixo (E49; e2e/publicar-pelo-celular.spec.ts).
         test.skip(telaEstreita(page), "no celular e no tablet em pé, o topo é o compacto do E49");
-        await page.getByLabel(editor.campo).fill("Assembleia geral dos rodoviários");
-        // Com o rascunho salvo, o topo ganha o ⋯: a linha mais cheia.
-        await expect(page.getByTestId("status-do-salvamento")).toContainText("Salvo automaticamente às");
         const cabecalho = page.locator("main header").first();
-        const titulo = cabecalho.getByRole("heading", { level: 1 });
+
+        // Rascunho salvo e completo: o topo ganha o ⋯.
+        await editor.preencher(page, `${testInfo.project.name}, tema ${tema}, tentativa ${testInfo.retry}, ${Date.now()}`, hasTouch);
+        await salvo(page);
         // Os nomes acessíveis não mudam quando o rótulo encurta (WCAG 2.5.3: o visível está contido no nome).
         await expect(cabecalho.getByRole("button", { name: "Salvar rascunho" })).toBeVisible();
         await expect(cabecalho.getByRole("button", { name: "Pré-visualizar" })).toBeVisible();
-        await expect(cabecalho.getByRole("button", { name: /^Publicar/ })).toBeVisible();
+        await expect(cabecalho.getByRole("button", { name: "Publicar…" })).toBeVisible();
+        await expect(cabecalho.getByRole("button", { name: "Mais ações" })).toBeVisible();
+        await topoNumaLinha(page, testInfo, cabecalho);
 
-        await emCadaLargura(page, testInfo, async (largura) => {
-          if (largura < RESPONSIVO.menuLateralAPartirDe) return;
-          const medida = await cabecalho.evaluate((header, mesmaLinha) => {
-            const [bloco, acoes] = [...header.children] as [HTMLElement, HTMLElement];
-            const b = bloco.getBoundingClientRect();
-            const a = acoes.getBoundingClientRect();
-            const topos = [...acoes.querySelectorAll("button")].filter((el) => el.getClientRects().length > 0).map((el) => el.getBoundingClientRect().top);
-            return {
-              aoLado: a.left >= b.right - 1 && a.top < b.bottom && a.bottom > b.top,
-              botoesNumaLinha: Math.max(...topos) - Math.min(...topos) < mesmaLinha,
-            };
-          }, TOLERANCIA.mesmaLinha);
-          expect(medida.aoLado, `a ${largura} px, os botões ficam ao lado do título e do status`).toBe(true);
-          expect(medida.botoesNumaLinha, `a ${largura} px, os botões ficam numa linha só`).toBe(true);
-          expect(await textoCortado(titulo), `a ${largura} px, o título não é cortado`).toBe(false);
-        });
+        // O pior caso: já publicado e com alterações, com “Publicar alterações…” e o ⋯ no topo.
+        await editor.publicar(page, hasTouch);
+        await page.getByLabel(editor.campoAlterado).fill("Texto revisto depois de publicar, para gerar alterações no site.");
+        await salvo(page);
+        const publicarAlteracoes = cabecalho.getByRole("button", { name: "Publicar alterações…" });
+        await expect(publicarAlteracoes).toBeVisible();
+        await expect(publicarAlteracoes, "com alterações, o botão não fica travado").not.toHaveAttribute("aria-disabled", "true");
+        await expect(cabecalho.getByRole("button", { name: "Salvar", exact: true })).toBeVisible();
+        await expect(cabecalho.getByRole("button", { name: "Mais ações" })).toBeVisible();
+        await topoNumaLinha(page, testInfo, cabecalho);
       });
     }
 

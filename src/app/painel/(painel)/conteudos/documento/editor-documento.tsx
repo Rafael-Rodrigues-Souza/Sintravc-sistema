@@ -68,8 +68,10 @@ import {
   CampoComContador,
   Cartao,
   CamposDeData,
+  ICONE_COMPACTO,
   mesmaData,
   resumoDasFaltas,
+  RotuloSalvar,
   SecaoQueAbre,
   StatusDoSalvamento,
   useSecoesAbertas,
@@ -730,26 +732,16 @@ export function EditorDocumento({
               disabled={!!preparando}
               onClick={() => void abrirPrevia()}
               title="Pré-visualizar"
-              className="max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0 topo-compacto:size-10 topo-compacto:px-0 topo-compacto:has-[>svg]:pl-0"
+              className={ICONE_COMPACTO.botao}
             >
               <Eye aria-hidden />
-              <span className="max-lg:sr-only topo-compacto:sr-only">{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
+              <span className={ICONE_COMPACTO.rotulo}>{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
             </Button>
           ) : (
             <BotaoTravado rotulo="Pré-visualizar" dica="Preencha o documento para pré-visualizar" icone={<Eye aria-hidden />} compacto />
           )}
           <Button type="button" variant="secundario" size="pequeno" className="max-lg:hidden" onClick={() => void fila.salvarAgora()}>
-            {jaFoiAoAr(publicacao.estado) ? (
-              "Salvar"
-            ) : (
-              <>
-                {/* Sem espaço, só “Salvar” aparece; o nome acessível continua “Salvar rascunho” (#48). */}
-                <span className="topo-compacto:sr-only">Salvar rascunho</span>
-                <span aria-hidden className="hidden topo-compacto:inline">
-                  Salvar
-                </span>
-              </>
-            )}
+            <RotuloSalvar rascunho={!jaFoiAoAr(publicacao.estado)} />
           </Button>
           {dicaPublicar ? (
             <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
