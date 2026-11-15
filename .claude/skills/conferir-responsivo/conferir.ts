@@ -278,7 +278,9 @@ async function medirNaPagina(page: Page, toque: boolean): Promise<Ponto[]> {
       for (const el of visiveis) {
         const s = getComputedStyle(el);
         if (!s.display.includes("flex") || s.flexDirection.startsWith("column") || s.flexWrap !== "wrap") continue;
-        const filhos = [...el.children].filter(visivel);
+        // O que é só para leitor de tela (ex.: o campo de arquivo sr-only ao lado de “Enviar PDF”) não
+        // ocupa linha na tela: a caixa de 1 px dele não se cruza com a dos vizinhos e daria falso positivo.
+        const filhos = [...el.children].filter((f) => visivel(f) && !soLeitor(f));
         if (filhos.length < 2) continue;
         const linhas: Element[][] = [];
         for (const f of filhos) {
