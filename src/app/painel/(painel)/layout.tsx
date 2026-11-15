@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { FaixaSemInternet } from "@/components/painel/faixa-sem-internet";
 import { NavegacaoLateral } from "@/components/painel/navegacao-lateral";
-import { BarraDeBaixo, TopoMobile } from "@/components/painel/navegacao-mobile";
+import { BarraDeBaixo, ProvedorDoMais, TopoMobile } from "@/components/painel/navegacao-mobile";
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
 import { pode } from "@/lib/permissoes";
 import { itensDoMenu } from "@/lib/permissoes/menu";
@@ -32,14 +32,16 @@ export default async function LayoutPainel({ children }: { children: React.React
   };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-fundo-pagina lg:flex-row">
-      <NavegacaoLateral {...menu} {...criar} />
-      <TopoMobile {...menu} />
-      <main className="flex min-w-0 flex-1 flex-col">
-        <FaixaSemInternet />
-        {children}
-      </main>
-      <BarraDeBaixo {...menu} {...criar} />
-    </div>
+    <ProvedorDoMais {...menu}>
+      <div className="flex min-h-dvh flex-col bg-fundo-pagina lg:flex-row">
+        <NavegacaoLateral {...menu} {...criar} />
+        <TopoMobile pessoa={menu.pessoa} />
+        <main className="flex min-w-0 flex-1 flex-col">
+          <FaixaSemInternet />
+          {children}
+        </main>
+        <BarraDeBaixo grupos={menu.grupos} {...criar} />
+      </div>
+    </ProvedorDoMais>
   );
 }

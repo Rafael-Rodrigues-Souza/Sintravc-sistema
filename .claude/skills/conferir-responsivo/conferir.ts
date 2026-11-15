@@ -251,18 +251,10 @@ async function medirNaPagina(page: Page, toque: boolean): Promise<Ponto[]> {
           if (x2 - x1 > 4 && y2 - y1 > 4) caixas.push({ r: new DOMRect(x1, y1, x2 - x1, y2 - y1), dono });
         }
       }
-      // A camada presa na tela (fixed ou sticky) de um elemento: a página rola por baixo dela de
-      // propósito (barra de baixo do painel, cabeçalho do editor). Só textos da mesma camada contam.
-      const camadas = new Map<Element, Element | null>();
-      const camada = (el: Element): Element | null => {
-        if (camadas.has(el)) return camadas.get(el)!;
-        let presa: Element | null = null;
-        for (let a: Element | null = el; a && a !== document.body; a = a.parentElement) {
-          if (/^(fixed|sticky)$/.test(getComputedStyle(a).position)) presa = a;
-        }
-        camadas.set(el, presa);
-        return presa;
-      };
+      // Só as barras presas marcadas com data-barra-de-baixo (a barra de baixo do painel e a do editor,
+      // E49): a página rola por baixo delas de propósito, então o texto de dentro e o de fora não se
+      // comparam. Qualquer outra camada fixed ou sticky (um cabeçalho preso) conta como o resto da tela.
+      const camada = (el: Element): Element | null => el.closest("[data-barra-de-baixo]");
       const vistos = new Set<string>();
       for (let i = 0; i < caixas.length; i++) {
         for (let j = i + 1; j < caixas.length; j++) {

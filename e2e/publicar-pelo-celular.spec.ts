@@ -1,9 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
-import { RESPONSIVO } from "../playwright.config";
 import { apertar } from "./entrar";
-import { assentar, entrarComo, pessoas, semRolagemLateral, telaEstreita } from "./responsivo";
+import { assentar, entrarComo, janelaEstreitaNoDesktop, pessoas, semRolagemLateral, tabletQueGira, telaEstreita } from "./responsivo";
 
 // Envia um PDF para a Mídia: por isso roda depois de midia.spec.ts (que começa com a Mídia vazia).
 
@@ -18,13 +17,6 @@ const status = (page: Page) => page.getByTestId("status-do-salvamento");
 const salvo = (page: Page) => expect(status(page)).toContainText("Salvo automaticamente às");
 const secao = (page: Page, titulo: string) => page.getByRole("button", { name: new RegExp(`^${titulo}`) });
 const topo = (page: Page) => page.locator("main header").first();
-
-/** No desktop, estreita a janela até logo abaixo do menu lateral; nos perfis, fica no tamanho deles. */
-async function janelaEstreitaNoDesktop(page: Page, projeto: string) {
-  if (projeto !== "chromium") return;
-  await page.setViewportSize({ width: RESPONSIVO.menuLateralAPartirDe - 1, height: page.viewportSize()!.height });
-  await assentar(page);
-}
 
 /** Abre a seção pelo título (se estiver fechada) e devolve o botão dela. */
 async function abrirSecao(page: Page, titulo: string, toque: boolean) {
@@ -142,14 +134,12 @@ test.describe("editores no celular", { tag: "@responsivo" }, () => {
   });
 
   test("girar o tablet no editor mantém o texto e as seções, e troca a barra pelos botões do topo", async ({ page, hasTouch }, testInfo) => {
-    const perfil = RESPONSIVO.perfis[testInfo.project.name as keyof typeof RESPONSIVO.perfis];
-    const girado = perfil && Object.values(RESPONSIVO.perfis).find((o) => o.toque && o.largura === perfil.altura && o.altura === perfil.largura);
-    test.skip(!girado, "só nos tablets, que giram");
-    const [emPe, deitado] = perfil.largura < perfil.altura ? [perfil, girado!] : [girado!, perfil];
-    const posicao = (p: { largura: number; altura: number }) => ({ width: p.largura, height: p.altura });
+    const giro = tabletQueGira(testInfo.project.name);
+    test.skip(!giro, "só nos tablets, que giram");
+    const { emPe, deitado } = giro!;
 
     await entrarComo(page, pessoas.com, "/painel/conteudos/noticia/nova", { toque: hasTouch });
-    await page.setViewportSize(posicao(emPe));
+    await page.setViewportSize(emPe);
     await assentar(page);
     const manchete = `Assembleia no tablet girado (${testInfo.project.name}, tentativa ${testInfo.retry})`;
     await page.getByLabel("Manchete").fill(manchete);
@@ -157,7 +147,7 @@ test.describe("editores no celular", { tag: "@responsivo" }, () => {
     await page.getByLabel("Legenda e crédito").fill("Foto: Comunicação SINTRAVC");
 
     // Deitado: botões no topo, sem a barra; tudo aberto, com o que foi digitado.
-    await page.setViewportSize(posicao(deitado));
+    await page.setViewportSize(deitado);
     await expect(barraDoEditor(page)).toBeHidden();
     await expect(topo(page).getByRole("button", { name: "Publicar…" })).toBeVisible();
     await expect(page.getByLabel("Manchete")).toHaveValue(manchete);
@@ -166,7 +156,7 @@ test.describe("editores no celular", { tag: "@responsivo" }, () => {
     await semRolagemLateral(page);
 
     // Em pé de novo: a barra volta, a capa continua aberta e a Publicação, fechada.
-    await page.setViewportSize(posicao(emPe));
+    await page.setViewportSize(emPe);
     await expect(barraDoEditor(page)).toBeVisible();
     await expect(page.getByLabel("Legenda e crédito")).toBeVisible();
     await expect(page.getByLabel("Assinatura")).toBeHidden();

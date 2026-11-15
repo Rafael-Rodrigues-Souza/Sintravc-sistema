@@ -50,7 +50,7 @@ Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 | Rolagem lateral | todos | a página é mais larga que a tela, e quais elementos passam da borda |
 | Texto cortado | todos | reticências, `line-clamp` ou `overflow` escondido com texto próprio maior que a caixa (ignora o `sr-only`) |
 | Esmagado | todos | item de flex que encolheu abaixo do tamanho natural (na coluna, a altura de qualquer item; na linha, a largura do que é clicável); item de grid menor que o conteúdo; caixa de altura fixa que corta o conteúdo |
-| Texto sobreposto | todos | linhas de texto de elementos diferentes que se cruzam, já recortadas pelo `overflow` dos pais; com diálogo aberto, só conta o texto de dentro dele; o texto que passa por baixo de uma camada presa na tela (`fixed` ou `sticky`, como a barra de baixo do painel) não conta |
+| Texto sobreposto | todos | linhas de texto de elementos diferentes que se cruzam, já recortadas pelo `overflow` dos pais; com diálogo aberto, só conta o texto de dentro dele; o texto que passa por baixo de uma barra presa marcada com `data-barra-de-baixo` (a barra de baixo do painel e a do editor, E49) não conta; outras camadas `fixed` ou `sticky`, como um cabeçalho preso, contam |
 | Quebrou a linha | todos | linha flex com `wrap` cujos itens foram para baixo uns dos outros |
 | Barra de rolagem | todos | área com rolagem interna cuja barra aparece e ocupa espaço (o script mostra as barras, que o Playwright esconde por padrão) |
 | Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele e sem navegação visível com `data-substitui` igual ao id (a barra de baixo do painel no lugar do menu lateral, E49) |

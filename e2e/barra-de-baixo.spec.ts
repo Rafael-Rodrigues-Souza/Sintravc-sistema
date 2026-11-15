@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { RESPONSIVO } from "../playwright.config";
 import { apertar } from "./entrar";
-import { assentar, entrarComo, pessoas, semAnimacao, semRolagemLateral, telaEstreita } from "./responsivo";
+import { ALTURA_MAXIMA_DA_FOLHA, assentar, entrarComo, janelaEstreitaNoDesktop, pessoas, semAnimacao, semRolagemLateral, tabletQueGira, telaEstreita, TOLERANCIA } from "./responsivo";
 
 /**
  * Painel no celular e no tablet em pé (E49; Figma M 119:3528 e M 120:3650): barra de baixo, “Mais”
@@ -18,13 +17,6 @@ const folhaMais = (page: Page) => page.getByRole("dialog", { name: "Mais" });
 async function tocarEm(page: Page, x: number, y: number, toque: boolean) {
   if (toque) await page.touchscreen.tap(x, y);
   else await page.mouse.click(x, y);
-}
-
-/** No desktop, estreita a janela até logo abaixo do menu lateral; nos perfis, fica no tamanho deles. */
-async function janelaEstreitaNoDesktop(page: Page, projeto: string) {
-  if (projeto !== "chromium") return;
-  await page.setViewportSize({ width: RESPONSIVO.menuLateralAPartirDe - 1, height: page.viewportSize()!.height });
-  await assentar(page);
 }
 
 test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
@@ -53,6 +45,13 @@ test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
     await (hasTouch ? buscar.tap({ force: true }) : buscar.click({ force: true }));
     await expect(page.getByText("A busca do painel está disponível em breve.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Notificações" })).toHaveAttribute("aria-disabled", "true");
+    // Com cara de travado, como os botões “Disponível em breve” do E40: borda tracejada, apagado e cadeado.
+    for (const nome of ["Buscar", "Notificações"]) {
+      const botao = page.getByRole("button", { name: nome });
+      await expect(botao).toHaveCSS("border-top-style", "dashed");
+      await expect(botao.getByTestId("cadeado")).toBeVisible();
+      expect(Number(await botao.evaluate((el) => getComputedStyle(el).opacity)), `${nome} apagado`).toBeLessThan(1);
+    }
 
     await apertar(barra(page).getByRole("link", { name: "Conteúdos" }), hasTouch);
     await expect(page).toHaveURL(/\/painel\/conteudos$/);
@@ -69,6 +68,10 @@ test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
     await expect(folhaMais(page)).toBeVisible();
     await semAnimacao(page);
     const caixa = (await folhaMais(page).boundingBox())!;
+    const alturaDaTela = page.viewportSize()!.height;
+    expect(caixa.height, `a folha não passa de ${ALTURA_MAXIMA_DA_FOLHA * 100}% da tela (drawer.tsx)`).toBeLessThanOrEqual(
+      alturaDaTela * ALTURA_MAXIMA_DA_FOLHA + TOLERANCIA.arredondamento,
+    );
     expect(caixa.y, "a folha não ocupa a tela inteira").toBeGreaterThan(0);
     for (const area of ["Rádio Chofer", "Página inicial", "Benefícios", "Mídia", "Atividade", "Equipe e perfis", "Configurações"]) {
       await expect(folhaMais(page).getByRole("link", { name: area })).toBeVisible();
@@ -97,9 +100,12 @@ test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
     await expect(mais).toHaveAttribute("aria-current", "page");
     await semRolagemLateral(page);
 
-    // O avatar do topo também abre o “Mais”.
+    // O avatar do topo abre o mesmo “Mais”: uma folha só na página.
     await apertar(page.getByRole("button", { name: /Abrir o menu Mais/ }), hasTouch);
     await expect(folhaMais(page)).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Mais", includeHidden: true })).toHaveCount(1);
+    // Com a folha aberta, o resto da página fica aria-hidden: a barra se acha pelo id.
+    await expect(page.locator("#barra-de-baixo").getByRole("button", { name: "Mais", includeHidden: true })).toHaveAttribute("aria-expanded", "true");
     await page.keyboard.press("Escape");
     await expect(folhaMais(page)).toBeHidden();
   });
@@ -128,20 +134,18 @@ test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
   });
 
   test("girar o tablet com o “Mais” aberto não deixa nada preso por cima", async ({ page, hasTouch }, testInfo) => {
-    const perfil = RESPONSIVO.perfis[testInfo.project.name as keyof typeof RESPONSIVO.perfis];
-    const girado = perfil && Object.values(RESPONSIVO.perfis).find((o) => o.toque && o.largura === perfil.altura && o.altura === perfil.largura);
-    test.skip(!girado, "só nos tablets, que giram");
-    const [emPe, deitado] = perfil.largura < perfil.altura ? [perfil, girado!] : [girado!, perfil];
-    const posicao = (p: { largura: number; altura: number }) => ({ width: p.largura, height: p.altura });
+    const giro = tabletQueGira(testInfo.project.name);
+    test.skip(!giro, "só nos tablets, que giram");
+    const { emPe, deitado } = giro!;
 
     await entrarComo(page, pessoas.adm, "/painel/conteudos", { toque: hasTouch });
-    await page.setViewportSize(posicao(emPe));
+    await page.setViewportSize(emPe);
     await assentar(page);
     await apertar(barra(page).getByRole("button", { name: "Mais" }), hasTouch);
     await expect(folhaMais(page)).toBeVisible();
 
     // Deitado: o menu lateral volta e a folha fecha sozinha.
-    await page.setViewportSize(posicao(deitado));
+    await page.setViewportSize(deitado);
     await expect(menuLateral(page)).toBeVisible();
     await expect(folhaMais(page)).toBeHidden();
     await expect(barra(page)).toBeHidden();
@@ -150,7 +154,7 @@ test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
     await expect(page).toHaveURL(/\/painel\/midia$/);
 
     // Em pé de novo: a barra volta e funciona.
-    await page.setViewportSize(posicao(emPe));
+    await page.setViewportSize(emPe);
     await expect(barra(page)).toBeVisible();
     await expect(menuLateral(page)).toBeHidden();
     await semRolagemLateral(page);

@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { RESPONSIVO } from "../playwright.config";
 import { apertar } from "./entrar";
-import { assentar, entrarComo, pessoas, semAnimacao, semRolagemLateral, telaEstreita, TOLERANCIA } from "./responsivo";
+import { entrarComo, janelaEstreitaNoDesktop, pessoas, semAnimacao, semRolagemLateral, telaEstreita, TOLERANCIA } from "./responsivo";
 
 /**
  * Conteúdos no celular e no tablet em pé (E49; Figma M 120:3650): calendário pelo ícone do título,
@@ -12,13 +11,6 @@ import { assentar, entrarComo, pessoas, semAnimacao, semRolagemLateral, telaEstr
 
 const principal = (page: Page) => page.getByRole("main");
 const abas = (page: Page) => page.getByRole("navigation", { name: "Tipos de conteúdo" });
-
-/** No desktop, estreita a janela até logo abaixo do menu lateral; nos perfis, fica no tamanho deles. */
-async function janelaEstreitaNoDesktop(page: Page, projeto: string) {
-  if (projeto !== "chromium") return;
-  await page.setViewportSize({ width: RESPONSIVO.menuLateralAPartirDe - 1, height: page.viewportSize()!.height });
-  await assentar(page);
-}
 
 test.describe("Conteúdos no celular", { tag: "@responsivo" }, () => {
   test("filtrar pela folha de filtros, rolar as abas e abrir o calendário pelo ícone", async ({ page, hasTouch }, testInfo) => {

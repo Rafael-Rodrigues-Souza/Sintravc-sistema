@@ -1,10 +1,10 @@
 "use client";
 
-import { Bell, Ellipsis, Plus, Search } from "lucide-react";
+import { Bell, Ellipsis, Lock, Plus, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { IconeFigma } from "@/components/icone-figma";
@@ -22,38 +22,74 @@ import { cn } from "@/lib/utils";
  */
 
 type Pessoa = { id: string; nome: string; perfil: Perfil };
-
-/** Abaixo de lg o painel usa a barra de baixo: a mesma largura de RESPONSIVO.menuLateralAPartirDe. */
-const TELA_LARGA = "(min-width: 64rem)";
-
-/** Fecha a folha quando a tela passa a ter o menu lateral (girar o tablet sem recarregar, E48). */
-function useFecharEmTelaLarga(fechar: () => void) {
-  useEffect(() => {
-    const consulta = window.matchMedia(TELA_LARGA);
-    const aoMudar = () => {
-      if (consulta.matches) fechar();
-    };
-    consulta.addEventListener("change", aoMudar);
-    return () => consulta.removeEventListener("change", aoMudar);
-  }, [fechar]);
-}
+type Folha = { aberta: boolean; mudar: (abrir: boolean) => void; fechar: () => void };
 
 /** Folha aberta só na página em que foi aberta: ao trocar de página, ela fecha sozinha. */
-function useFolha() {
+function useFolha(): Folha {
   const caminho = usePathname();
   const [abertaEm, setAbertaEm] = useState<string | null>(null);
   const [fechar] = useState(() => () => setAbertaEm(null));
-  useFecharEmTelaLarga(fechar);
-  return { aberta: abertaEm === caminho, mudar: (abrir: boolean) => setAbertaEm(abrir ? caminho : null) };
+  return { aberta: abertaEm === caminho, mudar: (abrir: boolean) => setAbertaEm(abrir ? caminho : null), fechar };
+}
+
+/**
+ * Fecha as folhas quando o elemento some da tela. Com a barra de baixo (lg:hidden), é a tela passar a
+ * ter o menu lateral (girar o tablet sem recarregar, E48): o corte vem só da classe, sem repetir o lg.
+ */
+function useFecharQuandoSumir(elemento: React.RefObject<HTMLElement | null>, fechar: () => void) {
+  useEffect(() => {
+    const el = elemento.current;
+    if (!el) return;
+    const observador = new ResizeObserver(() => {
+      if (el.getClientRects().length === 0) fechar();
+    });
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [elemento, fechar]);
+}
+
+const ContextoDoMais = createContext<Folha | null>(null);
+
+function useMais() {
+  const mais = useContext(ContextoDoMais);
+  if (!mais) throw new Error("useMais() fora do <ProvedorDoMais>");
+  return mais;
+}
+
+/**
+ * Uma folha “Mais” só na página: o avatar do topo e o “Mais” da barra de baixo abrem a mesma
+ * (o estado fica aqui, no layout do painel).
+ */
+export function ProvedorDoMais({
+  grupos,
+  pessoa,
+  sair,
+  children,
+}: {
+  grupos: GrupoDoMenu[];
+  pessoa: Pessoa;
+  sair: () => Promise<void>;
+  children: React.ReactNode;
+}) {
+  const caminho = usePathname();
+  const mais = useFolha();
+  return (
+    <ContextoDoMais value={mais}>
+      {children}
+      {telaComBarraPropria(caminho) ? null : (
+        <FolhaMais grupos={menuDoCelular(grupos).mais} pessoa={pessoa} sair={sair} aberta={mais.aberta} aoMudar={mais.mudar} />
+      )}
+    </ContextoDoMais>
+  );
 }
 
 function ativo(caminho: string, href: string) {
   return href === "/painel" ? caminho === href : caminho === href || caminho.startsWith(`${href}/`);
 }
 
-export function TopoMobile({ grupos, pessoa, sair }: { grupos: GrupoDoMenu[]; pessoa: Pessoa; sair: () => Promise<void> }) {
+export function TopoMobile({ pessoa }: { pessoa: Pessoa }) {
   const caminho = usePathname();
-  const mais = useFolha();
+  const mais = useMais();
   if (telaComBarraPropria(caminho)) return null;
 
   return (
@@ -73,20 +109,21 @@ export function TopoMobile({ grupos, pessoa, sair }: { grupos: GrupoDoMenu[]; pe
           type="button"
           aria-label="Abrir o menu Mais (sua conta)"
           aria-haspopup="dialog"
+          aria-expanded={mais.aberta}
           onClick={() => mais.mudar(true)}
           className="alvo-toque flex size-10 items-center justify-center rounded-full bg-destaque-amarelo texto-titulo-card-pequeno text-destaque-marinho-fixo outline-none focus-visible:ring-2 focus-visible:ring-texto-invertido"
         >
           {iniciais(pessoa.nome)}
         </button>
       </div>
-      <FolhaMais grupos={menuDoCelular(grupos).mais} pessoa={pessoa} sair={sair} aberta={mais.aberta} aoMudar={mais.mudar} />
     </header>
   );
 }
 
 /**
- * Botão de ícone travado: continua focável e lê a dica (aria-describedby). Sem hover no toque (E48):
- * ao tocar, o aviso aparece (Sonner).
+ * Botão de ícone travado, com a cara dos “Disponível em breve” do E40 (borda tracejada, apagado e
+ * cadeado). Continua focável e lê a dica (aria-describedby). Sem hover no toque (E48): ao tocar, o
+ * aviso aparece (Sonner).
  */
 function BotaoRedondoTravado({ rotulo, aviso, children }: { rotulo: string; aviso: string; children: React.ReactNode }) {
   const id = useId();
@@ -98,9 +135,14 @@ function BotaoRedondoTravado({ rotulo, aviso, children }: { rotulo: string; avis
         aria-disabled="true"
         aria-describedby={id}
         onClick={() => toast(aviso, { id: rotulo })}
-        className="alvo-toque flex size-10 items-center justify-center rounded-full bg-sobre-escuro-superficie text-texto-invertido-sec outline-none focus-visible:ring-2 focus-visible:ring-texto-invertido"
+        className="alvo-toque relative flex size-10 cursor-not-allowed items-center justify-center rounded-full border-[1.5px] border-dashed border-texto-invertido-sec text-texto-invertido-sec opacity-60 outline-none focus-visible:ring-2 focus-visible:ring-texto-invertido"
       >
         {children}
+        <Lock
+          aria-hidden
+          data-testid="cadeado"
+          className="absolute -right-1 -bottom-1 size-4 rounded-full bg-fundo-marinho-profundo p-0.5 text-texto-invertido-sec"
+        />
       </button>
       <span id={id} className="sr-only">
         Disponível em breve
@@ -113,18 +155,22 @@ export function BarraDeBaixo({
   grupos,
   podeCriarConteudo,
   podeCriarDocumento,
-  pessoa,
-  sair,
 }: {
   grupos: GrupoDoMenu[];
   podeCriarConteudo: boolean;
   podeCriarDocumento: boolean;
-  pessoa: Pessoa;
-  sair: () => Promise<void>;
 }) {
   const caminho = usePathname();
-  const mais = useFolha();
+  const mais = useMais();
   const criar = useFolha();
+  const barraRef = useRef<HTMLElement>(null);
+  const { fechar: fecharMais } = mais;
+  const { fechar: fecharCriar } = criar;
+  const fecharFolhas = useCallback(() => {
+    fecharMais();
+    fecharCriar();
+  }, [fecharMais, fecharCriar]);
+  useFecharQuandoSumir(barraRef, fecharFolhas);
   if (telaComBarraPropria(caminho)) return null;
 
   const { barra, mais: gruposDoMais } = menuDoCelular(grupos);
@@ -137,6 +183,7 @@ export function BarraDeBaixo({
       {/* Reserva o lugar da barra no fim da página, para ela não cobrir o conteúdo. */}
       <div aria-hidden className="h-(--altura-barra-de-baixo) shrink-0 pb-[env(safe-area-inset-bottom)] box-content lg:hidden" />
       <nav
+        ref={barraRef}
         id="barra-de-baixo"
         aria-label="Navegação do painel"
         data-barra-de-baixo
@@ -172,6 +219,7 @@ export function BarraDeBaixo({
               <button
                 type="button"
                 aria-haspopup="dialog"
+                aria-expanded={mais.aberta}
                 aria-current={maisAtivo ? "page" : undefined}
                 onClick={() => mais.mudar(true)}
                 className={classeDoItem(maisAtivo)}
@@ -183,7 +231,6 @@ export function BarraDeBaixo({
           ) : null}
         </ul>
       </nav>
-      <FolhaMais grupos={gruposDoMais} pessoa={pessoa} sair={sair} aberta={mais.aberta} aoMudar={mais.mudar} />
       {podeCriarConteudo ? <FolhaCriar podeCriarDocumento={podeCriarDocumento} aberta={criar.aberta} aoMudar={criar.mudar} /> : null}
     </>
   );

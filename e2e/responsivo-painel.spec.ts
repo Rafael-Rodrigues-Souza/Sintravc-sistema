@@ -35,6 +35,35 @@ test("a área de toque do CSS (--alvo-toque) é a mesma de RESPONSIVO.alvoDeToqu
   expect(noCss).toBe(`${RESPONSIVO.alvoDeToque}px`);
 });
 
+test("o corte do celular no CSS (avisos acima da barra) e no “Mais” é RESPONSIVO.menuLateralAPartirDe", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "muda a largura da janela: só no desktop");
+  const corte = RESPONSIVO.menuLateralAPartirDe;
+  const altura = page.viewportSize()!.height;
+  await entrarComoAdm(page, "/painel");
+  await page.setViewportSize({ width: corte - 1, height: altura });
+  await assentar(page);
+
+  // Logo abaixo do corte, o aviso sobe acima da barra de baixo; no corte, volta ao lugar de sempre.
+  await page.getByRole("button", { name: "Buscar" }).click({ force: true });
+  await expect(page.getByText("A busca do painel está disponível em breve.")).toBeVisible();
+  // A lista dos avisos tem altura zero (cada aviso fica por cima dela): mede-se a base dela.
+  const avisos = page.locator('[data-sonner-toaster][data-y-position="bottom"]');
+  const baseDosAvisos = () => avisos.evaluate((el) => parseFloat(getComputedStyle(el).bottom));
+  const abaixoDoCorte = await baseDosAvisos();
+  await page.setViewportSize({ width: corte, height: altura });
+  await assentar(page);
+  const noCorte = await baseDosAvisos();
+  expect(abaixoDoCorte, "abaixo do corte, o aviso fica acima da barra de baixo").toBeGreaterThan(noCorte);
+
+  // O “Mais” aberto logo abaixo do corte fecha quando a janela chega ao corte (menu lateral).
+  await page.setViewportSize({ width: corte - 1, height: altura });
+  await page.getByRole("navigation", { name: "Navegação do painel" }).getByRole("button", { name: "Mais" }).click();
+  await expect(page.getByRole("dialog", { name: "Mais" })).toBeVisible();
+  await page.setViewportSize({ width: corte, height: altura });
+  await expect(page.getByRole("dialog", { name: "Mais" })).toBeHidden();
+  await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeVisible();
+});
+
 /** Alvos da tela com área de toque menor que RESPONSIVO.alvoDeToque, como “alvo · tamanho”. */
 async function alvosPequenos(page: Page) {
   const pequenos = await page.evaluate(alvosDeToquePequenos, RESPONSIVO.alvoDeToque);
