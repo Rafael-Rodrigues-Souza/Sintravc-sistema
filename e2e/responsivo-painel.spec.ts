@@ -8,6 +8,8 @@ import {
   ALTURA_BAIXA,
   assentar,
   caixasQueSeCruzam,
+  contraste,
+  CONTRASTE_MINIMO,
   emCadaLargura,
   entrarComoAdm,
   itensEsmagados,
@@ -414,6 +416,17 @@ for (const tema of ["claro", "escuro"] as const) {
           expect(medida.sobra, `a ${largura} px, o título foi cortado com ${Math.round(medida.sobra)} px livres nas outras colunas`).toBeLessThan(TOLERANCIA.sobraDesprezivel);
         }
       });
+    });
+
+    test("Equipe: as iniciais do avatar têm contraste de pelo menos 4,5:1 (RNF09, #48)", async ({ page, hasTouch }) => {
+      await entrarComoAdm(page, "/painel/equipe", { toque: hasTouch });
+      const avatares = page.getByTestId("avatar-da-pessoa");
+      // O ADM (“você”, no amarelo) e pelo menos mais uma pessoa da equipe (no fundo neutro).
+      await expect(avatares.nth(1)).toBeVisible();
+      for (const avatar of await avatares.all()) {
+        const iniciais = (await avatar.textContent())?.trim();
+        expect(await contraste(avatar), `as iniciais “${iniciais}” têm contraste de pelo menos ${CONTRASTE_MINIMO}:1`).toBeGreaterThanOrEqual(CONTRASTE_MINIMO);
+      }
     });
 
     test("Equipe: a coluna Pessoa nunca some e o nome e o e-mail são os últimos a encolher", async ({ page, hasTouch }, testInfo) => {

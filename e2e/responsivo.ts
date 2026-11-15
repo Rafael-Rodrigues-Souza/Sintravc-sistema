@@ -244,6 +244,42 @@ export async function textoCortado(el: Locator): Promise<boolean> {
   );
 }
 
+/** Contraste mínimo do texto comum no WCAG 2.1 AA (RNF09). */
+export const CONTRASTE_MINIMO = 4.5;
+
+/**
+ * Contraste WCAG 2.1 (de 1 a 21) entre a cor do texto do elemento e o fundo atrás dele, pelas cores
+ * calculadas na tela. Fundo translúcido é somado ao dos pais até chegar a um opaco (RNF09).
+ */
+export async function contraste(el: Locator): Promise<number> {
+  return el.evaluate((no) => {
+    type Rgba = [number, number, number, number];
+    const ler = (cor: string): Rgba => {
+      const n = cor.match(/[\d.]+/g)?.map(Number) ?? [];
+      return [n[0] ?? 0, n[1] ?? 0, n[2] ?? 0, n[3] ?? 1];
+    };
+    // Põe a cor de cima (com transparência) sobre a de baixo, já opaca.
+    const sobre = ([r, g, b, a]: Rgba, [R, G, B]: Rgba): Rgba => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a), 1];
+    const camadas: Rgba[] = [];
+    for (let atual: Element | null = no; atual; atual = atual.parentElement) {
+      const cor = ler(getComputedStyle(atual).backgroundColor);
+      if (cor[3] > 0) camadas.push(cor);
+      if (cor[3] >= 1) break;
+    }
+    const fundo = camadas.reduceRight<Rgba>((baixo, cima) => sobre(cima, baixo), [255, 255, 255, 1]);
+    const texto = sobre(ler(getComputedStyle(no).color), fundo);
+    const luminancia = ([r, g, b]: Rgba) => {
+      const canal = (c: number) => {
+        const s = c / 255;
+        return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+    };
+    const [claro, escuro] = [luminancia(texto), luminancia(fundo)].sort((a, b) => b - a) as [number, number];
+    return (claro + 0.05) / (escuro + 0.05);
+  });
+}
+
 /** Largura que a barra de rolagem vertical ocupa dentro do elemento (0 quando ela não ocupa espaço). */
 export async function larguraDaBarra(area: Locator): Promise<number> {
   return area.evaluate((el) => {
