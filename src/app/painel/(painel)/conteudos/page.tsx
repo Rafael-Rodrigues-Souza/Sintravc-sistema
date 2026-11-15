@@ -149,11 +149,11 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
 
   return (
     <div className="flex flex-1 flex-col gap-5 px-4 pt-5 pb-12 lg:gap-6 lg:px-10 lg:pt-8">
-      {/* O grupo de botões desce inteiro para baixo do título quando não cabe ao lado; só se quebra
-          por dentro quando não cabe nem na linha toda (E48). Abaixo do lg o topo é o do Figma mobile
+      {/* A partir do lg, o título e o grupo Lista/Calendário/Criar ficam na 1ª linha e a descrição desce
+          para a linha de baixo, na largura toda (E48, #48). Abaixo do lg o topo é o do Figma mobile
           (M 120:3650, E49): título e o ícone do calendário; criar é pelo “+” da barra de baixo. */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-1.5">
+      <header className="flex flex-col gap-1.5 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-x-4">
+        <div className="contents">
           <div className="flex items-center justify-between gap-3">
             <h1 className="texto-titulo-card-grande text-texto-primario">Conteúdos</h1>
             <Link
@@ -165,7 +165,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               {calendario ? <List aria-hidden className="size-5" /> : <CalendarDays aria-hidden className="size-5" />}
             </Link>
           </div>
-          <p className="hidden max-w-[640px] texto-corpo text-texto-secundario lg:block">
+          <p className="hidden max-w-[640px] texto-corpo text-texto-secundario lg:col-span-2 lg:row-start-2 lg:block">
             {calendario
               ? podeAgendar
                 ? "Veja quando cada conteúdo entra no ar. Arraste uma notícia agendada ou um rascunho para mudar a data."
@@ -173,7 +173,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               : "Notícias, editais e acordos coletivos em um só lugar. Comunicados, Rádio Chofer e benefícios têm áreas próprias no menu."}
           </p>
         </div>
-        <div className="hidden max-w-full shrink-0 flex-wrap items-center gap-3 lg:flex">
+        <div className="hidden shrink-0 items-center gap-3 lg:col-start-2 lg:row-start-1 lg:flex">
           <nav id="modo-de-ver" aria-label="Modo de ver" className="flex items-center gap-1 rounded-full border border-borda-padrao bg-fundo-superficie-alt p-1">
             {[
               { rotulo: "Lista", icone: List, ativo: !calendario, href: endereco({ visao: undefined, mes: undefined, pagina: "1" }) },
@@ -282,8 +282,10 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
 
       {lista ? (
       <>
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-        <form role="search" action="/painel/conteudos" className="lg:min-w-[320px] lg:flex-1">
+      {/* A partir do lg, busca e filtros numa linha só (#48): a busca encolhe e cada filtro fica com a
+          largura do que está escolhido (filtros.tsx). */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <form role="search" action="/painel/conteudos" className="lg:min-w-48 lg:flex-1">
           {Object.entries({ tipo, estado, categoria: categoriaId, autor: autorId, arquivados: arquivados ? "1" : undefined }).map(([nome, valor]) =>
             valor ? <input key={nome} type="hidden" name={nome} value={valor} /> : null,
           )}
@@ -303,7 +305,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
             <FolhaDeFiltros filtros={filtros} hrefLimpar={endereco({ estado: undefined, categoria: undefined, autor: undefined, pagina: "1" })} />
           </div>
         </form>
-        <div className="hidden flex-wrap gap-2 lg:flex">
+        <div className="hidden shrink-0 gap-2 lg:flex">
           {filtros.map((f) => (
             <FiltroSelect key={f.nome} {...f} />
           ))}

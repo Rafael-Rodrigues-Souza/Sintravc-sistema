@@ -1481,7 +1481,8 @@ function EnvioDoPdf({
             </span>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* Os botões ficam numa linha (#48): quem encolhe é o nome do arquivo, com reticências. */}
+        <div className="flex shrink-0 gap-2">
           {pdf && idDoDocumento ? (
             <Button asChild variant="secundario" size="pequeno">
               <a href={`/painel/documentos/${idDoDocumento}/pdf?modo=abrir`} target="_blank" rel="noopener">
@@ -1502,20 +1503,21 @@ function EnvioDoPdf({
             <Upload aria-hidden />
             {pdf ? "Substituir" : "Enviar PDF"}
           </Button>
-          <input
-            ref={entrada}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            onChange={(evento) => {
-              const arquivo = evento.target.files?.[0];
-              evento.target.value = "";
-              if (arquivo) enviar(arquivo);
-            }}
-          />
         </div>
+        {/* Fora do grupo dos botões: o campo escondido não ocupa lugar na linha. */}
+        <input
+          ref={entrada}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(evento) => {
+            const arquivo = evento.target.files?.[0];
+            evento.target.value = "";
+            if (arquivo) enviar(arquivo);
+          }}
+        />
       </div>
       <p id="dica-pdf" className={cn("texto-pequeno", erro || falha ? "text-status-perigo-texto" : "text-texto-terciario")}>
         {falha ?? erro ?? dica}

@@ -16,6 +16,7 @@ import {
   pdfComTexto,
   pessoas,
   semAnimacao,
+  semRolagemLateral,
   telaEstreita,
   textoCortado,
   textoVisivelCruza,
@@ -71,53 +72,54 @@ const salvo = (page: Page) => expect(page.getByTestId("status-do-salvamento")).t
  * Os dois editores, com o que a pessoa preenche para publicar e o campo que ela altera depois. Tudo
  * pela tela, clicando e escolhendo como uma pessoa faria.
  */
-const EDITORES = [
-  {
-    nome: "notícia",
-    endereco: "/painel/conteudos/noticia/nova",
-    campo: "Manchete",
-    campoAlterado: "Lide",
-    async preencher(page: Page, sufixo: string, toque: boolean) {
-      await page.getByLabel("Manchete").fill(`Assembleia geral dos rodoviários (${sufixo})`);
-      await page.getByLabel("Lide").fill("A assembleia é na quarta, às 19h, na sede do sindicato.");
-      await apertar(page.getByRole("textbox", { name: "Corpo da notícia" }), toque);
-      await page.keyboard.type("Leve contracheques e documento com foto.");
-      await page.getByLabel("Assinatura").fill("Redação SINTRAVC");
-      await page.getByLabel("Categoria").selectOption({ label: "Jurídico" });
-    },
-    async publicar(page: Page, toque: boolean) {
-      await apertar(page.locator("main header").first().getByRole("button", { name: "Publicar…" }), toque);
-      const modal = page.getByRole("dialog", { name: "Publicar notícia?" });
-      await apertar(modal.getByRole("button", { name: "Publicar agora" }), toque);
-      await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
-    },
+const NOTICIA = {
+  nome: "notícia",
+  endereco: "/painel/conteudos/noticia/nova",
+  campo: "Manchete",
+  campoAlterado: "Lide",
+  async preencher(page: Page, sufixo: string, toque: boolean) {
+    await page.getByLabel("Manchete").fill(`Assembleia geral dos rodoviários (${sufixo})`);
+    await page.getByLabel("Lide").fill("A assembleia é na quarta, às 19h, na sede do sindicato.");
+    await apertar(page.getByRole("textbox", { name: "Corpo da notícia" }), toque);
+    await page.keyboard.type("Leve contracheques e documento com foto.");
+    await page.getByLabel("Assinatura").fill("Redação SINTRAVC");
+    await page.getByLabel("Categoria").selectOption({ label: "Jurídico" });
   },
-  {
-    nome: "documento",
-    endereco: "/painel/conteudos/documento/nova?tipo=edital",
-    campo: "Título oficial",
-    campoAlterado: "Resumo",
-    async preencher(page: Page, sufixo: string, toque: boolean) {
-      await page.getByLabel("Título oficial").fill(`Edital de convocação · Assembleia geral (${sufixo})`);
-      await page.getByLabel("Número ou identificação").fill(`Edital ${sufixo}`);
-      await page.getByLabel("Tipo de edital").selectOption({ label: "Convocação" });
-      await page.getByLabel("Data do documento").fill(new Date(Date.now() - 86_400_000).toISOString().slice(0, 10));
-      await page.getByLabel("Resumo").fill("Convoca os trabalhadores rodoviários para a assembleia geral.");
-      await page.getByLabel("Categoria").selectOption({ label: "Assembleias" });
-      const arquivo = `edital-topo-${sufixo.replace(/\W+/g, "-")}.pdf`;
-      const [seletor] = await Promise.all([page.waitForEvent("filechooser"), apertar(page.getByRole("button", { name: "Enviar PDF" }), toque)]);
-      await seletor.setFiles({ name: arquivo, mimeType: "application/pdf", buffer: await pdfComTexto(["EDITAL DE CONVOCACAO"]) });
-      await expect(page.getByText(arquivo, { exact: true })).toBeVisible();
-    },
-    async publicar(page: Page, toque: boolean) {
-      await apertar(page.locator("main header").first().getByRole("button", { name: "Publicar…" }), toque);
-      const modal = page.getByRole("alertdialog", { name: "Publicar documento oficial?" });
-      await apertar(modal.getByLabel("Confirmo que o PDF é a versão oficial e assinada"), toque);
-      await apertar(modal.getByRole("button", { name: "Publicar documento" }), toque);
-      await expect(page.getByText("Documento publicado.")).toBeVisible();
-    },
+  async publicar(page: Page, toque: boolean) {
+    await apertar(page.locator("main header").first().getByRole("button", { name: "Publicar…" }), toque);
+    const modal = page.getByRole("dialog", { name: "Publicar notícia?" });
+    await apertar(modal.getByRole("button", { name: "Publicar agora" }), toque);
+    await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
   },
-];
+};
+
+const DOCUMENTO = {
+  nome: "documento",
+  endereco: "/painel/conteudos/documento/nova?tipo=edital",
+  campo: "Título oficial",
+  campoAlterado: "Resumo",
+  async preencher(page: Page, sufixo: string, toque: boolean) {
+    await page.getByLabel("Título oficial").fill(`Edital de convocação · Assembleia geral (${sufixo})`);
+    await page.getByLabel("Número ou identificação").fill(`Edital ${sufixo}`);
+    await page.getByLabel("Tipo de edital").selectOption({ label: "Convocação" });
+    await page.getByLabel("Data do documento").fill(new Date(Date.now() - 86_400_000).toISOString().slice(0, 10));
+    await page.getByLabel("Resumo").fill("Convoca os trabalhadores rodoviários para a assembleia geral.");
+    await page.getByLabel("Categoria").selectOption({ label: "Assembleias" });
+    const arquivo = `edital-topo-${sufixo.replace(/\W+/g, "-")}.pdf`;
+    const [seletor] = await Promise.all([page.waitForEvent("filechooser"), apertar(page.getByRole("button", { name: "Enviar PDF" }), toque)]);
+    await seletor.setFiles({ name: arquivo, mimeType: "application/pdf", buffer: await pdfComTexto(["EDITAL DE CONVOCACAO"]) });
+    await expect(page.getByText(arquivo, { exact: true })).toBeVisible();
+  },
+  async publicar(page: Page, toque: boolean) {
+    await apertar(page.locator("main header").first().getByRole("button", { name: "Publicar…" }), toque);
+    const modal = page.getByRole("alertdialog", { name: "Publicar documento oficial?" });
+    await apertar(modal.getByLabel("Confirmo que o PDF é a versão oficial e assinada"), toque);
+    await apertar(modal.getByRole("button", { name: "Publicar documento" }), toque);
+    await expect(page.getByText("Documento publicado.")).toBeVisible();
+  },
+};
+
+const EDITORES = [NOTICIA, DOCUMENTO];
 
 /**
  * A partir do corte (#48): título e status de um lado, botões do outro, numa linha só; o topo não
@@ -145,6 +147,29 @@ async function topoNumaLinha(page: Page, testInfo: TestInfo, cabecalho: Locator)
     expect(await textoCortado(titulo), `a ${largura} px, o título não é cortado`).toBe(false);
     expect(await linhasDoTexto(titulo), `a ${largura} px, o título fica em até 2 linhas`).toBeLessThanOrEqual(2);
     expect(await linhasDoTexto(status), `a ${largura} px, o status do salvamento fica numa linha`).toBe(1);
+  });
+}
+
+/** Quanto os centros dos elementos, na vertical, ficam longe um do outro (perto: estão na mesma linha). */
+async function distanciaDosCentros(...elementos: Locator[]) {
+  const centros = await Promise.all(
+    elementos.map(async (el) => {
+      const caixa = (await el.boundingBox())!;
+      return caixa.y + caixa.height / 2;
+    }),
+  );
+  return Math.max(...centros) - Math.min(...centros);
+}
+
+/** A partir do corte, a linha do PDF: o arquivo e os botões numa linha, cada botão inteiro, e nada passa da área. */
+async function conferirLinhaDoPdf(page: Page, testInfo: TestInfo, area: Locator, itens: Locator[]) {
+  await emCadaLargura(page, testInfo, async (largura) => {
+    if (largura < RESPONSIVO.menuLateralAPartirDe) return;
+    for (const item of itens) await expect(item).toBeVisible();
+    expect(await distanciaDosCentros(...itens), `a ${largura} px, o arquivo e os botões ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+    const passa = await area.evaluate((el, tolerancia) => el.scrollWidth > el.clientWidth + tolerancia, TOLERANCIA.arredondamento);
+    expect(passa, `a ${largura} px, nada passa da área do PDF`).toBe(false);
+    for (const botao of itens.slice(1)) expect(await linhasDoTexto(botao), `a ${largura} px, o botão fica numa linha`).toBe(1);
   });
 }
 
@@ -206,28 +231,59 @@ for (const tema of ["claro", "escuro"] as const) {
       expect(await textoCortado(perfil), "o perfil aparece inteiro, sem reticências").toBe(false);
     });
 
-    test("Conteúdos: “Criar conteúdo” fica ao lado de Lista/Calendário e só desce quando falta espaço", async ({ page, hasTouch }, testInfo) => {
+    test("Conteúdos: a partir do corte, o título e Lista/Calendário/Criar ficam numa linha, e a busca e os filtros em outra (#48)", async ({ page, hasTouch }, testInfo) => {
       await entrarComoAdm(page, "/painel/conteudos", { toque: hasTouch });
-      // Abaixo do menu lateral, criar é pelo “+” da barra de baixo (E49; e2e/conteudos-celular.spec.ts).
+      // Abaixo do menu lateral, criar é pelo “+” da barra de baixo e os filtros ficam numa folha (E49; e2e/conteudos-celular.spec.ts).
       test.skip(telaEstreita(page), "no celular e no tablet em pé, o topo de Conteúdos não tem esses botões");
       const cabecalho = page.locator("main header").first();
+      const titulo = cabecalho.getByRole("heading", { level: 1, name: "Conteúdos" });
       const modo = cabecalho.getByRole("navigation", { name: "Modo de ver" });
       const criar = cabecalho.getByRole("button", { name: "Criar conteúdo" });
+      const busca = page.getByRole("search");
+      const filtros = page.locator("main select:visible");
       await expect(criar).toBeVisible();
 
       await emCadaLargura(page, testInfo, async (largura) => {
-        if (largura < RESPONSIVO.menuLateralAPartirDe) return;
-        const medida = await cabecalho.evaluate((header, mesmaLinha) => {
-          const nav = header.querySelector("nav[aria-label='Modo de ver']")!.getBoundingClientRect();
-          const botao = [...header.querySelectorAll("button")].find((b) => b.textContent?.includes("Criar conteúdo"))!;
-          const b = botao.getBoundingClientRect();
-          const grupo = getComputedStyle(botao.parentElement!);
-          const vao = parseFloat(grupo.columnGap) || 0;
-          return { mesmaLinha: Math.abs(nav.top - b.top) < mesmaLinha, cabe: nav.width + vao + b.width <= header.clientWidth };
-        }, TOLERANCIA.mesmaLinha);
-        expect(medida.mesmaLinha || !medida.cabe, `a ${largura} px, “Criar conteúdo” desceu embora coubesse ao lado`).toBe(true);
+        if (largura < RESPONSIVO.menuLateralAPartirDe) {
+          // Abaixo do corte, o topo continua o do Figma mobile (E49): o título e o ícone do calendário, numa linha.
+          const calendario = cabecalho.getByRole("link", { name: "Ver calendário" });
+          await expect(calendario).toBeVisible();
+          expect(await distanciaDosCentros(titulo, calendario), `a ${largura} px, o título e o calendário ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+          return;
+        }
+        expect(await distanciaDosCentros(titulo, modo, criar), `a ${largura} px, o título, Lista/Calendário e “Criar conteúdo” ficam numa linha`).toBeLessThan(
+          TOLERANCIA.mesmaLinha,
+        );
+        await expect(filtros).toHaveCount(3);
+        expect(await distanciaDosCentros(busca, ...(await filtros.all())), `a ${largura} px, a busca e os filtros ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+        await semRolagemLateral(page);
       });
-      await expect(modo).toBeVisible();
+    });
+
+    test("Conteúdos, lista: “No site” e “Atualizado” ficam numa linha (#48)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, NOTICIA.endereco, { toque: hasTouch });
+      test.skip(telaEstreita(page), "no celular e no tablet em pé, a linha vira cartão, sem essas colunas");
+      // Uma notícia publicada pela tela, para a coluna “No site” ter data.
+      const sufixo = `${testInfo.project.name}, tema ${tema}, tentativa ${testInfo.retry}, ${Date.now()}`;
+      await NOTICIA.preencher(page, sufixo, hasTouch);
+      await salvo(page);
+      await NOTICIA.publicar(page, hasTouch);
+      await page.goto("/painel/conteudos");
+      const linha = page.getByRole("row").filter({ has: page.getByRole("link", { name: `Assembleia geral dos rodoviários (${sufixo})`, exact: true }) });
+      await expect(linha).toBeVisible();
+      const colunas = (await page.locator("main thead th").allTextContents()).map((texto) => texto.trim());
+
+      await emCadaLargura(page, testInfo, async (largura) => {
+        if (largura < RESPONSIVO.menuLateralAPartirDe) return;
+        for (const nome of ["No site", "Atualizado"]) {
+          const cabecalho = page.getByRole("columnheader", { name: nome, exact: true });
+          // “No site” só aparece no xl.
+          if (!(await cabecalho.isVisible())) continue;
+          const celula = linha.locator("td").nth(colunas.indexOf(nome));
+          expect(await linhasDoTexto(cabecalho), `a ${largura} px, o cabeçalho “${nome}” fica numa linha`).toBe(1);
+          expect(await linhasDoTexto(celula), `a ${largura} px, “${nome}” fica numa linha`).toBe(1);
+        }
+      });
     });
 
     for (const editor of EDITORES) {
@@ -280,6 +336,30 @@ for (const tema of ["claro", "escuro"] as const) {
         await topoNumaLinha(page, testInfo, cabecalho);
       });
     }
+
+    test("editor de documento: a partir do corte, “Enviar PDF” e o arquivo ficam numa linha (#48)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, DOCUMENTO.endereco, { toque: hasTouch });
+      // No celular e no tablet em pé, o arquivo fica numa seção que abre ao tocar (E49; e2e/publicar-pelo-celular.spec.ts).
+      test.skip(telaEstreita(page), "abaixo do corte, o arquivo fica na seção que abre ao tocar");
+      const enviar = page.getByRole("button", { name: "Enviar PDF" });
+      const semArquivo = page.getByText("Nenhum PDF enviado", { exact: true });
+      // O bloco de texto inteiro (nome e explicação), e não só a 1ª linha dele.
+      await conferirLinhaDoPdf(page, testInfo, semArquivo.locator("xpath=../.."), [semArquivo.locator(".."), enviar]);
+
+      // Com o PDF enviado (pelo botão, como a pessoa faria): Visualizar e Substituir.
+      await page.getByLabel("Título oficial").fill(`Edital de convocação (${testInfo.project.name}, tema ${tema}, ${Date.now()})`);
+      await salvo(page);
+      const arquivo = `edital-linha-${testInfo.project.name}-${tema}-${Date.now()}.pdf`;
+      const [seletor] = await Promise.all([page.waitForEvent("filechooser"), apertar(enviar, hasTouch)]);
+      await seletor.setFiles({ name: arquivo, mimeType: "application/pdf", buffer: await pdfComTexto(["EDITAL DE CONVOCACAO"]) });
+      const nome = page.getByText(arquivo, { exact: true });
+      await expect(nome).toBeVisible();
+      await conferirLinhaDoPdf(page, testInfo, nome.locator("xpath=../.."), [
+        nome.locator(".."),
+        page.getByRole("link", { name: "Visualizar" }),
+        page.getByRole("button", { name: "Substituir" }),
+      ]);
+    });
 
     test("editor de documento: “Texto pesquisável” tem altura máxima e rola por dentro, sem empurrar a página", async ({ page, hasTouch }) => {
       await entrarComoAdm(page, "/painel/conteudos/documento/nova?tipo=edital", { toque: hasTouch });

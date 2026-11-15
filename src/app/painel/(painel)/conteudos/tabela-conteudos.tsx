@@ -140,8 +140,9 @@ export function TabelaConteudos({
               </th>
               <th scope="col" className="px-3 py-3.5 font-[inherit]">Tipo</th>
               <th scope="col" className="px-3 py-3.5 font-[inherit]">Estado</th>
-              <th scope="col" className="hidden px-3 py-3.5 font-[inherit] xl:table-cell">No site</th>
-              <th scope="col" className="px-3 py-3.5 font-[inherit]">Atualizado</th>
+              {/* “No site” e “Atualizado” numa linha (#48): quem encolhe é o título. */}
+              <th scope="col" className="hidden px-3 py-3.5 font-[inherit] whitespace-nowrap xl:table-cell">No site</th>
+              <th scope="col" className="px-3 py-3.5 font-[inherit] whitespace-nowrap">Atualizado</th>
               <th scope="col" className="px-5 py-3.5 font-[inherit]">
                 <span className="sr-only">Ações</span>
               </th>
@@ -246,10 +247,10 @@ function Linha({
           <SeloVigencia selo={linha.seloVigencia ?? null} />
         </span>
       </td>
-      <td className="hidden texto-pequeno text-texto-secundario lg:px-3 lg:py-4 xl:table-cell">{linha.noSite}</td>
+      <td className="hidden texto-pequeno whitespace-nowrap text-texto-secundario lg:px-3 lg:py-4 xl:table-cell">{linha.noSite}</td>
       <td className="col-span-3 col-start-1 row-start-3 texto-pequeno text-texto-secundario lg:px-3 lg:py-4">
         <span className="lg:hidden">{linha.resumo}</span>
-        <span className="hidden lg:inline">{linha.atualizado}</span>
+        <span className="hidden whitespace-nowrap lg:inline">{linha.atualizado}</span>
       </td>
       <td className="col-start-3 row-start-2 self-start max-lg:pointer-coarse:py-1 lg:px-5 lg:py-4">
         {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48); no cartão, o py

@@ -14,7 +14,9 @@ export type Filtro = { nome: string; rotulo: string; valor: string; opcoes: Opca
 
 /**
  * Filtro da lista que muda a URL na hora (os filtros ficam no endereço: o link pode ser
- * compartilhado e o Voltar do navegador mantém o filtro).
+ * compartilhado e o Voltar do navegador mantém o filtro). Na linha do desktop, o seletor tem a
+ * largura do que está escolhido (field-sizing, onde o navegador tem) e nunca passa do máximo, com o
+ * valor cortado (#48): o Safari do iPad não tem field-sizing, e quem segura a linha é o máximo.
  */
 export function FiltroSelect({ nome, rotulo, valor, opcoes, className }: Filtro & { className?: string }) {
   const router = useRouter();
@@ -41,7 +43,7 @@ export function FiltroSelect({ nome, rotulo, valor, opcoes, className }: Filtro 
           consulta.delete("pagina");
           iniciar(() => router.push(`${caminho}${consulta.size ? `?${consulta}` : ""}`));
         }}
-        className="min-w-0 cursor-pointer bg-transparent texto-titulo-card-pequeno text-texto-primario outline-none"
+        className="max-w-36 min-w-0 cursor-pointer truncate bg-transparent texto-titulo-card-pequeno text-texto-primario outline-none field-sizing-content"
       >
         {opcoes.map((opcao) => (
           <option key={opcao.valor} value={opcao.valor}>
@@ -80,7 +82,7 @@ export function FolhaDeFiltros({ filtros, hrefLimpar }: { filtros: Filtro[]; hre
         <DrawerHeader titulo="Filtros" descricao="A lista muda assim que você escolhe." />
         <DrawerBody className="gap-3 px-5">
           {filtros.map((f) => (
-            <FiltroSelect key={f.nome} {...f} className="w-full [&_select]:flex-1" />
+            <FiltroSelect key={f.nome} {...f} className="w-full [&_select]:max-w-none [&_select]:flex-1" />
           ))}
           <div className="flex flex-col gap-2.5 pt-2">
             <Button type="button" onClick={() => setAberta(false)}>
