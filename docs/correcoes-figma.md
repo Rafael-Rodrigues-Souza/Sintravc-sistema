@@ -88,6 +88,9 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | E46 | Editor · Documento oficial (114:1972) | “+ Adicionar anexo complementar”. | Sai: o documento tem só o PDF oficial. | RN12, RN13 | ☐ |
 | E46 | Editor · Documento oficial (114:1972) | Tipo de edital “Convocação de assembleia”. | Rótulos do spec: Convocação, Eleição, Prestação de contas, Outros. | spec §2.2 | ☐ |
 | E46 | Editor · Acordo ou convenção (sem frame) | Não existe. | Segue o 114:1972, com o cartão “Abrangência e partes” e a vigência sempre pedida. | RF41 | ☐ |
+| E49 | Conteúdos · mobile (M 120:3650) | Os cartões só têm tipo, estado, título, ⋯ e a data. | O cartão mantém a caixa de seleção (a seleção em lote é do RF35), os ícones de Edição rápida e Editar ao lado do ⋯ e a linha com a categoria e o autor. | RF35, E49 | ☐ |
+| E49 | Visão geral · mobile (M 119:3528) e demais telas mobile | Busca e sino ativos, com o ponto vermelho de notificação. | Até a #23, busca e sino ficam travados, com “Disponível em breve” e um aviso ao tocar, como no computador. Não corrigir o Figma: é provisório. | E40, E49 | — |
+| E49 | Editor · Notícia mobile (M 120:3836) | Sem o cartão “Antes de publicar”; ordem Capa, Publicação, Fontes. | O cartão “Antes de publicar” continua no celular, depois da Publicação. As seções seguem a ordem do desktop: Capa, Fontes, Publicação. | E42, E49 | ☐ |
 
 Não afetam regras e não precisam de correção no Figma:
 

@@ -248,7 +248,7 @@ Os IDs do Figma estão em `analise-figma.md` §1. As correções estão em `corr
   - Equipe e perfis: convidar, editar, menu de ações, redefinir duas etapas, desativar (N5);
   - Configurações: Site, Categorias e Regras de segurança (só leitura, “Regras fixas do sistema”, RF55);
   - 403 (N1) e 500 (N2).
-- **Painel · mobile:** Visão geral, Conteúdos, Editor, Login, Comunicados. As demais telas do painel não têm frame mobile, mas também não podem quebrar no celular, no tablet e em telas baixas (E48).
+- **Painel · mobile:** Visão geral, Conteúdos, Editor, Login, Comunicados. No celular e no tablet em pé, o painel segue esses frames, com a barra de baixo e o “Mais” (E49). As demais telas do painel não têm frame mobile: seguem o padrão do E50 e também não podem quebrar no celular, no tablet e em telas baixas (E48).
 
 ### Fase 2
 - **Entrar:**
@@ -333,7 +333,7 @@ Todos os e-mails são enviados por SMTP (D2), com modelos em React Email e remet
 
 ## 8. Requisitos não funcionais
 
-Valem os RNF01–RNF15 de `requisitos.md`, com os ajustes de E05, E22, E26, E28 e E48. Os pontos principais:
+Valem os RNF01–RNF15 de `requisitos.md`, com os ajustes de E05, E22, E26, E28, E48, E49 e E50. Os pontos principais:
 
 - **Desempenho:** LCP abaixo de 2,5 s em 4G; páginas públicas renderizadas no servidor e revalidadas ao publicar; player do YouTube só no clique.
 - **Acessibilidade:** WCAG 2.1 AA; temas claro e escuro com os tokens do Figma.
@@ -342,7 +342,8 @@ Valem os RNF01–RNF15 de `requisitos.md`, com os ajustes de E05, E22, E26, E28 
   - janela reduzida, tela dividida e notebook baixo, sem rolagem lateral, item esmagado, texto cortado ou sobreposto; em tela baixa, menus e painéis fixos rolam;
   - no toque, alvos de pelo menos 44 px e nenhuma ação só com hover;
   - os tamanhos ficam num lugar só, o objeto `RESPONSIVO` do `playwright.config.ts` (perfis e varredura da janela);
-  - conferido pela skill `conferir-responsivo` e por e2e `@responsivo`, que rodam nos projetos do `playwright.config.ts` (um por perfil de `RESPONSIVO`).
+  - conferido pela skill `conferir-responsivo` e por e2e `@responsivo`, que rodam nos projetos do `playwright.config.ts` (um por perfil de `RESPONSIVO`);
+  - painel abaixo do `lg` (celulares e tablets em pé): barra de baixo, “Mais” em folha inferior, Conteúdos e editores como nos frames mobile (E49); telas sem frame mobile seguem o padrão do E50.
 - **SEO:**
   - título, descrição e imagem de compartilhamento por página (a capa da notícia é a imagem padrão, P4);
   - mapa do site;

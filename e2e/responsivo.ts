@@ -8,10 +8,17 @@ import { entrarNoPainel } from "./entrar";
 
 /** Apoio dos e2e @responsivo (E48). Os tamanhos vêm sempre de RESPONSIVO, no playwright.config.ts. */
 
-export const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm", PessoaDeTeste>;
+export const pessoas = JSON.parse(readFileSync("e2e/.dados/pessoas.json", "utf8")) as Record<"adm" | "com", PessoaDeTeste>;
 
-/** Projetos em que o painel é estreito (abaixo de lg) e o menu lateral vira o botão “Menu”. */
-export const MENU_PELO_BOTAO = ["celular", "tablet-em-pe"];
+/**
+ * A altura máxima da folha inferior, como fração da tela: lida do max-h-[NNdvh] de
+ * src/components/ui/drawer.tsx, para o número não se repetir aqui.
+ */
+export const ALTURA_MAXIMA_DA_FOLHA = (() => {
+  const achado = readFileSync("src/components/ui/drawer.tsx", "utf8").match(/max-h-\[(\d+)dvh\]/);
+  if (!achado) throw new Error("drawer.tsx sem max-h-[NNdvh]: a folha inferior precisa de altura máxima (nunca tela cheia)");
+  return Number(achado[1]) / 100;
+})();
 
 /** A menor altura da varredura da janela: a “tela baixa” (notebook baixo, tela dividida). */
 export const ALTURA_BAIXA = Math.min(...RESPONSIVO.varredura.alturas);
@@ -38,7 +45,29 @@ export function largurasDaVarredura(): number[] {
   return larguras;
 }
 
-export const menuPeloBotao = (testInfo: TestInfo) => MENU_PELO_BOTAO.includes(testInfo.project.name);
+/** A janela é estreita (abaixo de RESPONSIVO.menuLateralAPartirDe): o painel usa a versão mobile. */
+export const telaEstreita = (page: Page) => page.viewportSize()!.width < RESPONSIVO.menuLateralAPartirDe;
+
+/** No desktop (“chromium”), estreita a janela até logo abaixo do menu lateral; nos perfis, fica no tamanho deles. */
+export async function janelaEstreitaNoDesktop(page: Page, projeto: string) {
+  if (projeto !== "chromium") return;
+  await page.setViewportSize({ width: RESPONSIVO.menuLateralAPartirDe - 1, height: page.viewportSize()!.height });
+  await assentar(page);
+}
+
+type Janela = { width: number; height: number };
+
+/**
+ * Os dois tamanhos de um tablet que gira, achados em RESPONSIVO: o perfil e o perfil com toque de
+ * largura e altura trocadas. Fora dos tablets (sem o par girado), null.
+ */
+export function tabletQueGira(projeto: string): { emPe: Janela; deitado: Janela } | null {
+  const perfil = (RESPONSIVO.perfis as Record<string, { largura: number; altura: number; toque: boolean }>)[projeto];
+  const girado = perfil && Object.values(RESPONSIVO.perfis).find((o) => o.toque && o.largura === perfil.altura && o.altura === perfil.largura);
+  if (!girado) return null;
+  const janela = (p: { largura: number; altura: number }) => ({ width: p.largura, height: p.altura });
+  return perfil.largura < perfil.altura ? { emPe: janela(perfil), deitado: janela(girado) } : { emPe: janela(girado), deitado: janela(perfil) };
+}
 
 export async function semRolagemLateral(page: Page) {
   const { conteudo, tela } = await page.evaluate(() => ({
@@ -50,9 +79,22 @@ export async function semRolagemLateral(page: Page) {
 
 /** Abre o painel já com a sessão do ADM e vai para o endereço pedido. */
 export async function entrarComoAdm(page: Page, destino: string, { toque = false } = {}) {
+  await entrarComo(page, pessoas.adm, destino, { toque });
+}
+
+/** Abre o painel já com a sessão da pessoa e vai para o endereço pedido. */
+export async function entrarComo(page: Page, pessoa: PessoaDeTeste, destino: string, { toque = false } = {}) {
   await page.goto(`/painel/entrar`);
-  await entrarNoPainel(page, pessoas.adm, { toque });
+  await entrarNoPainel(page, pessoa, { toque });
   if (destino !== "/painel") await page.goto(destino);
+}
+
+/**
+ * Espera as animações em andamento terminarem (diálogo e menu abrem com zoom de 95%: medido no meio,
+ * o alvo parece menor do que é).
+ */
+export async function semAnimacao(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
 }
 
 /** Espera dois quadros, para a tela assentar depois de mudar o tamanho da janela. */

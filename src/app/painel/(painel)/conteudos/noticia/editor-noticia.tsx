@@ -52,7 +52,20 @@ import {
 } from "../acoes";
 import { acaoRestaurarVersao } from "../acoes-ciclo-de-vida";
 import { ConfirmarAcao, MenuDeAcoes, type PedidoDeAcao } from "../ciclo-de-vida";
-import { BotaoTravado, CampoComContador, Cartao, CamposDeData, mesmaData, StatusCurto, StatusDoSalvamento, type CamposDaData } from "../pecas-do-editor";
+import {
+  BarraDoEditor,
+  BotaoTravado,
+  CampoComContador,
+  Cartao,
+  CamposDeData,
+  mesmaData,
+  resumoDasFaltas,
+  SecaoQueAbre,
+  StatusCurto,
+  StatusDoSalvamento,
+  useSecoesAbertas,
+  type CamposDaData,
+} from "../pecas-do-editor";
 import { SeloEstado } from "../selos";
 import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
@@ -110,6 +123,14 @@ const ELEMENTO_DO_CAMPO: Record<CampoObrigatorio, string> = {
   assinatura: "#assinatura",
   categoriaId: "#categoria",
 };
+/** No celular, a seção que precisa abrir antes de levar o foco ao campo (E49). */
+type SecaoDoEditor = "capa" | "publicacao" | "fontes";
+const SECAO_DO_CAMPO: Partial<Record<CampoObrigatorio, SecaoDoEditor>> = {
+  capaAlt: "capa",
+  assinatura: "publicacao",
+  categoriaId: "publicacao",
+};
+
 const MENSAGEM_DO_CAMPO: Partial<Record<CampoObrigatorio, string>> = {
   titulo: "Escreva a manchete para publicar.",
   lide: "Escreva o lide para publicar.",
@@ -356,6 +377,8 @@ export function EditorNoticia({
   const [confirmarDescarte, setConfirmarDescarte] = React.useState(false);
   const [descartando, setDescartando] = React.useState(false);
   const botaoPublicar = React.useRef<HTMLButtonElement>(null);
+  const botaoPublicarDaBarra = React.useRef<HTMLButtonElement>(null);
+  const secoes = useSecoesAbertas<SecaoDoEditor>();
 
   const noAr = publicacao.estado === "publicado";
   const agendada = publicacao.estado === "agendado";
@@ -372,11 +395,19 @@ export function EditorNoticia({
   const focarCampo = (campo: CampoObrigatorio) => {
     // Imagem do corpo: vai até a primeira sem texto alternativo, com o foco no botão de editar.
     if (campo === "imagensDoCorpo" && corpoEditor && irParaImagemSemAlt(corpoEditor)) return;
+    const secao = SECAO_DO_CAMPO[campo];
+    if (secao) secoes.abrir(secao);
     requestAnimationFrame(() => {
       const alvo = document.querySelector<HTMLElement>(ELEMENTO_DO_CAMPO[campo]);
       alvo?.scrollIntoView({ block: "center", behavior: "smooth" });
       alvo?.focus({ preventScroll: true });
     });
+  };
+
+  /** A data do agendamento fica na Publicação, que no celular pode estar fechada. */
+  const focarData = () => {
+    secoes.abrir("publicacao");
+    requestAnimationFrame(() => document.getElementById("data-agendada")?.focus());
   };
 
   /**
@@ -412,7 +443,7 @@ export function EditorNoticia({
     if (!conectado || preparando || publicando) return;
     if (vaiAgendar && (!campos.data || !campos.hora)) {
       setErroDaData("Escolha a data e a hora.");
-      document.getElementById("data-agendada")?.focus();
+      focarData();
       return;
     }
     const pronto = await salvarAntes("publicar");
@@ -446,7 +477,7 @@ export function EditorNoticia({
       if (primeiro) focarCampo(primeiro);
     } else if (resposta.campo === "agendadoPara") {
       setErroDaData(resposta.mensagem);
-      document.getElementById("data-agendada")?.focus();
+      focarData();
     } else {
       toast.error("Não foi possível agendar", { description: resposta.mensagem, duration: Infinity, closeButton: true });
     }
@@ -653,6 +684,35 @@ export function EditorNoticia({
   const emConflito = estado.situacao === "conflito" && estado.conflito;
   const nomeDaCategoria = categorias.find((c) => c.id === dados.categoriaId)?.nome;
   const rotuloPublicar = noAr ? "Publicar alterações…" : vaiAgendar ? "Agendar…" : agendada ? "Publicar agora…" : "Publicar…";
+  // Resumos das seções fechadas no celular (Figma M 120:3836).
+  const faltasDa = (secao: SecaoDoEditor) => faltas.filter((f) => SECAO_DO_CAMPO[f.campo] === secao);
+  const situacaoDa = (secao: SecaoDoEditor) => (faltasDa(secao).length > 0 ? "falta" : "ok");
+  const resumoDaPublicacao =
+    faltasDa("publicacao").length > 0
+      ? resumoDasFaltas(faltasDa("publicacao").map((f) => f.rotulo))
+      : [
+          nomeDaCategoria,
+          noAr && publicacao.publicadoEm
+            ? `No site desde ${dataHoraNaBahia(new Date(publicacao.publicadoEm))}`
+            : agendada && publicacao.agendadoPara
+              ? `Agendada para ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}`
+              : vaiAgendar
+                ? "Agendar"
+                : "Rascunho",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+  const fontes = dados.links.filter((l) => l.tipo === "fonte").length;
+  const anexos = dados.links.length - fontes;
+  const resumoDasFontes =
+    dados.links.length === 0
+      ? "Opcional"
+      : [fontes ? `${fontes} ${fontes === 1 ? "link" : "links"}` : null, anexos ? `${anexos} ${anexos === 1 ? "anexo" : "anexos"}` : null].filter(Boolean).join(" · ");
+  const focarPublicar = () => {
+    // O botão visível: o do topo (desktop) ou o da barra de baixo (celular).
+    botaoPublicarDaBarra.current?.focus();
+    botaoPublicar.current?.focus();
+  };
   const dicaPublicar = !conectado
     ? DICA_SEM_INTERNET
     : oculta
@@ -663,9 +723,11 @@ export function EditorNoticia({
 
   return (
     <div data-editor-noticia className="flex flex-1 flex-col">
-      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48). */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-5 py-3 lg:px-10">
-        <div className="flex min-w-0 flex-[1_1_max-content] items-center gap-3">
+      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48).
+          Abaixo do lg o topo é compacto (Figma M 120:3836, E49): voltar, título, desfazer, prévia e ⋯;
+          Salvar e Publicar vão para a barra de baixo. */}
+      <header className="sticky top-0 z-30 flex items-center gap-x-3 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:flex-wrap lg:gap-x-4 lg:px-10">
+        <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-[1_1_max-content]">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
@@ -676,13 +738,14 @@ export function EditorNoticia({
           <div className="flex min-w-0 flex-col">
             {/* O selo desce para baixo do título quando não cabe ao lado, como no editor de documento (E48). */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="truncate texto-titulo-card text-texto-primario">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
-              <SeloEstado estado={publicacao.estado} />
+              <h1 className="texto-titulo-card text-texto-primario lg:truncate">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
+              <SeloEstado estado={publicacao.estado} className="max-lg:hidden" />
             </div>
             <StatusDoSalvamento estado={estado} temId={!!estado.id} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
+        <div className="flex shrink-0 items-center gap-1 max-lg:pointer-coarse:vao-toque-10 lg:flex-wrap lg:gap-2">
           <DesfazerRefazer editor={corpoEditor} />
           {estado.id || estado.situacao !== "sincronizado" ? (
             <Button
@@ -691,23 +754,25 @@ export function EditorNoticia({
               size="pequeno"
               disabled={!!preparando}
               onClick={() => void abrirPrevia()}
+              className="max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0"
             >
               <Eye aria-hidden />
-              {preparando === "previa" ? "Salvando…" : "Pré-visualizar"}
+              <span className="max-lg:sr-only">{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
             </Button>
           ) : (
-            <BotaoTravado rotulo="Pré-visualizar" dica="Escreva a notícia para pré-visualizar" icone={<Eye aria-hidden />} />
+            <BotaoTravado rotulo="Pré-visualizar" dica="Escreva a notícia para pré-visualizar" icone={<Eye aria-hidden />} compacto />
           )}
-          <Button type="button" variant="secundario" size="pequeno" onClick={() => void fila.salvarAgora()}>
+          <Button type="button" variant="secundario" size="pequeno" className="max-lg:hidden" onClick={() => void fila.salvarAgora()}>
             {jaFoiAoAr(publicacao.estado) ? "Salvar" : "Salvar rascunho"}
           </Button>
           {dicaPublicar ? (
-            <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} />
+            <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
           ) : (
             <Button
               ref={botaoPublicar}
               type="button"
               size="pequeno"
+              className="max-lg:hidden"
               disabled={!!preparando || publicando}
               onClick={() => void pedirPublicacao()}
             >
@@ -721,7 +786,7 @@ export function EditorNoticia({
               aoPedir={(acao) => void pedirAcao(acao)}
               extras={[{ rotulo: "Histórico de versões", icone: History, aoSelecionar: () => setHistoricoAberto(true) }]}
             >
-              <Button type="button" variant="secundario" size="pequeno" aria-label="Mais ações" className="px-3 has-[>svg]:pl-3">
+              <Button type="button" variant="secundario" size="pequeno" aria-label="Mais ações" className="px-3 has-[>svg]:pl-3 max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0">
                 <MoreHorizontal aria-hidden />
               </Button>
             </MenuDeAcoes>
@@ -729,8 +794,8 @@ export function EditorNoticia({
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 px-5 pt-6 pb-12 lg:px-10 xl:flex-row xl:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
+      <div className="flex flex-1 flex-col gap-4 px-4 pt-5 pb-12 lg:gap-6 lg:px-10 lg:pt-6 xl:flex-row xl:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 lg:gap-6">
           {mostrarFaltas && faltas.length > 0 ? (
             <Alerta
               tipo="erro"
@@ -866,7 +931,13 @@ export function EditorNoticia({
             </div>
           </Cartao>
 
-          <Cartao titulo="Imagem de capa" descricao="Aparece no topo da notícia e nos cards do site. Tamanho recomendado: 1200 × 675 px.">
+          <SecaoQueAbre
+            titulo="Imagem de capa"
+            descricao="Aparece no topo da notícia e nos cards do site. Tamanho recomendado: 1200 × 675 px."
+            situacao={capa ? situacaoDa("capa") : "opcional"}
+            resumo={faltasDa("capa").length > 0 ? "Falta o texto alternativo" : capa ? "Imagem escolhida" : "Opcional"}
+            {...secoes.secao("capa")}
+          >
             <div className="flex flex-col gap-5 md:flex-row">
               <div className="flex flex-col gap-3 md:w-[280px]">
                 <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-[14px] bg-fundo-superficie-alt">
@@ -921,9 +992,15 @@ export function EditorNoticia({
                 />
               </div>
             </div>
-          </Cartao>
+          </SecaoQueAbre>
 
-          <Cartao titulo="Fontes, links e anexos" descricao="Opcional. Ajuda o leitor a conferir a informação.">
+          <SecaoQueAbre
+            titulo="Fontes, links e anexos"
+            descricao="Opcional. Ajuda o leitor a conferir a informação."
+            situacao={dados.links.length > 0 ? "ok" : "opcional"}
+            resumo={resumoDasFontes}
+            {...secoes.secao("fontes")}
+          >
             <FontesEAnexos
               links={dados.links}
               aoMudar={(links) => mudar({ links })}
@@ -938,13 +1015,16 @@ export function EditorNoticia({
               </Label>
               <Etiquetas id="palavras-chave" valor={dados.palavrasChave} aoMudar={(palavrasChave) => mudar({ palavrasChave })} />
             </div>
-          </Cartao>
+          </SecaoQueAbre>
         </div>
 
-        <aside className="flex flex-col gap-6 xl:sticky xl:top-[88px] xl:w-[320px]">
-          <Cartao
+        <aside className="flex flex-col gap-4 lg:gap-6 xl:sticky xl:top-[88px] xl:w-[320px]">
+          <SecaoQueAbre
             titulo="Publicação"
             acao={<SeloEstado estado={publicacao.estado} />}
+            situacao={situacaoDa("publicacao")}
+            resumo={resumoDaPublicacao}
+            {...secoes.secao("publicacao")}
           >
             <Campo
               id="assinatura"
@@ -1080,12 +1160,26 @@ export function EditorNoticia({
                 </p>
               </div>
             )}
-          </Cartao>
+          </SecaoQueAbre>
           <Cartao titulo="Antes de publicar" descricao="Conferido automaticamente enquanto você escreve.">
             <ListaAntesDePublicar dados={dados} />
           </Cartao>
         </aside>
       </div>
+
+      <BarraDoEditor>
+        <Button type="button" variant="secundario" onClick={() => void fila.salvarAgora()}>
+          Salvar
+        </Button>
+        {dicaPublicar ? (
+          <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} avisarAoTocar />
+        ) : (
+          <Button ref={botaoPublicarDaBarra} type="button" disabled={!!preparando || publicando} onClick={() => void pedirPublicacao()}>
+            {vaiAgendar ? <CalendarDays aria-hidden /> : <Upload aria-hidden />}
+            {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
+          </Button>
+        )}
+      </BarraDoEditor>
 
       <SeletorDeMidia
         aberto={seletorCapa}
@@ -1125,7 +1219,7 @@ export function EditorNoticia({
         publicando={publicando}
         aoFechar={() => {
           setConfirmar(false);
-          botaoPublicar.current?.focus();
+          focarPublicar();
         }}
         aoConfirmar={() => void publicar()}
       />
@@ -1178,7 +1272,7 @@ function DesfazerRefazer({ editor }: { editor: Editor | null }) {
   const classe =
     "alvo-toque flex size-10 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-5";
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 max-lg:contents">
       <button
         type="button"
         aria-label="Desfazer no corpo (Ctrl+Z)"
@@ -1195,7 +1289,8 @@ function DesfazerRefazer({ editor }: { editor: Editor | null }) {
         title="Refazer no corpo (Ctrl+Shift+Z)"
         disabled={!pode?.refazer}
         onClick={() => editor?.chain().focus().redo().run()}
-        className={classe}
+        // No celular só o Desfazer (Figma M 120:3836); o Refazer continua na barra do corpo.
+        className={cn(classe, "max-lg:hidden")}
       >
         <Redo2 aria-hidden />
       </button>

@@ -68,6 +68,74 @@ jobs:
       - name: Testes
         run: pnpm test
 
+  # Ponta a ponta em jobs separados, em paralelo (E48). O desktop (chromium, com o fluxo principal e a
+  # varredura da janela) é um job próprio e sempre roda: uma falha num perfil não esconde uma falha
+  # dele (fail-fast desligado). Os perfis de RESPONSIVO vão em grupos de dois.
+  e2e:
+    name: Ponta a ponta (${{ matrix.nome }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: desktop
+            id: desktop
+            projetos: --project=chromium
+          - nome: celulares
+            id: celulares
+            projetos: --project=celular-pequeno --project=celular
+          - nome: em pé
+            id: em-pe
+            projetos: --project=tablet-em-pe --project=ipad-em-pe
+          - nome: deitados
+            id: deitados
+            projetos: --project=ipad-deitado --project=tablet-deitado
+          - nome: notebook e computador
+            id: notebook-computador
+            projetos: --project=notebook --project=computador
+
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: sintravc
+          POSTGRES_PASSWORD: sintravc
+          POSTGRES_DB: sintravc
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sintravc -d sintravc"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      # Recebe o e-mail do convite nos testes de ponta a ponta (E32).
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    env:
+      DATABASE_URL: postgres://sintravc:sintravc@localhost:5432/sintravc
+      URL_SITE: http://localhost:3000
+      # Só para o CI. Em homologação e produção, cada ambiente tem a sua (E36).
+      BETTER_AUTH_SECRET: chave-do-ci-apenas-para-testes-com-mais-de-32-caracteres
+      NEXT_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
       - name: Navegador dos testes de ponta a ponta
         run: pnpm exec playwright install --with-deps chromium
 
@@ -85,12 +153,12 @@ jobs:
           echo "O MinIO não respondeu." && docker logs minio && exit 1
 
       - name: Testes de ponta a ponta
-        run: pnpm test:e2e
+        run: pnpm test:e2e ${{ matrix.projetos }}
 
       - name: Relatório do Playwright (se falhar)
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright
+          name: playwright-${{ matrix.id }}
           path: test-results/
           retention-days: 7

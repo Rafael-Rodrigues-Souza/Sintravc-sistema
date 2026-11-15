@@ -1,6 +1,6 @@
 ---
 name: conferir-responsivo
-description: Confere a responsividade de telas do SINTRAVC com o Playwright do projeto. Varre a janela com mouse (janela reduzida, tela dividida, telas baixas) e testa os perfis de celular, tablet em pé e deitado com toque e notebook, nos temas claro e escuro, com os tamanhos de RESPONSIVO no playwright.config.ts. Compara com o Figma desktop e mobile. Entrega uma lista de pontos por tela e tamanho, sem corrigir. Use quando pedirem para conferir, testar ou revisar a responsividade, o celular, o tablet, telas baixas ou o tema escuro de uma tela, e antes de dar por pronta uma tela nova.
+description: Confere a responsividade de telas do SINTRAVC com o Playwright do projeto. Varre a janela com mouse (janela reduzida, tela dividida, telas baixas) e testa os perfis de celular, tablet e iPad em pé e deitados com toque, notebook e computador, nos temas claro e escuro, com os tamanhos de RESPONSIVO no playwright.config.ts. Compara com o Figma desktop e mobile. Entrega uma lista de pontos por tela e tamanho, sem corrigir. Use quando pedirem para conferir, testar ou revisar a responsividade, o celular, o tablet, telas baixas ou o tema escuro de uma tela, e antes de dar por pronta uma tela nova.
 ---
 
 # Conferir responsividade
@@ -35,7 +35,7 @@ O script faz duas passadas, nos temas claro e escuro:
 | Passada | Tamanhos | O que simula |
 |---|---|---|
 | Varredura com mouse | `RESPONSIVO.varredura`: larguras de passo em passo, em cada altura | janela reduzida, tela dividida, notebook baixo, monitor grande |
-| Perfis | `RESPONSIVO.perfis`: celular, tablet em pé e deitado (com `isMobile` e `hasTouch`) e notebook (mouse) | os mesmos tamanhos dos projetos `@responsivo`; o tablet também é girado para a posição do outro perfil sem recarregar a página |
+| Perfis | `RESPONSIVO.perfis`: celulares, tablets e iPads em pé e deitados (com `isMobile` e `hasTouch`), notebook e computador (mouse) | os mesmos tamanhos dos projetos `@responsivo`; o tablet também é girado para a posição do outro perfil sem recarregar a página |
 
 Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 
@@ -50,10 +50,10 @@ Tudo vai para `.scratch/responsivo/<data-hora>/`, pasta que o git ignora:
 | Rolagem lateral | todos | a página é mais larga que a tela, e quais elementos passam da borda |
 | Texto cortado | todos | reticências, `line-clamp` ou `overflow` escondido com texto próprio maior que a caixa (ignora o `sr-only`) |
 | Esmagado | todos | item de flex que encolheu abaixo do tamanho natural (na coluna, a altura de qualquer item; na linha, a largura do que é clicável); item de grid menor que o conteúdo; caixa de altura fixa que corta o conteúdo |
-| Texto sobreposto | todos | linhas de texto de elementos diferentes que se cruzam, já recortadas pelo `overflow` dos pais; com diálogo aberto, só conta o texto de dentro dele |
+| Texto sobreposto | todos | linhas de texto de elementos diferentes que se cruzam, já recortadas pelo `overflow` dos pais; com diálogo aberto, só conta o texto de dentro dele; o texto que passa por baixo de uma barra presa marcada com `data-barra-de-baixo` (a barra de baixo do painel e a do editor, E49) não conta; outras camadas `fixed` ou `sticky`, como um cabeçalho preso, contam |
 | Quebrou a linha | todos | linha flex com `wrap` cujos itens foram para baixo uns dos outros |
 | Barra de rolagem | todos | área com rolagem interna cuja barra aparece e ocupa espaço (o script mostra as barras, que o Playwright esconde por padrão) |
-| Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele |
+| Menu sem botão | todos | `<nav>` escondido sem botão visível com `aria-controls` apontando para o id dele e sem navegação visível com `data-substitui` igual ao id (a barra de baixo do painel no lugar do menu lateral, E49) |
 | Alvo pequeno | toque | link, botão, campo ou papel clicável cuja **área de toque** é menor que `RESPONSIVO.alvoDeToque`: o centro e os cantos de um quadrado desse tamanho, centrado no alvo, precisam acertar o próprio alvo. Uma área invisível maior que o desenho (o utilitário `alvo-toque`) passa; um vizinho que cobre a área, não. A medida é a mesma dos e2e (`e2e/alvo-de-toque.ts`). Link no meio de um parágrafo fica de fora (o WCAG dispensa) |
 | Só com o mouse | toque | regra `:hover` que mostra uma ação que no toque continua escondida, sem a mesma ação visível em outro lugar (o Tailwind põe o `hover:` dentro de `@media (hover: hover)`) |
 | Conferir à mão | toque | clicável transparente ou invisível sem regra `:hover` que explique: o script não sabe se há outro caminho pelo toque |
@@ -70,7 +70,7 @@ Abra os prints com a ferramenta de leitura de imagem e procure o que o script n�
 - **Itens que não empilham:** colunas, cards, filtros e botões lado a lado que ficaram espremidos em vez de irem um embaixo do outro.
 - **Telas baixas:** o menu lateral e os painéis fixos precisam rolar, e não encolher os itens.
 - Tema escuro: texto sem contraste, fundo branco esquecido, ícone ou logo que some no fundo escuro.
-- Menu: nos perfis estreitos, o botão de abrir aparece e, aberto, mostra todos os itens.
+- Menu: nos perfis estreitos, a barra de baixo aparece no lugar do menu lateral e o “Mais” mostra o resto dos itens.
 
 Para conferir o menu aberto, um diálogo ou outro estado, rode um passo extra com o Playwright (clicar e tirar o print) em vez de supor.
 
@@ -85,10 +85,10 @@ São problemas reais, achados pelo Rafael e confirmados pelo script em 13/11/202
 ## 5. Comparar com o Figma, desktop e mobile
 
 1. Antes, leia `docs/correcoes-figma.md`: o que está ali vale sobre o Figma.
-2. Procure a tela em `docs/analise-figma.md` §1. No site, a coluna “ID (D / M)” traz o desktop antes da barra e o mobile depois. No painel, a coluna “ID” traz o desktop e, entre parênteses, o mobile (ex.: Conteúdos `110:845 (M 120:3650)`). “—” ou a falta do “(M …)” quer dizer que aquela versão não existe, e a comparação dela fica de fora (diga isso no relatório).
+2. Procure a tela em `docs/analise-figma.md` §1. No site, a coluna “ID (D / M)” traz o desktop antes da barra e o mobile depois. No painel, a coluna “ID” traz o desktop e, entre parênteses, o mobile (ex.: Conteúdos `110:845 (M 120:3650)`). “—” ou a falta do “(M …)” quer dizer que aquela versão não existe. Sem frame mobile, uma tela do **painel** se compara com o padrão do E50 em `docs/decisoes.md` (cabeçalho compacto, filtros numa folha pelo ícone da busca, abas numa linha que rola por dentro, tabela em cartões, ações numa barra fixa embaixo, seções que abrem e fecham); diga no relatório o que foge dele. No site, sem a versão, a comparação fica de fora (diga isso no relatório).
 3. Abra os frames pelo MCP do Figma (arquivo `2mlqSKCNy170C8y0CyL5de`, `create_session` e depois `get_screenshot`). Só leitura: não edite o Figma.
-4. Compare com os prints de referência (`ref-*.png`): o frame desktop com o do notebook e o do tablet deitado, e o mobile com o do celular. Use o tema claro (e o frame escuro, se existir). Olhe a ordem dos blocos, o que aparece e o que some, os tamanhos de botão e de texto e os espaçamentos grandes.
-5. O Figma não tem tablet em pé nem telas baixas. Nesses tamanhos, o critério é não quebrar: nada esmagado, cortado, sobreposto ou fora da tela, e as ações ao alcance do toque.
+4. Compare com os prints de referência (`ref-*.png`). Abaixo de `RESPONSIVO.menuLateralAPartirDe` o painel usa a versão mobile (E49): o frame mobile (ou o padrão do E50) se compara com os celulares e os tablets em pé; o desktop, com os deitados, o notebook e o computador. Use o tema claro (e o frame escuro, se existir). Olhe a ordem dos blocos, o que aparece e o que some, os tamanhos de botão e de texto e os espaçamentos grandes.
+5. O Figma não tem tablet nem telas baixas. Nesses tamanhos, além de seguir a versão (mobile ou desktop) do frame, o critério é não quebrar: nada esmagado, cortado, sobreposto ou fora da tela, e as ações ao alcance do toque.
 
 ## 6. Entregar
 

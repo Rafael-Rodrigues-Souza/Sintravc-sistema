@@ -34,7 +34,7 @@ import { ehUuid } from "@/lib/uuid";
 
 import { Calendario } from "./calendario";
 import { EdicaoRapida } from "./edicao-rapida";
-import { FiltroSelect } from "./filtros";
+import { FiltroSelect, FolhaDeFiltros, type Filtro } from "./filtros";
 import { ESTADO } from "./selos";
 import { TabelaConteudos, type LinhaDaTabela } from "./tabela-conteudos";
 
@@ -127,15 +127,45 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
   const total = lista?.total ?? 0;
   const totalDePaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
   const primeiro = total === 0 ? 0 : (pagina - 1) * POR_PAGINA + 1;
+  const filtros: Filtro[] = [
+    ...(arquivados
+      ? []
+      : [
+          {
+            nome: "estado",
+            rotulo: "Estado",
+            valor: estado ?? "",
+            opcoes: [{ valor: "", rotulo: "Todos" }, ...ESTADOS_DA_LISTA.map((e) => ({ valor: e, rotulo: ESTADO[e].rotulo }))],
+          },
+        ]),
+    {
+      nome: "categoria",
+      rotulo: "Categoria",
+      valor: categoriaId ?? "",
+      opcoes: [{ valor: "", rotulo: "Todas" }, ...categorias.map((c) => ({ valor: c.id, rotulo: c.nome }))],
+    },
+    { nome: "autor", rotulo: "Autor", valor: autorId ?? "", opcoes: [{ valor: "", rotulo: "Todos" }, ...autores.map((a) => ({ valor: a.id, rotulo: a.nome }))] },
+  ];
 
   return (
-    <div className="flex flex-1 flex-col gap-6 px-5 pt-8 pb-12 lg:px-10">
+    <div className="flex flex-1 flex-col gap-5 px-4 pt-5 pb-12 lg:gap-6 lg:px-10 lg:pt-8">
       {/* O grupo de botões desce inteiro para baixo do título quando não cabe ao lado; só se quebra
-          por dentro quando não cabe nem na linha toda (E48). */}
+          por dentro quando não cabe nem na linha toda (E48). Abaixo do lg o topo é o do Figma mobile
+          (M 120:3650, E49): título e o ícone do calendário; criar é pelo “+” da barra de baixo. */}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-1.5">
-          <h1 className="texto-titulo-card-grande text-texto-primario">Conteúdos</h1>
-          <p className="max-w-[640px] texto-corpo text-texto-secundario">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="texto-titulo-card-grande text-texto-primario">Conteúdos</h1>
+            <Link
+              href={calendario ? endereco({ visao: undefined, mes: undefined, pagina: "1" }) : endereco({ visao: "calendario", pagina: "1" })}
+              aria-label={calendario ? "Ver lista" : "Ver calendário"}
+              data-substitui="modo-de-ver"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-borda-padrao bg-fundo-superficie text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring lg:hidden"
+            >
+              {calendario ? <List aria-hidden className="size-5" /> : <CalendarDays aria-hidden className="size-5" />}
+            </Link>
+          </div>
+          <p className="hidden max-w-[640px] texto-corpo text-texto-secundario lg:block">
             {calendario
               ? podeAgendar
                 ? "Veja quando cada conteúdo entra no ar. Arraste uma notícia agendada ou um rascunho para mudar a data."
@@ -143,8 +173,8 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               : "Notícias, editais e acordos coletivos em um só lugar. Comunicados, Rádio Chofer e benefícios têm áreas próprias no menu."}
           </p>
         </div>
-        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-3">
-          <nav aria-label="Modo de ver" className="flex items-center gap-1 rounded-full border border-borda-padrao bg-fundo-superficie-alt p-1">
+        <div className="hidden max-w-full shrink-0 flex-wrap items-center gap-3 lg:flex">
+          <nav id="modo-de-ver" aria-label="Modo de ver" className="flex items-center gap-1 rounded-full border border-borda-padrao bg-fundo-superficie-alt p-1">
             {[
               { rotulo: "Lista", icone: List, ativo: !calendario, href: endereco({ visao: undefined, mes: undefined, pagina: "1" }) },
               { rotulo: "Calendário", icone: CalendarDays, ativo: calendario, href: endereco({ visao: "calendario", pagina: "1" }) },
@@ -174,7 +204,11 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
         </div>
       </header>
 
-      <nav aria-label="Tipos de conteúdo" className="flex flex-wrap items-center gap-2">
+      {/* Abaixo do lg, as abas ficam numa linha que rola só por dentro (E49); o py dá espaço à área de toque. */}
+      <nav
+        aria-label="Tipos de conteúdo"
+        className="-mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:my-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:py-0"
+      >
         {TIPOS.map((aba) => {
           const atual = !arquivados && (tipo ?? "todos") === aba.valor;
           return (
@@ -183,7 +217,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
               href={endereco({ tipo: aba.valor === "todos" ? undefined : aba.valor, pagina: "1", arquivados: undefined })}
               aria-current={atual ? "page" : undefined}
               className={cn(
-                "alvo-toque flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                "alvo-toque flex shrink-0 items-center gap-2 rounded-full px-[18px] py-2.5 whitespace-nowrap texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                 atual
                   ? "bg-destaque-amarelo text-destaque-marinho-fixo"
                   : "border border-borda-padrao bg-fundo-superficie text-texto-secundario hover:bg-fundo-superficie-alt",
@@ -199,7 +233,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
             href={endereco({ arquivados: "1", tipo: undefined, estado: undefined, pagina: "1" })}
             aria-current={arquivados ? "page" : undefined}
             className={cn(
-              "alvo-toque flex items-center gap-2 rounded-full px-[18px] py-2.5 texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring sm:ml-auto",
+              "alvo-toque flex shrink-0 items-center gap-2 rounded-full px-[18px] py-2.5 whitespace-nowrap texto-navegacao outline-none focus-visible:ring-[3px] focus-visible:ring-ring lg:ml-auto",
               arquivados
                 ? "bg-destaque-marinho-fixo text-texto-invertido"
                 : "border border-borda-padrao bg-fundo-superficie text-texto-secundario hover:bg-fundo-superficie-alt",
@@ -253,39 +287,26 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
           {Object.entries({ tipo, estado, categoria: categoriaId, autor: autorId, arquivados: arquivados ? "1" : undefined }).map(([nome, valor]) =>
             valor ? <input key={nome} type="hidden" name={nome} value={valor} /> : null,
           )}
-          <label className="flex h-11 w-full items-center gap-2.5 rounded-[12px] border border-borda-padrao bg-fundo-superficie px-3.5 text-texto-terciario focus-within:ring-[3px] focus-within:ring-ring">
-            <Search aria-hidden className="size-[18px]" />
-            <span className="sr-only">Buscar conteúdo</span>
-            <input
-              type="search"
-              name="busca"
-              defaultValue={busca}
-              placeholder="Buscar por título, autor ou palavra-chave"
-              className="min-w-0 flex-1 bg-transparent texto-pequeno text-texto-primario outline-none placeholder:text-texto-terciario"
-            />
-          </label>
+          <div className="flex h-11 w-full items-center gap-1 rounded-[12px] border border-borda-padrao bg-fundo-superficie pr-1 pl-3.5 focus-within:ring-[3px] focus-within:ring-ring lg:pr-3.5">
+            <label className="flex min-w-0 flex-1 items-center gap-2.5 text-texto-terciario">
+              <Search aria-hidden className="size-[18px] shrink-0" />
+              <span className="sr-only">Buscar conteúdo</span>
+              <input
+                type="search"
+                name="busca"
+                defaultValue={busca}
+                placeholder="Buscar por título, autor ou palavra-chave"
+                className="min-w-0 flex-1 bg-transparent texto-pequeno text-texto-primario outline-none placeholder:text-texto-terciario"
+              />
+            </label>
+            {/* Celular e tablet em pé: os filtros abrem numa folha pelo ícone da busca (E49). */}
+            <FolhaDeFiltros filtros={filtros} hrefLimpar={endereco({ estado: undefined, categoria: undefined, autor: undefined, pagina: "1" })} />
+          </div>
         </form>
-        <div className="flex flex-wrap gap-2">
-          {arquivados ? null : (
-            <FiltroSelect
-              nome="estado"
-              rotulo="Estado"
-              valor={estado ?? ""}
-              opcoes={[{ valor: "", rotulo: "Todos" }, ...ESTADOS_DA_LISTA.map((e) => ({ valor: e, rotulo: ESTADO[e].rotulo }))]}
-            />
-          )}
-          <FiltroSelect
-            nome="categoria"
-            rotulo="Categoria"
-            valor={categoriaId ?? ""}
-            opcoes={[{ valor: "", rotulo: "Todas" }, ...categorias.map((c) => ({ valor: c.id, rotulo: c.nome }))]}
-          />
-          <FiltroSelect
-            nome="autor"
-            rotulo="Autor"
-            valor={autorId ?? ""}
-            opcoes={[{ valor: "", rotulo: "Todos" }, ...autores.map((a) => ({ valor: a.id, rotulo: a.nome }))]}
-          />
+        <div className="hidden flex-wrap gap-2 lg:flex">
+          {filtros.map((f) => (
+            <FiltroSelect key={f.nome} {...f} />
+          ))}
         </div>
       </div>
 
@@ -306,7 +327,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
             linhaDaTabela(item, pessoa.quem, item.tipo === "noticia" && !arquivados && podeEditar ? endereco({ editar: item.id }) : null),
           )}
           rodape={
-            <footer className="flex flex-col items-center justify-between gap-3 border-t border-borda-padrao px-5 py-4 sm:flex-row">
+            <footer className="flex flex-col items-center justify-between gap-3 px-5 py-4 sm:flex-row lg:border-t lg:border-borda-padrao">
               <p className="texto-pequeno text-texto-secundario">
                 Mostrando {primeiro}–{primeiro + lista.itens.length - 1} de {total} {total === 1 ? "conteúdo" : "conteúdos"}
               </p>
@@ -401,6 +422,7 @@ function linhaDaTabela(item: ItemConteudo, quem: QuemDaEquipe, hrefRapida: strin
     categoria: item.categoria,
     autorNome: item.autorNome,
     noSite: textoNoSite(item),
+    resumo: resumoDoCartao(item),
     atualizado: quandoNaBahia(item.atualizadoEm),
     hrefEditor: `/painel/conteudos/${item.tipo === "noticia" ? "noticia" : "documento"}/${item.id}`,
     hrefRapida,
@@ -418,6 +440,13 @@ function textoNoSite(item: ItemConteudo) {
   if (item.estado === "oculto") return item.ocultadoEm ? `Retirado em ${quandoNaBahia(item.ocultadoEm)}` : "Fora do site";
   if (item.estado === "arquivado" || (item.estado === "rascunho" && item.jaPublicado)) return "Fora do site";
   return item.publicadoEm ? `Desde ${quandoNaBahia(item.publicadoEm)}` : "Não publicado";
+}
+
+/** A linha de data do cartão no celular (Figma M 120:3650): “No ar desde”, “Agendada para”, “Retirado em” ou a última edição. */
+function resumoDoCartao(item: ItemConteudo) {
+  if (item.estado === "publicado" && item.publicadoEm) return `No ar desde ${quandoNaBahia(item.publicadoEm)}`;
+  if (item.estado === "rascunho" || item.estado === "arquivado") return `Editado em ${quandoNaBahia(item.atualizadoEm)}`;
+  return textoNoSite(item);
 }
 
 /** Vazio (E23; Figma 118:3448, “Nenhum conteúdo encontrado”): ícone, frase e ação. */

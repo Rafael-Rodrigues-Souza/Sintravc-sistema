@@ -1,27 +1,21 @@
 import { expect, test } from "@playwright/test";
 
 import { apertar, entrarNoPainel } from "./entrar";
-import { MENU_PELO_BOTAO, pessoas, semRolagemLateral } from "./responsivo";
+import { pessoas, semRolagemLateral, telaEstreita } from "./responsivo";
 
 // Roda no desktop e em cada perfil de RESPONSIVO do playwright.config.ts (E48).
 test.describe("em qualquer tamanho de tela", { tag: "@responsivo" }, () => {
-  test("entrar no painel e chegar a Conteúdos pelo menu, sem rolagem lateral", async ({ page, hasTouch }, testInfo) => {
+  test("entrar no painel e chegar a Conteúdos pelo menu, sem rolagem lateral", async ({ page, hasTouch }) => {
     await page.goto("/painel/entrar");
     await semRolagemLateral(page);
     await entrarNoPainel(page, pessoas.adm, { toque: hasTouch });
     await expect(page).toHaveURL(/\/painel$/);
     await semRolagemLateral(page);
 
-    const menu = page.getByRole("navigation", { name: "Menu do painel" });
-    const botaoMenu = page.getByRole("button", { name: "Menu", exact: true });
-    if (MENU_PELO_BOTAO.includes(testInfo.project.name)) {
-      // Tela estreita: o menu começa fechado e só abre pelo botão.
-      await expect(menu).toBeHidden();
-      await apertar(botaoMenu, hasTouch);
-    } else {
-      // Tela larga: o menu lateral fica à vista e não há botão.
-      await expect(botaoMenu).toBeHidden();
-    }
+    // Abaixo do menu lateral, a navegação é a barra de baixo (E49); acima, o menu lateral.
+    const menu = telaEstreita(page)
+      ? page.getByRole("navigation", { name: "Navegação do painel" })
+      : page.getByRole("navigation", { name: "Menu do painel" });
     await expect(menu).toBeVisible();
     await apertar(menu.getByRole("link", { name: "Conteúdos" }), hasTouch);
 

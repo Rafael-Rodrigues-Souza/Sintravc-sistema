@@ -13,8 +13,9 @@ import {
   itensEsmagados,
   larguraDaBarra,
   linhasDoTexto,
-  menuPeloBotao,
   pessoas,
+  semAnimacao,
+  telaEstreita,
   textoCortado,
   textoVisivelCruza,
   TOLERANCIA,
@@ -34,6 +35,35 @@ test("a área de toque do CSS (--alvo-toque) é a mesma de RESPONSIVO.alvoDeToqu
   expect(noCss).toBe(`${RESPONSIVO.alvoDeToque}px`);
 });
 
+test("o corte do celular no CSS (avisos acima da barra) e no “Mais” é RESPONSIVO.menuLateralAPartirDe", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "muda a largura da janela: só no desktop");
+  const corte = RESPONSIVO.menuLateralAPartirDe;
+  const altura = page.viewportSize()!.height;
+  await entrarComoAdm(page, "/painel");
+  await page.setViewportSize({ width: corte - 1, height: altura });
+  await assentar(page);
+
+  // Logo abaixo do corte, o aviso sobe acima da barra de baixo; no corte, volta ao lugar de sempre.
+  await page.getByRole("button", { name: "Buscar" }).click({ force: true });
+  await expect(page.getByText("A busca do painel está disponível em breve.")).toBeVisible();
+  // A lista dos avisos tem altura zero (cada aviso fica por cima dela): mede-se a base dela.
+  const avisos = page.locator('[data-sonner-toaster][data-y-position="bottom"]');
+  const baseDosAvisos = () => avisos.evaluate((el) => parseFloat(getComputedStyle(el).bottom));
+  const abaixoDoCorte = await baseDosAvisos();
+  await page.setViewportSize({ width: corte, height: altura });
+  await assentar(page);
+  const noCorte = await baseDosAvisos();
+  expect(abaixoDoCorte, "abaixo do corte, o aviso fica acima da barra de baixo").toBeGreaterThan(noCorte);
+
+  // O “Mais” aberto logo abaixo do corte fecha quando a janela chega ao corte (menu lateral).
+  await page.setViewportSize({ width: corte - 1, height: altura });
+  await page.getByRole("navigation", { name: "Navegação do painel" }).getByRole("button", { name: "Mais" }).click();
+  await expect(page.getByRole("dialog", { name: "Mais" })).toBeVisible();
+  await page.setViewportSize({ width: corte, height: altura });
+  await expect(page.getByRole("dialog", { name: "Mais" })).toBeHidden();
+  await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeVisible();
+});
+
 /** Alvos da tela com área de toque menor que RESPONSIVO.alvoDeToque, como “alvo · tamanho”. */
 async function alvosPequenos(page: Page) {
   const pequenos = await page.evaluate(alvosDeToquePequenos, RESPONSIVO.alvoDeToque);
@@ -44,18 +74,29 @@ for (const tema of ["claro", "escuro"] as const) {
   test.describe(`painel no tema ${tema}`, { tag: "@responsivo" }, () => {
     test.use({ colorScheme: tema === "escuro" ? "dark" : "light" });
 
-    test("menu lateral: em tela baixa rola sem encolher os itens, sem barra na borda e com o rodapé inteiro", async ({ page, hasTouch }, testInfo) => {
+    test("menu lateral: em tela baixa rola sem encolher os itens, sem barra na borda e com o rodapé inteiro", async ({ page, hasTouch }) => {
       await entrarComoAdm(page, "/painel", { toque: hasTouch });
       const menu = page.getByRole("navigation", { name: "Menu do painel" });
 
-      if (menuPeloBotao(testInfo)) {
-        // Celular e tablet em pé: o menu abre por cima da tela inteira.
-        await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
-      } else {
-        // Menu lateral fixo: na tela baixa da varredura (e no tamanho do próprio perfil).
-        const { width, height } = page.viewportSize()!;
-        await page.setViewportSize({ width, height: Math.min(height, ALTURA_BAIXA) });
+      if (telaEstreita(page)) {
+        // Celular e tablet em pé: o resto do menu fica na folha do “Mais”, que rola por dentro sem
+        // encolher os itens e mostra a conta inteira no fim (E49).
+        await apertar(page.getByRole("navigation", { name: "Navegação do painel" }).getByRole("button", { name: "Mais" }), hasTouch);
+        const folha = page.getByRole("dialog", { name: "Mais" });
+        await expect(folha).toBeVisible();
+        await semAnimacao(page);
+        // O corpo da folha é o que rola (encolhe de propósito); os itens dentro dele, não.
+        expect(await itensEsmagados(folha.locator("[data-slot=drawer-body]")), "nenhum item do “Mais” encolhe").toEqual([]);
+        const nome = folha.getByText(pessoas.adm.nome, { exact: true });
+        await nome.scrollIntoViewIfNeeded();
+        await expect(nome).toBeInViewport({ ratio: 1 });
+        await expect(folha.getByRole("button", { name: "Sair do painel" })).toBeInViewport({ ratio: 1 });
+        expect(await textoCortado(nome), "o nome aparece inteiro, sem reticências").toBe(false);
+        return;
       }
+      // Menu lateral fixo: na tela baixa da varredura (e no tamanho do próprio perfil).
+      const { width, height } = page.viewportSize()!;
+      await page.setViewportSize({ width, height: Math.min(height, ALTURA_BAIXA) });
       await expect(menu).toBeVisible();
       await assentar(page);
 
@@ -83,12 +124,15 @@ for (const tema of ["claro", "escuro"] as const) {
 
     test("Conteúdos: “Criar conteúdo” fica ao lado de Lista/Calendário e só desce quando falta espaço", async ({ page, hasTouch }, testInfo) => {
       await entrarComoAdm(page, "/painel/conteudos", { toque: hasTouch });
+      // Abaixo do menu lateral, criar é pelo “+” da barra de baixo (E49; e2e/conteudos-celular.spec.ts).
+      test.skip(telaEstreita(page), "no celular e no tablet em pé, o topo de Conteúdos não tem esses botões");
       const cabecalho = page.locator("main header").first();
       const modo = cabecalho.getByRole("navigation", { name: "Modo de ver" });
       const criar = cabecalho.getByRole("button", { name: "Criar conteúdo" });
       await expect(criar).toBeVisible();
 
       await emCadaLargura(page, testInfo, async (largura) => {
+        if (largura < RESPONSIVO.menuLateralAPartirDe) return;
         const medida = await cabecalho.evaluate((header, mesmaLinha) => {
           const nav = header.querySelector("nav[aria-label='Modo de ver']")!.getBoundingClientRect();
           const botao = [...header.querySelectorAll("button")].find((b) => b.textContent?.includes("Criar conteúdo"))!;
@@ -113,7 +157,8 @@ for (const tema of ["claro", "escuro"] as const) {
         await expect(status).toContainText("Salvo automaticamente às");
         const cabecalho = page.locator("main header").first();
         const titulo = cabecalho.getByRole("heading", { level: 1 });
-        await expect(cabecalho.getByTestId("selo-estado")).toBeVisible();
+        // No topo compacto do celular (E49), o estado fica no resumo da Publicação, e não no topo.
+        if (!telaEstreita(page)) await expect(cabecalho.getByTestId("selo-estado")).toBeVisible();
 
         await emCadaLargura(page, testInfo, async (largura) => {
           expect(
@@ -121,13 +166,16 @@ for (const tema of ["claro", "escuro"] as const) {
             `a ${largura} px, nada se sobrepõe no cabeçalho`,
           ).toEqual([]);
           expect(await textoCortado(titulo), `a ${largura} px, o título não é cortado`).toBe(false);
-          expect(await linhasDoTexto(status), `a ${largura} px, “Salvo automaticamente” não passa de 2 linhas`).toBeLessThanOrEqual(2);
+          // Abaixo do lg o texto é o curto (“Salvo às …”), que cabe numa linha.
+          expect(await linhasDoTexto(status), `a ${largura} px, o status do salvamento não passa de 2 linhas`).toBeLessThanOrEqual(2);
         });
       });
     }
 
     test("editor de documento: “Texto pesquisável” tem altura máxima e rola por dentro, sem empurrar a página", async ({ page, hasTouch }) => {
       await entrarComoAdm(page, "/painel/conteudos/documento/nova?tipo=edital", { toque: hasTouch });
+      // No celular e no tablet em pé, o arquivo fica numa seção que abre ao tocar (E49).
+      if (telaEstreita(page)) await apertar(page.getByRole("button", { name: /^Arquivo oficial/ }), hasTouch);
       const campo = page.getByLabel("Texto pesquisável");
       const alturaDaPagina = () => page.evaluate(() => document.documentElement.scrollHeight);
       const antes = await alturaDaPagina();
@@ -249,7 +297,8 @@ for (const tema of ["claro", "escuro"] as const) {
       test.skip(!hasTouch, "só nos perfis com toque (celular e tablet)");
       await entrarComoAdm(page, "/painel/midia", { toque: hasTouch });
       // Arquivos próprios na Mídia (logo em PNG e foto em JPG), sem depender de outro teste.
-      const sufixo = `${tema}-${testInfo.project.name}`;
+      // Com a tentativa no nome: na segunda, os arquivos da primeira já estão na Mídia.
+      const sufixo = `${tema}-${testInfo.project.name}-${testInfo.retry}`;
       const cor = { width: 320, height: 200, channels: 3 as const, background: "#02488d" };
       // O campo de arquivo já vem no HTML: antes de a página carregar os scripts, a escolha se perde.
       await page.waitForLoadState("networkidle");
@@ -269,6 +318,7 @@ for (const tema of ["claro", "escuro"] as const) {
 
       const porTela: Record<string, string[]> = {};
       const medir = async (onde: string) => {
+        await semAnimacao(page);
         const pequenos = await alvosPequenos(page);
         if (pequenos.length > 0) porTela[onde] = pequenos;
       };
@@ -296,6 +346,8 @@ for (const tema of ["claro", "escuro"] as const) {
       await page.keyboard.press("Escape");
       await expect(seletor).toBeHidden();
 
+      // No celular e no tablet em pé, Fontes fica numa seção que abre ao tocar (E49).
+      if (telaEstreita(page)) await apertar(page.getByRole("button", { name: /^Fontes, links e anexos/ }), hasTouch);
       await apertar(page.getByRole("button", { name: "Adicionar link" }), hasTouch);
       const link = page.getByRole("dialog", { name: "Adicionar link" });
       await expect(link).toBeVisible();
@@ -303,9 +355,18 @@ for (const tema of ["claro", "escuro"] as const) {
       await page.keyboard.press("Escape");
       await expect(link).toBeHidden();
 
-      if (menuPeloBotao(testInfo)) {
-        await apertar(page.getByRole("button", { name: "Menu", exact: true }), hasTouch);
-        await medir("menu aberto");
+      if (telaEstreita(page)) {
+        const barra = page.getByRole("navigation", { name: "Navegação do painel" });
+        await page.goto("/painel");
+        await medir("barra de baixo e topo");
+        await apertar(barra.getByRole("button", { name: "Mais" }), hasTouch);
+        await expect(page.getByRole("dialog", { name: "Mais" })).toBeVisible();
+        await medir("“Mais” aberto");
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("dialog", { name: "Mais" })).toBeHidden();
+        await apertar(barra.getByRole("button", { name: "Criar conteúdo" }), hasTouch);
+        await expect(page.getByRole("dialog", { name: "Criar conteúdo" })).toBeVisible();
+        await medir("“+” aberto");
       }
       expect(porTela, `alvos com área de toque menor que ${RESPONSIVO.alvoDeToque} px, por tela`).toEqual({});
     });
