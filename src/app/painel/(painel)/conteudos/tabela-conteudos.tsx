@@ -160,7 +160,12 @@ export function TabelaConteudos({
             ))}
           </tbody>
         </table>
-        {rodape}
+        {/* O rodapé vem do servidor (PaginaConteudos) e, numa navegação, o Flight pode entregá-lo adiado: uma
+            referência dentro de outra, quando a linha do payload passa do tamanho máximo e o elemento ainda
+            espera as linhas de que depende. A conferência de key do React não olha dentro da segunda
+            referência e acusa “Each child in a list should have a unique key”. Com a key aqui, o rodapé
+            entra na lista já identificado, chegue como chegar. */}
+        <React.Fragment key="rodape">{rodape}</React.Fragment>
       </section>
 
       <ConfirmarAcao
