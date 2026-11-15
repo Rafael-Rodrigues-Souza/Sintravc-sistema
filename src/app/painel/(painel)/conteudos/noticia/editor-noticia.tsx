@@ -723,11 +723,12 @@ export function EditorNoticia({
 
   return (
     <div data-editor-noticia className="flex flex-1 flex-col">
-      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48).
+      {/* Título, status e botões ficam numa linha só (#48): sem espaço para os rótulos, os botões viram
+          ícone (variante topo-compacto, globals.css) e o título quebra a linha, sem reticências.
           Abaixo do lg o topo é compacto (Figma M 120:3836, E49): voltar, título, desfazer, prévia e ⋯;
           Salvar e Publicar vão para a barra de baixo. */}
-      <header className="sticky top-0 z-30 flex items-center gap-x-3 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:flex-wrap lg:gap-x-4 lg:px-10">
-        <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-[1_1_max-content]">
+      <header className="@container/topo sticky top-0 z-30 flex items-center gap-x-3 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:gap-x-4 lg:px-10">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
@@ -738,14 +739,14 @@ export function EditorNoticia({
           <div className="flex min-w-0 flex-col">
             {/* O selo desce para baixo do título quando não cabe ao lado, como no editor de documento (E48). */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="texto-titulo-card text-texto-primario lg:truncate">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
+              <h1 className="texto-titulo-card text-texto-primario break-words">{estado.id ? "Editar notícia" : "Nova notícia"}</h1>
               <SeloEstado estado={publicacao.estado} className="max-lg:hidden" />
             </div>
             <StatusDoSalvamento estado={estado} temId={!!estado.id} />
           </div>
         </div>
         {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
-        <div className="flex shrink-0 items-center gap-1 max-lg:pointer-coarse:vao-toque-10 lg:flex-wrap lg:gap-2">
+        <div className="flex shrink-0 items-center gap-1 max-lg:pointer-coarse:vao-toque-10 lg:gap-2">
           <DesfazerRefazer editor={corpoEditor} />
           {estado.id || estado.situacao !== "sincronizado" ? (
             <Button
@@ -754,16 +755,27 @@ export function EditorNoticia({
               size="pequeno"
               disabled={!!preparando}
               onClick={() => void abrirPrevia()}
-              className="max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0"
+              title="Pré-visualizar"
+              className="max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0 topo-compacto:size-10 topo-compacto:px-0 topo-compacto:has-[>svg]:pl-0"
             >
               <Eye aria-hidden />
-              <span className="max-lg:sr-only">{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
+              <span className="max-lg:sr-only topo-compacto:sr-only">{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
             </Button>
           ) : (
             <BotaoTravado rotulo="Pré-visualizar" dica="Escreva a notícia para pré-visualizar" icone={<Eye aria-hidden />} compacto />
           )}
           <Button type="button" variant="secundario" size="pequeno" className="max-lg:hidden" onClick={() => void fila.salvarAgora()}>
-            {jaFoiAoAr(publicacao.estado) ? "Salvar" : "Salvar rascunho"}
+            {jaFoiAoAr(publicacao.estado) ? (
+              "Salvar"
+            ) : (
+              <>
+                {/* Sem espaço, só “Salvar” aparece; o nome acessível continua “Salvar rascunho” (#48). */}
+                <span className="topo-compacto:sr-only">Salvar rascunho</span>
+                <span aria-hidden className="hidden topo-compacto:inline">
+                  Salvar
+                </span>
+              </>
+            )}
           </Button>
           {dicaPublicar ? (
             <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />

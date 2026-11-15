@@ -300,7 +300,7 @@ export function StatusCurto({ estado }: { estado: EstadoDaFila<unknown> }) {
 /**
  * Botão que ainda não funciona aqui: fica visível, travado, com a dica lida pelo leitor de tela.
  * No toque não há `title` (E48): `avisarAoTocar` mostra a dica num aviso. `compacto` deixa só o
- * ícone abaixo do lg (o nome continua para o leitor de tela).
+ * ícone abaixo do lg e no topo sem espaço (topo-compacto, #48); o nome continua para o leitor de tela.
  */
 export function BotaoTravado({
   rotulo,
@@ -332,12 +332,12 @@ export function BotaoTravado({
         className={cn(
           "inline-flex h-10 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border-[1.5px] border-dashed border-borda-forte bg-fundo-superficie-alt px-4 texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]",
           avisarAoTocar && "h-12",
-          compacto && "alvo-toque max-lg:size-10 max-lg:px-0",
+          compacto && "alvo-toque max-lg:size-10 max-lg:px-0 topo-compacto:size-10 topo-compacto:px-0",
         )}
       >
         {icone}
-        <span className={cn(compacto && "max-lg:sr-only")}>{rotulo}</span>
-        <Lock aria-hidden className={cn("size-3.5", compacto && "max-lg:hidden")} />
+        <span className={cn(compacto && "max-lg:sr-only topo-compacto:sr-only")}>{rotulo}</span>
+        <Lock aria-hidden className={cn("size-3.5", compacto && "max-lg:hidden topo-compacto:hidden")} />
       </button>
       <span id={id} className="sr-only">
         {dica}

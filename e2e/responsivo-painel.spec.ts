@@ -170,6 +170,38 @@ for (const tema of ["claro", "escuro"] as const) {
           expect(await linhasDoTexto(status), `a ${largura} px, o status do salvamento não passa de 2 linhas`).toBeLessThanOrEqual(2);
         });
       });
+
+      test(`editor de ${editor.nome}: a partir do corte, título, status e botões ficam numa linha só (#48)`, async ({ page, hasTouch }, testInfo) => {
+        await entrarComoAdm(page, editor.endereco, { toque: hasTouch });
+        // Abaixo do corte, Salvar e Publicar ficam na barra de baixo (E49; e2e/publicar-pelo-celular.spec.ts).
+        test.skip(telaEstreita(page), "no celular e no tablet em pé, o topo é o compacto do E49");
+        await page.getByLabel(editor.campo).fill("Assembleia geral dos rodoviários");
+        // Com o rascunho salvo, o topo ganha o ⋯: a linha mais cheia.
+        await expect(page.getByTestId("status-do-salvamento")).toContainText("Salvo automaticamente às");
+        const cabecalho = page.locator("main header").first();
+        const titulo = cabecalho.getByRole("heading", { level: 1 });
+        // Os nomes acessíveis não mudam quando o rótulo encurta (WCAG 2.5.3: o visível está contido no nome).
+        await expect(cabecalho.getByRole("button", { name: "Salvar rascunho" })).toBeVisible();
+        await expect(cabecalho.getByRole("button", { name: "Pré-visualizar" })).toBeVisible();
+        await expect(cabecalho.getByRole("button", { name: /^Publicar/ })).toBeVisible();
+
+        await emCadaLargura(page, testInfo, async (largura) => {
+          if (largura < RESPONSIVO.menuLateralAPartirDe) return;
+          const medida = await cabecalho.evaluate((header, mesmaLinha) => {
+            const [bloco, acoes] = [...header.children] as [HTMLElement, HTMLElement];
+            const b = bloco.getBoundingClientRect();
+            const a = acoes.getBoundingClientRect();
+            const topos = [...acoes.querySelectorAll("button")].filter((el) => el.getClientRects().length > 0).map((el) => el.getBoundingClientRect().top);
+            return {
+              aoLado: a.left >= b.right - 1 && a.top < b.bottom && a.bottom > b.top,
+              botoesNumaLinha: Math.max(...topos) - Math.min(...topos) < mesmaLinha,
+            };
+          }, TOLERANCIA.mesmaLinha);
+          expect(medida.aoLado, `a ${largura} px, os botões ficam ao lado do título e do status`).toBe(true);
+          expect(medida.botoesNumaLinha, `a ${largura} px, os botões ficam numa linha só`).toBe(true);
+          expect(await textoCortado(titulo), `a ${largura} px, o título não é cortado`).toBe(false);
+        });
+      });
     }
 
     test("editor de documento: “Texto pesquisável” tem altura máxima e rola por dentro, sem empurrar a página", async ({ page, hasTouch }) => {
