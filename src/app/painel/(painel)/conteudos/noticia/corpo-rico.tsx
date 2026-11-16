@@ -70,6 +70,9 @@ const EXTENSOES = [
   ImagemDaMidia.configure({ HTMLAttributes: { class: "imagem-do-corpo" } }),
 ];
 
+/** Lugar da barra de formatação enquanto o editor não está pronto. */
+const BarraVazia = () => <div className="h-[52px] border-b border-borda-padrao bg-fundo-superficie-alt" />;
+
 export const MENSAGEM_SEM_INTERNET_MIDIA = "Conecte-se à internet para enviar ou escolher arquivos da Mídia";
 
 /**
@@ -79,7 +82,8 @@ export const MENSAGEM_SEM_INTERNET_MIDIA = "Conecte-se à internet para enviar o
  * - `se-diferente`: cópia do navegador e “Manter a minha versão”. Com o corpo igual, nada muda e o
  *   histórico da pessoa continua.
  */
-export type TrocaDoCorpo = { n: number; modo: "sempre" | "se-diferente" };
+/** `contador` sobe a cada troca: o CorpoRico aplica cada valor uma vez só. */
+export type TrocaDoCorpo = { contador: number; modo: "sempre" | "se-diferente" };
 
 /**
  * Põe o documento no editor com o histórico vazio, sem disparar o onUpdate. Compara pelo documento
@@ -105,7 +109,7 @@ export function CorpoRico({
 }: {
   valor: DocCorpo;
   aoMudar: (doc: DocCorpo) => void;
-  /** Cada `n` novo é uma troca do corpo feita pelo sistema; veja `TrocaDoCorpo`. */
+  /** Cada `contador` novo é uma troca do corpo feita pelo sistema; veja `TrocaDoCorpo`. */
   troca: TrocaDoCorpo;
   /** Entrega o editor para os botões de desfazer e refazer do topo da tela. */
   aoCriar: (editor: Editor | null) => void;
@@ -145,13 +149,13 @@ export function CorpoRico({
   // Corpo trocado pelo sistema (descartar, conflito, restaurar versão, cópia do navegador): não entra
   // no histórico do Desfazer (#50). O que a pessoa digita volta pelo onUpdate e não passa por aqui.
   const valorRef = React.useRef(valor);
-  const trocaAplicada = React.useRef(troca.n);
+  const trocaAplicada = React.useRef(troca.contador);
   React.useEffect(() => {
     valorRef.current = valor;
   });
   React.useEffect(() => {
-    if (!editor || trocaAplicada.current === troca.n) return;
-    trocaAplicada.current = troca.n;
+    if (!editor || trocaAplicada.current === troca.contador) return;
+    trocaAplicada.current = troca.contador;
     trocarSemHistorico(editor, valorRef.current, troca.modo);
   }, [editor, troca]);
 
@@ -163,7 +167,7 @@ export function CorpoRico({
       {editor ? (
         <BarraDeFerramentas editor={editor} conectado={conectado} limites={limites} />
       ) : (
-        <div className="h-[52px] border-b border-borda-padrao bg-fundo-superficie-alt" />
+        <BarraVazia />
       )}
       <MarcarImagensSemAlt.Provider value={marcarImagensSemAlt}>
         <EditorContent editor={editor} />
@@ -214,7 +218,7 @@ function BarraDeFerramentas({
   const [seletorAberto, setSeletorAberto] = React.useState(false);
   const [imagem, setImagem] = React.useState<ArquivoParaEscolher | null>(null);
 
-  if (!ativo) return <div className="h-[52px] border-b border-borda-padrao bg-fundo-superficie-alt" />;
+  if (!ativo) return <BarraVazia />;
   const cadeia = () => editor.chain().focus();
 
   return (

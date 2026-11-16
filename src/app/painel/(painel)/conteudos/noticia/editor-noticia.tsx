@@ -171,9 +171,9 @@ export function EditorNoticia({
   const [arquivos, setArquivos] = React.useState(arquivosIniciais);
   const [corpoEditor, setCorpoEditor] = React.useState<Editor | null>(null);
   // Chamado junto com o setDados quando o sistema troca os dados: o corpo muda sem entrar no Desfazer (#50).
-  const [trocaDoCorpo, setTrocaDoCorpo] = React.useState<TrocaDoCorpo>({ n: 0, modo: "sempre" });
+  const [trocaDoCorpo, setTrocaDoCorpo] = React.useState<TrocaDoCorpo>({ contador: 0, modo: "sempre" });
   const trocarCorpo = React.useCallback(
-    (modo: TrocaDoCorpo["modo"]) => setTrocaDoCorpo((atual) => ({ n: atual.n + 1, modo })),
+    (modo: TrocaDoCorpo["modo"]) => setTrocaDoCorpo((atual) => ({ contador: atual.contador + 1, modo })),
     [],
   );
   const [seletorCapa, setSeletorCapa] = React.useState(false);

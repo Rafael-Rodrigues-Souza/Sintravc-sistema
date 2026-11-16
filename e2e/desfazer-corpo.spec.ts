@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import postgres from "postgres";
 
+import { ambienteE2E } from "../playwright.config";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { apertar } from "./entrar";
 import { assentar, entrarComo } from "./responsivo";
@@ -122,9 +124,13 @@ test("abrir e clicar no corpo não acendem Desfazer; digitar acende, e desfazer 
   // Ctrl+Z em outro campo não mexe no corpo (E40: não há desfazer entre campos).
   await page.keyboard.press("Control+Y");
   await expect(corpo(page)).toContainText("Mais um trecho.");
-  await page.getByLabel("Lide").fill("Lide novo");
-  await page.getByLabel("Lide").press("Control+Z");
-  await expect(corpo(page)).toContainText("Mais um trecho.");
+  const lide = page.getByLabel("Lide");
+  await apertar(lide, hasTouch);
+  await page.keyboard.type("Lide escrito pelo teclado");
+  await expect(lide).toHaveValue("Lide escrito pelo teclado");
+  await page.keyboard.press("Control+Z");
+  await expect(lide).not.toHaveValue("Lide escrito pelo teclado");
+  await expect(corpo(page)).toContainText(`${ORIGINAL} Mais um trecho.`);
 });
 
 test("E42 · depois de descartar alterações, Desfazer fica apagado e não traz de volta o texto descartado", async ({ page }) => {
@@ -210,7 +216,7 @@ test("E02 · conflito ao abrir, com “Manter a minha versão”: o corpo é o q
   await context.setOffline(true);
   await escreverNoCorpo(page, " Linha do Carlos, guardada no navegador.");
   await expect(status(page)).toContainText("Sem internet");
-  page.on("dialog", (aviso) => void aviso.accept());
+  page.on("dialog", (dialogo) => void dialogo.accept());
   await page.goto("about:blank");
   await context.setOffline(false);
 
@@ -226,5 +232,106 @@ test("E02 · conflito ao abrir, com “Manter a minha versão”: o corpo é o q
   await expect(page.getByText("Sua versão foi mantida.")).toBeVisible();
 
   await expect(corpo(page)).toContainText("Linha do Carlos, guardada no navegador.");
+  await historicoVazio(page);
+});
+
+/** Seleciona uma palavra do corpo com dois cliques, como a pessoa faria. */
+async function selecionarPalavra(page: Page) {
+  await corpo(page).locator("p").first().dblclick();
+  expect(await page.evaluate(() => window.getSelection()?.toString().trim().length ?? 0)).toBeGreaterThan(0);
+}
+
+async function revisaoNoBanco(id: string) {
+  const sql = postgres(ambienteE2E.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [linha] = await sql<{ revisao: number }[]>`select revisao from conteudo where id = ${id}`;
+    return linha!.revisao;
+  } finally {
+    await sql.end();
+  }
+}
+
+test("CA5 · abrir a publicada, clicar e selecionar texto no corpo não mostra o aviso de alterações nem salva", async ({ page }) => {
+  await entrarComo(page, pessoas.com, "/painel/conteudos/noticia/nova");
+  const id = await escrever(page, "Plantão de férias da sede", ORIGINAL);
+  await publicar(page);
+
+  await page.reload();
+  await expect(corpo(page)).toContainText(ORIGINAL);
+  const revisao = await revisaoNoBanco(id);
+  const statusAntes = await status(page).textContent();
+
+  await apertar(corpo(page), false);
+  await selecionarPalavra(page);
+  await page.waitForTimeout(3000); // mais que o intervalo do salvamento automático
+  await expect(aviso(page)).toHaveCount(0);
+  await expect(status(page)).toHaveText(statusAntes ?? "");
+  expect(await revisaoNoBanco(id)).toBe(revisao);
+});
+
+test("reabrir a publicada e a oculta: Desfazer e Refazer apagados, e selecionar texto não acende", async ({ page }) => {
+  await entrarComo(page, pessoas.com, "/painel/conteudos/noticia/nova");
+  await escrever(page, "Horário especial no feriado", ORIGINAL);
+  await publicar(page);
+
+  // Publicada.
+  await page.reload();
+  await expect(corpo(page)).toContainText(ORIGINAL);
+  await historicoVazio(page);
+  await selecionarPalavra(page);
+  await historicoVazio(page);
+
+  // Oculta.
+  await page.getByRole("button", { name: "Mais ações" }).click();
+  await page.getByRole("menuitem", { name: "Ocultar do site" }).click();
+  const ocultar = page.getByRole("alertdialog", { name: "Ocultar do site?" });
+  await ocultar.getByLabel(/Motivo/).fill("Conferir o horário com a diretoria");
+  await ocultar.getByRole("button", { name: "Ocultar do site" }).click();
+  await expect(page.getByText("Conteúdo oculto do site.")).toBeVisible();
+  await page.reload();
+  await expect(corpo(page)).toContainText(ORIGINAL);
+  await historicoVazio(page);
+  await selecionarPalavra(page);
+  await historicoVazio(page);
+});
+
+test("negrito pela barra acende o Desfazer; Desfazer e Refazer do topo agem no corpo", async ({ page }) => {
+  await entrarComo(page, pessoas.com, "/painel/conteudos/noticia/nova");
+  await escrever(page, "Exames periódicos na sede", ORIGINAL);
+  await page.reload();
+  await expect(corpo(page)).toContainText(ORIGINAL);
+
+  const b = botoes(page);
+  await selecionarPalavra(page);
+  await barra(page).getByRole("button", { name: "Negrito (Ctrl+B)" }).click();
+  await expect(corpo(page).locator("strong")).toHaveCount(1);
+  await expect(b.topoDesfazer).toBeEnabled();
+  await expect(b.barraDesfazer).toBeEnabled();
+
+  await b.topoDesfazer.click();
+  await expect(corpo(page).locator("strong")).toHaveCount(0);
+  await expect(b.topoRefazer).toBeEnabled();
+  await b.topoRefazer.click();
+  await expect(corpo(page).locator("strong")).toHaveCount(1);
+  await expect(b.topoRefazer).toBeDisabled();
+});
+
+test("E02 · cópia do navegador sem conflito: o corpo volta com o texto guardado e Desfazer fica apagado", async ({ page, context }) => {
+  await entrarComo(page, pessoas.com, "/painel/conteudos/noticia/nova");
+  const id = await escrever(page, "Vacinação na garagem", ORIGINAL);
+
+  // Escreve no corpo sem internet e fecha a aba: a cópia fica só neste navegador.
+  await context.setOffline(true);
+  await escreverNoCorpo(page, " Linha guardada no navegador.");
+  await expect(status(page)).toContainText("Sem internet");
+  page.on("dialog", (dialogo) => void dialogo.accept());
+  await page.goto("about:blank");
+  await context.setOffline(false);
+
+  // Abre de novo: ninguém mexeu no servidor, então a cópia volta sem conflito.
+  await page.goto(`/painel/conteudos/noticia/${id}`);
+  await expect(page.getByText("Recuperamos as alterações guardadas neste computador.")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Há duas versões do rascunho" })).toHaveCount(0);
+  await expect(corpo(page)).toContainText(`${ORIGINAL} Linha guardada no navegador.`);
   await historicoVazio(page);
 });
