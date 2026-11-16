@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -170,6 +170,15 @@ export function DetalhesArquivo({
               <a href={`/painel/midia/${arquivo.id}/pdf?modo=abrir`} target="_blank" rel="noopener noreferrer">
                 <FileText aria-hidden />
                 Abrir PDF
+              </a>
+            </Button>
+          ) : null}
+          {arquivo.tipo === "documento" ? (
+            // O objeto é gravado com attachment e o nome do envio (E39): o navegador baixa com esse nome.
+            <Button asChild variant="secundario">
+              <a href={arquivo.url} download={arquivo.nomeArquivo}>
+                <Download aria-hidden />
+                Baixar
               </a>
             </Button>
           ) : null}

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { expect, request as novoPedido, test, type Page } from "@playwright/test";
 
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
+import { office, openDocument } from "../src/testes/arquivos/gerar";
 import { entrarNoPainel } from "./entrar";
 import { pdfComTexto } from "./responsivo";
 
@@ -64,4 +65,18 @@ test("A rota do PDF recusa quem não tem sessão (401) e o Atendimento (403)", a
   await entrar(page, pessoas.atd, "/painel");
   await expect(page.getByRole("navigation", { name: "Menu do painel" })).toBeVisible();
   expect((await page.request.get(enderecoDoPdf)).status()).toBe(403);
+});
+
+test("“Baixar” baixa o documento com o nome original", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  const casos = [
+    { nome: `ata-assembleia-${Date.now()}.docx`, bytes: office("docx"), tipo: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+    { nome: `escala-folgas-${Date.now()}.ods`, bytes: openDocument("ods"), tipo: "application/vnd.oasis.opendocument.spreadsheet" },
+  ];
+  for (const { nome, bytes, tipo } of casos) {
+    const detalhes = await enviarEAbrir(page, nome, Buffer.from(bytes), tipo);
+    await expect(detalhes.getByRole("link", { name: "Abrir PDF" })).toHaveCount(0);
+    const [download] = await Promise.all([page.waitForEvent("download"), detalhes.getByRole("link", { name: "Baixar" }).click()]);
+    expect(download.suggestedFilename()).toBe(nome);
+  }
 });
