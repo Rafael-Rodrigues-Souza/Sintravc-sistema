@@ -8,7 +8,7 @@ import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { office, openDocument } from "../src/testes/arquivos/gerar";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { apertar, entrarNoPainel } from "./entrar";
-import { entrarComo, pdfComTexto, semAnimacao } from "./responsivo";
+import { entrarComo, pdfComTexto, semAnimacao, TOLERANCIA } from "./responsivo";
 
 /** Ver o arquivo inteiro na Mídia (issue #54, E53): imagem em tela cheia, “Abrir PDF” e “Baixar”. */
 
@@ -281,6 +281,15 @@ test.describe("visualizador no celular, no tablet e no computador", { tag: "@res
     const detalhes = page.getByRole("complementary", { name: "Detalhes do arquivo" });
     await expect(detalhes.getByLabel("Nome do arquivo")).toHaveValue(nome);
     const enderecoDosDetalhes = page.url();
+    // “Ver inteira” fica abaixo da prévia: Copiar link e Salvar continuam numa linha, como no Figma (116:2727).
+    const centroY = async (nome: string) => {
+      const caixa = (await detalhes.getByRole("button", { name: nome }).boundingBox())!;
+      return caixa.y + caixa.height / 2;
+    };
+    expect(Math.abs((await centroY("Copiar link")) - (await centroY("Salvar")))).toBeLessThan(TOLERANCIA.mesmaLinha);
+    const verInteira = (await detalhes.getByRole("button", { name: "Ver inteira" }).boundingBox())!;
+    const campoDoNome = (await detalhes.getByLabel("Nome do arquivo").boundingBox())!;
+    expect(verInteira.y + verInteira.height, "“Ver inteira” fica entre a prévia e o nome do arquivo").toBeLessThan(campoDoNome.y);
 
     await apertar(detalhes.getByRole("button", { name: "Ver a imagem inteira" }), hasTouch);
     const visualizador = page.getByRole("dialog", { name: nome });

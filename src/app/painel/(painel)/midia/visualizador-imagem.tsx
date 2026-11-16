@@ -277,7 +277,7 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
   return (
     <>
       <div className="relative z-10 flex items-center gap-3 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <DialogPrimitive.Title className="min-w-0 flex-1 truncate texto-titulo-card-pequeno">
+        <DialogPrimitive.Title title={imagem.nomeArquivo} className="min-w-0 flex-1 truncate texto-titulo-card-pequeno">
           {imagem.nomeArquivo}
         </DialogPrimitive.Title>
         <DialogPrimitive.Description className="sr-only">

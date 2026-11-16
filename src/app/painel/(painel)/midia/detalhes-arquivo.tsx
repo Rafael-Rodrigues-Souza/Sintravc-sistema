@@ -25,6 +25,10 @@ import { cn } from "@/lib/utils";
 import { acaoExcluirMidia, acaoSalvarDetalhes, type EstadoDetalhes } from "./acoes";
 import { VisualizadorImagem } from "./visualizador-imagem";
 
+/** Link de texto com ícone, como o “Baixar PDF” do editor de documento; no toque, com a área mínima. */
+const LINK_DA_PREVIA =
+  "-mt-2 inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-(--alvo-toque) [&_svg]:size-4";
+
 export type ArquivoDetalhado = {
   id: string;
   url: string;
@@ -104,6 +108,26 @@ export function DetalhesArquivo({
       </div>
 
       <Previa arquivo={arquivo} aoVer={verInteira} />
+      {/* Ver o arquivo inteiro (E53): um link logo abaixo da prévia, para a fileira de baixo continuar
+          com Copiar link e Salvar numa linha, como no Figma (116:2727). */}
+      {arquivo.tipo === "imagem" ? (
+        <button type="button" onClick={verInteira} className={LINK_DA_PREVIA}>
+          <Maximize2 aria-hidden />
+          Ver inteira
+        </button>
+      ) : arquivo.tipo === "pdf" ? (
+        // A rota do painel responde inline: o endereço público baixa, por causa do attachment (E39).
+        <a href={`/painel/midia/${arquivo.id}/pdf?modo=abrir`} target="_blank" rel="noopener noreferrer" className={LINK_DA_PREVIA}>
+          <FileText aria-hidden />
+          Abrir PDF
+        </a>
+      ) : (
+        // O objeto é gravado com attachment e o nome do envio (E39): o navegador baixa com esse nome.
+        <a href={arquivo.url} download={arquivo.nomeArquivo} className={LINK_DA_PREVIA}>
+          <Download aria-hidden />
+          Baixar
+        </a>
+      )}
       {arquivo.tipo === "imagem" ? (
         <VisualizadorImagem
           imagem={arquivo}
@@ -181,30 +205,6 @@ export function DetalhesArquivo({
         ) : null}
 
         <div className="flex flex-wrap gap-2.5">
-          {arquivo.tipo === "imagem" ? (
-            <Button type="button" variant="secundario" onClick={verInteira}>
-              <Maximize2 aria-hidden />
-              Ver inteira
-            </Button>
-          ) : null}
-          {arquivo.tipo === "pdf" ? (
-            // A rota do painel responde inline (E53): o endereço público baixa, por causa do attachment (E39).
-            <Button asChild variant="secundario">
-              <a href={`/painel/midia/${arquivo.id}/pdf?modo=abrir`} target="_blank" rel="noopener noreferrer">
-                <FileText aria-hidden />
-                Abrir PDF
-              </a>
-            </Button>
-          ) : null}
-          {arquivo.tipo === "documento" ? (
-            // O objeto é gravado com attachment e o nome do envio (E39): o navegador baixa com esse nome.
-            <Button asChild variant="secundario">
-              <a href={arquivo.url} download={arquivo.nomeArquivo}>
-                <Download aria-hidden />
-                Baixar
-              </a>
-            </Button>
-          ) : null}
           <Button type="button" variant="secundario" onClick={copiarLink}>
             <IconeFigma src="/painel/icone-copiar.svg" tamanho={18} />
             Copiar link
