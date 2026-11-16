@@ -242,7 +242,8 @@ function Linha({
         </span>
       </td>
       <td className="col-start-3 row-start-1 justify-self-end lg:px-3 lg:py-4">
-        <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:justify-start">
+        {/* Na tabela, estado e vigência ficam numa linha: quem cede o espaço é o título (line-clamp-1) (#51). */}
+        <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:flex-nowrap lg:justify-start lg:whitespace-nowrap">
           <SeloEstado estado={linha.estado} />
           <SeloVigencia selo={linha.seloVigencia ?? null} />
         </span>

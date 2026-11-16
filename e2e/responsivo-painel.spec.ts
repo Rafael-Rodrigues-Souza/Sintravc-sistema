@@ -297,6 +297,30 @@ for (const tema of ["claro", "escuro"] as const) {
       });
     });
 
+    test("Conteúdos, lista: “Publicado” e “Prazo” ficam numa linha (#51)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, DOCUMENTO.endereco, { toque: hasTouch });
+      test.skip(telaEstreita(page), "no celular e no tablet em pé, a linha vira cartão, sem a coluna Estado");
+      // Um edital publicado pela tela, com o evento daqui a 5 dias: o selo de vigência é “Prazo” (C2).
+      const sufixo = `${testInfo.project.name}, tema ${tema}, tentativa ${testInfo.retry}, ${Date.now()}`;
+      await DOCUMENTO.preencher(page, sufixo, hasTouch);
+      await page.getByLabel("Data do evento ou prazo").fill(new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10));
+      await page.getByLabel("Hora do evento ou prazo").fill("19:00");
+      await salvo(page);
+      await DOCUMENTO.publicar(page, hasTouch);
+      await page.goto("/painel/conteudos");
+      const linha = page.getByRole("row").filter({ hasText: sufixo });
+      const publicado = linha.getByTestId("selo-estado");
+      const prazo = linha.getByText("Vigência: Prazo");
+      await expect(publicado).toHaveText("Publicado");
+      await expect(prazo).toBeVisible();
+
+      await emCadaLargura(page, testInfo, async (largura) => {
+        if (largura < RESPONSIVO.menuLateralAPartirDe) return;
+        expect.soft(await distanciaDosCentros(publicado, prazo), `a ${largura} px, “Publicado” e “Prazo” ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+        await semRolagemLateral(page);
+      });
+    });
+
     for (const editor of EDITORES) {
       test(`editor de ${editor.nome}: cabeçalho sem nada sobreposto, título legível e “Salvo automaticamente” em até 2 linhas`, async ({ page, hasTouch }, testInfo) => {
         await entrarComoAdm(page, editor.endereco, { toque: hasTouch });
