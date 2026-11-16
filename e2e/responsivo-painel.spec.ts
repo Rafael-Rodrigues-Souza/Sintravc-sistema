@@ -494,6 +494,29 @@ for (const tema of ["claro", "escuro"] as const) {
       });
     });
 
+    test("no toque, “Destacar na Home” e “Baixar PDF” têm a área de toque mínima (#51)", async ({ page, hasTouch }, testInfo) => {
+      test.skip(!hasTouch, "só nos perfis com toque");
+      await entrarComoAdm(page, NOTICIA.endereco, { toque: hasTouch });
+      // Abaixo do corte, Salvar e Publicar ficam na barra de baixo (já conferida em e2e/publicar-pelo-celular.spec.ts).
+      test.skip(telaEstreita(page), "a área de toque dos deitados (ipad e tablet); abaixo do corte o editor é o compacto do E49");
+      const sufixo = `${testInfo.project.name}, tema ${tema}, tentativa ${testInfo.retry}, ${Date.now()}`;
+      const pequenosCom = async (nome: string) => (await alvosPequenos(page)).filter((alvo) => alvo.includes(nome));
+
+      // Notícia publicada pela tela: “Destacar na Home” fica ativo.
+      await NOTICIA.preencher(page, sufixo, hasTouch);
+      await salvo(page);
+      await NOTICIA.publicar(page, hasTouch);
+      await expect(page.getByRole("link", { name: "Destacar na Home" })).toBeVisible();
+      expect.soft(await pequenosCom("Destacar na Home"), "“Destacar na Home” com área de toque pequena").toEqual([]);
+
+      // Edital com o PDF enviado pelo botão: aparece “Baixar PDF”.
+      await page.goto(DOCUMENTO.endereco);
+      await DOCUMENTO.preencher(page, sufixo, hasTouch);
+      await salvo(page);
+      await expect(page.getByRole("link", { name: "Baixar PDF" })).toBeVisible();
+      expect.soft(await pequenosCom("Baixar PDF"), "“Baixar PDF” com área de toque pequena").toEqual([]);
+    });
+
     test("editor de documento: o rótulo do tipo não quebra dentro da pílula", async ({ page, hasTouch }, testInfo) => {
       await entrarComoAdm(page, "/painel/conteudos/documento/nova?tipo=acordo", { toque: hasTouch });
       const tipos = page.getByRole("navigation", { name: "Tipo de conteúdo" });

@@ -1148,11 +1148,12 @@ export function EditorNoticia({
                   ? `Entra no ar sozinha em ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}, com o que estiver salvo nessa hora.`
                   : "Fica como rascunho, fora do site, até alguém publicar."}
             </p>
+            {/* No toque, o link tem a altura da área de toque de verdade (e não um ::after), para não cobrir a dica de baixo (#51). */}
             {noAr && estado.id ? (
               <div className="flex flex-col gap-1">
                 <Link
                   href={`/painel/pagina-inicial?sugerir=${estado.id}`}
-                  className="inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
+                  className="inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-(--alvo-toque)"
                 >
                   <Star aria-hidden className="size-4" />
                   Destacar na Home
@@ -1167,7 +1168,7 @@ export function EditorNoticia({
                   aria-disabled="true"
                   aria-describedby="dica-destacar"
                   onClick={(evento) => evento.preventDefault()}
-                  className="inline-flex cursor-not-allowed items-center gap-2 self-start rounded-sm texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+                  className="inline-flex cursor-not-allowed items-center gap-2 self-start rounded-sm texto-botao text-texto-terciario outline-none focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-(--alvo-toque)"
                 >
                   <Star aria-hidden className="size-4" />
                   Destacar na Home
