@@ -277,7 +277,7 @@ export function StatusDoSalvamento({ estado, temId }: { estado: EstadoDaFila<unk
       <Icone aria-hidden className={cn("size-4 shrink-0", estado.situacao === "salvando" && "animate-spin motion-reduce:animate-none")} />
       {/* No celular e no topo sem espaço (topo-compacto, #48) aparece o texto curto; o leitor de tela lê sempre o completo. */}
       <span className="max-lg:sr-only topo-compacto:sr-only">{textoDoStatus(estado, temId)}</span>
-      <span aria-hidden className="hidden max-lg:inline topo-compacto:inline">
+      <span aria-hidden className="hidden whitespace-nowrap max-lg:inline topo-compacto:inline">
         {textoCurtoDoStatus(estado, temId)}
       </span>
     </p>
@@ -328,6 +328,22 @@ export function RotuloSalvar({ rascunho }: { rascunho: boolean }) {
 }
 
 /**
+ * Rótulo do Publicar do topo. No topo sem espaço (#48), “Publicar alterações…” aparece como
+ * “Publicar…” (o aviso de alterações e o selo seguem na tela), e o nome acessível continua inteiro.
+ */
+export function RotuloPublicar({ rotulo }: { rotulo: string }) {
+  if (rotulo !== "Publicar alterações…") return rotulo;
+  return (
+    <>
+      <span className="topo-compacto:sr-only">Publicar alterações…</span>
+      <span aria-hidden className="hidden topo-compacto:inline">
+        Publicar…
+      </span>
+    </>
+  );
+}
+
+/**
  * Botão que ainda não funciona aqui: fica visível, travado, com a dica lida pelo leitor de tela.
  * No toque não há `title` (E48): `avisarAoTocar` mostra a dica num aviso. `compacto` deixa só o
  * ícone abaixo do lg e no topo sem espaço (topo-compacto, #48); o nome continua para o leitor de tela.
@@ -340,7 +356,7 @@ export function BotaoTravado({
   avisarAoTocar = false,
   className,
 }: {
-  rotulo: string;
+  rotulo: React.ReactNode;
   dica: string;
   icone: React.ReactNode;
   compacto?: boolean;
