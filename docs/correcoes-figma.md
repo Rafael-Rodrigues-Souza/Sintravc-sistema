@@ -81,6 +81,7 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | N14 | Editor · Histórico de versões (painel lateral, com restaurar como rascunho) | E31 | 1 | ☑ |
 | N15 | E-mail “Seu acesso será excluído” (conta inativa há 2 anos) | E25 | 2 | ☐ |
 | N16 | Mídia (116:2727) · arrastando arquivos: camada sobre a área de conteúdo, com borda tracejada e “Solte os arquivos para enviar”. O código já tem a camada (borda `destaque/azul`, ícone de enviar); falta o desenho, no claro e no escuro. | US27, RF48 | 1 | ☐ |
+| N17 | Mídia (116:2727) · visualizador de imagem em tela cheia: nome e X no topo, imagem ajustada à tela, barra de zoom embaixo (−, porcentagem, +, “Ajustar à tela”), fundo escuro nos dois temas, no desktop e no celular. O código já tem o visualizador; falta o desenho | E53 | 1 | ☐ |
 
 ## Ignorados (dados de exemplo)
 | E46 | Editor · Documento oficial (114:1972) | “Dentro do limite de 20 MB”. | Limite de 10 MB (R7, E39). | R7 | ☐ |
@@ -95,6 +96,7 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | E48 | Conteúdos (110:845) | A descrição fica ao lado do grupo Lista/Calendário/Criar, embaixo do título. | Quando falta espaço, o título e o grupo ficam na 1ª linha e a descrição desce para a linha de baixo, na largura toda. Busca e filtros ficam numa linha: cada filtro tem a largura do valor escolhido, com o valor cortado se for longo. “No site” e “Atualizado” ficam numa linha cada (#48). | RNF10, E48 | ☐ |
 | E51 | Editor · Notícia (112:1091) e mobile (M 120:3836) | Desktop: a barra do corpo com todos os botões. Mobile: “Barra de formatação (rolagem horizontal)” com B, I, H2, lista, citação, link, imagem e anexo, de 36 px. | A barra fica numa linha só, sem rolagem: o que não cabe vai para o menu ⋯ “Mais formatação”, em três degraus pela largura da barra. Ordem: B I U, Parágrafo/Subtítulo, Lista, Lista numerada, Citação, Link, Imagem, Desfazer e Refazer. No celular ficam B, I, Lista, Link e ⋯ (alvos de 44 px). Sem o ícone de anexo: os anexos ficam em “Fontes, links e anexos”. | RNF10, E51 | ☐ |
 | E48 | Conteúdos (110:845) | Cada linha tem os ícones Edição rápida e Editar ao lado do ⋯. | Do corte do menu lateral até o 2xl, a coluna Ações mostra só o ⋯, com “Edição rápida” e “Editar” (ou “Abrir”) como primeiros itens; o título continua abrindo o editor. Nessa faixa, Tipo, Estado, No site, Atualizado e Ações têm espaçamento menor, e o título tem largura mínima: mostra pelo menos as primeiras palavras com “Publicado” e o selo de vigência numa linha. No 2xl, como no Figma (#51). | RNF10, E48 | ☐ |
+| E53 | Mídia (116:2727) · Detalhes do arquivo | A prévia é só imagem. Embaixo, só “Copiar link” e “Salvar”. | A prévia da imagem abre o visualizador em tela cheia (N17). Logo abaixo da prévia, um link com ícone: “Ver inteira” (imagem), “Abrir PDF” (PDF, numa aba nova, pela rota do painel) ou “Baixar” (DOCX, XLSX, ODT e ODS). A fileira de baixo continua com “Copiar link” e “Salvar” numa linha. | E53, E39 | ☐ |
 
 Não afetam regras e não precisam de correção no Figma:
 
