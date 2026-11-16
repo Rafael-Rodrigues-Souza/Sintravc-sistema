@@ -565,6 +565,21 @@ for (const tema of ["claro", "escuro"] as const) {
       }
     });
 
+    test("Equipe: “Último acesso” aparece inteiro, sem reticências (#51)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, "/painel/equipe", { toque: hasTouch });
+      const ultimosAcessos = page.getByRole("cell").getByText(/^Último acesso:/);
+      await expect(page.getByRole("table", { name: "Equipe" })).toBeVisible();
+
+      await emCadaLargura(page, testInfo, async (largura) => {
+        // Entre o md e o xl, “Último acesso: …” fica embaixo do e-mail; fora dessa faixa, é coluna (ou linha do cartão).
+        for (const texto of await ultimosAcessos.all()) {
+          if (!(await texto.isVisible())) continue;
+          expect.soft(await textoCortado(texto), `a ${largura} px, “${(await texto.textContent())?.trim()}” aparece inteiro`).toBe(false);
+        }
+        await semRolagemLateral(page);
+      });
+    });
+
     test("Equipe: a coluna Pessoa nunca some e o nome e o e-mail são os últimos a encolher", async ({ page, hasTouch }, testInfo) => {
       await entrarComoAdm(page, "/painel/equipe", { toque: hasTouch });
       // Uma pessoa de nome e e-mail longos, convidada pela tela.

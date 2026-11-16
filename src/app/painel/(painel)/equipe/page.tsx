@@ -69,8 +69,9 @@ export default async function PaginaEquipe() {
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <p className={cn("truncate texto-titulo-card-pequeno text-texto-primario", TETO_DA_PESSOA)}>{integrante.nome}</p>
                     <p className={cn("truncate texto-pequeno text-texto-secundario", TETO_DA_PESSOA)}>{integrante.email}</p>
-                    {/* Não conta para a largura mínima da Pessoa: só o nome e o e-mail contam. */}
-                    <p className="hidden truncate texto-pequeno text-texto-terciario [contain:inline-size] md:block xl:hidden">
+                    {/* Não conta para a largura mínima da Pessoa: só o nome e o e-mail contam. Quando não
+                        cabe ao lado, desce para a linha de baixo em vez de ser cortado (#51). */}
+                    <p className="hidden texto-pequeno break-words text-texto-terciario [contain:inline-size] md:block xl:hidden">
                       Último acesso: {ultimoAcessoNaLista(integrante, { agora, ehVoce })}
                     </p>
                   </div>
