@@ -1,7 +1,16 @@
 "use client";
 
 import Image from "@tiptap/extension-image";
-import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState, type Editor, type JSONContent } from "@tiptap/react";
+import { EditorState } from "@tiptap/pm/state";
+import {
+  createDocument,
+  EditorContent,
+  ReactNodeViewRenderer,
+  useEditor,
+  useEditorState,
+  type Editor,
+  type JSONContent,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
@@ -61,7 +70,32 @@ const EXTENSOES = [
   ImagemDaMidia.configure({ HTMLAttributes: { class: "imagem-do-corpo" } }),
 ];
 
+/** Lugar da barra de formatação enquanto o editor não está pronto. */
+const BarraVazia = () => <div className="h-[52px] border-b border-borda-padrao bg-fundo-superficie-alt" />;
+
 export const MENSAGEM_SEM_INTERNET_MIDIA = "Conecte-se à internet para enviar ou escolher arquivos da Mídia";
+
+/**
+ * Troca do corpo feita pelo sistema, não pela pessoa (#50).
+ * - `sempre`: descartar, usar a versão do servidor e restaurar versão. O histórico zera mesmo com o
+ *   corpo igual: desfazer um passo antigo tiraria a cópia de trabalho do que o sistema acabou de pôr.
+ * - `se-diferente`: cópia do navegador e “Manter a minha versão”. Com o corpo igual, nada muda e o
+ *   histórico da pessoa continua.
+ */
+/** `contador` sobe a cada troca: o CorpoRico aplica cada valor uma vez só. */
+export type TrocaDoCorpo = { contador: number; modo: "sempre" | "se-diferente" };
+
+/**
+ * Põe o documento no editor com o histórico vazio, sem disparar o onUpdate. Compara pelo documento
+ * do ProseMirror (estrutura e atributos), não pelo texto do JSON: o jsonb do banco muda a ordem das chaves.
+ */
+function trocarSemHistorico(editor: Editor, valor: DocCorpo, modo: TrocaDoCorpo["modo"]) {
+  const doc = createDocument(valor as JSONContent, editor.schema);
+  if (modo === "se-diferente" && doc.eq(editor.state.doc)) return;
+  editor.view.updateState(EditorState.create({ doc, plugins: editor.state.plugins }));
+  // Transação vazia, fora do histórico e sem onUpdate, só para os botões (useEditorState) se atualizarem.
+  editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false).setMeta("preventUpdate", true));
+}
 
 export function CorpoRico({
   valor,
@@ -71,9 +105,12 @@ export function CorpoRico({
   limites,
   rodape,
   marcarImagensSemAlt = false,
+  troca,
 }: {
   valor: DocCorpo;
   aoMudar: (doc: DocCorpo) => void;
+  /** Cada `contador` novo é uma troca do corpo feita pelo sistema; veja `TrocaDoCorpo`. */
+  troca: TrocaDoCorpo;
   /** Entrega o editor para os botões de desfazer e refazer do topo da tela. */
   aoCriar: (editor: Editor | null) => void;
   conectado: boolean;
@@ -109,20 +146,29 @@ export function CorpoRico({
     return () => aoCriar(null);
   }, [editor, aoCriar]);
 
-  // Conteúdo trocado por fora (ex.: "Usar a versão do servidor" no conflito).
+  // Corpo trocado pelo sistema (descartar, conflito, restaurar versão, cópia do navegador): não entra
+  // no histórico do Desfazer (#50). O que a pessoa digita volta pelo onUpdate e não passa por aqui.
+  const valorRef = React.useRef(valor);
+  const trocaAplicada = React.useRef(troca.contador);
   React.useEffect(() => {
-    if (!editor) return;
-    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(valor)) {
-      editor.commands.setContent(valor as JSONContent, { emitUpdate: false });
-    }
-  }, [editor, valor]);
+    valorRef.current = valor;
+  });
+  React.useEffect(() => {
+    if (!editor || trocaAplicada.current === troca.contador) return;
+    trocaAplicada.current = troca.contador;
+    trocarSemHistorico(editor, valorRef.current, troca.modo);
+  }, [editor, troca]);
 
   const palavras = contarPalavras(valor);
   const minutos = tempoDeLeitura(palavras);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-[14px] border border-borda-forte bg-fundo-superficie focus-within:border-destaque-azul">
-      <BarraDeFerramentas editor={editor} conectado={conectado} limites={limites} />
+      {editor ? (
+        <BarraDeFerramentas editor={editor} conectado={conectado} limites={limites} />
+      ) : (
+        <BarraVazia />
+      )}
       <MarcarImagensSemAlt.Provider value={marcarImagensSemAlt}>
         <EditorContent editor={editor} />
       </MarcarImagensSemAlt.Provider>
@@ -137,12 +183,16 @@ export function CorpoRico({
   );
 }
 
+/**
+ * Só é montada com o editor pronto: o useEditorState guarda o editor que recebe na montagem e só
+ * refaz a leitura na próxima transação, então montado com `null` ficaria com o estado antigo (#50).
+ */
 function BarraDeFerramentas({
   editor,
   conectado,
   limites,
 }: {
-  editor: Editor | null;
+  editor: Editor;
   conectado: boolean;
   limites: { tamanhoMaximoBytes: number; mensagemDeTamanho: string };
 }) {
@@ -168,7 +218,7 @@ function BarraDeFerramentas({
   const [seletorAberto, setSeletorAberto] = React.useState(false);
   const [imagem, setImagem] = React.useState<ArquivoParaEscolher | null>(null);
 
-  if (!editor || !ativo) return <div className="h-[52px] border-b border-borda-padrao bg-fundo-superficie-alt" />;
+  if (!ativo) return <BarraVazia />;
   const cadeia = () => editor.chain().focus();
 
   return (

@@ -70,7 +70,7 @@ import {
   type CamposDaData,
 } from "../pecas-do-editor";
 import { SeloEstado } from "../selos";
-import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA } from "./corpo-rico";
+import { CorpoRico, MENSAGEM_SEM_INTERNET_MIDIA, type TrocaDoCorpo } from "./corpo-rico";
 import { Etiquetas } from "./etiquetas";
 import { FontesEAnexos } from "./fontes-anexos";
 import { HistoricoDeVersoes } from "./historico";
@@ -170,6 +170,12 @@ export function EditorNoticia({
   const [base, setBase] = React.useState(inicio.dados);
   const [arquivos, setArquivos] = React.useState(arquivosIniciais);
   const [corpoEditor, setCorpoEditor] = React.useState<Editor | null>(null);
+  // Chamado junto com o setDados quando o sistema troca os dados: o corpo muda sem entrar no Desfazer (#50).
+  const [trocaDoCorpo, setTrocaDoCorpo] = React.useState<TrocaDoCorpo>({ contador: 0, modo: "sempre" });
+  const trocarCorpo = React.useCallback(
+    (modo: TrocaDoCorpo["modo"]) => setTrocaDoCorpo((atual) => ({ contador: atual.contador + 1, modo })),
+    [],
+  );
   const [seletorCapa, setSeletorCapa] = React.useState(false);
   const [decidirDepois, setDecidirDepois] = React.useState(false);
   const [resolvendo, setResolvendo] = React.useState(false);
@@ -229,9 +235,10 @@ export function EditorNoticia({
     setGuardadaEm(new Date(retomada.guardadoEm));
     if (retomada.tipo === "retomada") {
       setDados(retomada.dados);
+      trocarCorpo("se-diferente");
       toast.info("Recuperamos as alterações guardadas neste computador.");
     }
-  }, [fila]);
+  }, [fila, trocarCorpo]);
 
   // A conexão voltou: envia o que ficou guardado.
   React.useEffect(() => {
@@ -353,6 +360,9 @@ export function EditorNoticia({
       const escolhidos = escolha === "minha" ? conflito.minha : conflito.servidor.dados;
       setDados(escolhidos);
       setBase(escolhidos);
+      // A minha versão: na sessão é o que está no editor (o histórico continua); no conflito ao abrir, é a
+      // cópia do navegador, diferente do que o editor mostra.
+      trocarCorpo(escolha === "minha" ? "se-diferente" : "sempre");
       fila.conflitoResolvido(seguirPublicacao(resposta));
       setDecidirDepois(false);
       toast.success(escolha === "minha" ? "Sua versão foi mantida." : "A versão do servidor foi mantida.");
@@ -603,6 +613,7 @@ export function EditorNoticia({
       dadosAtuais.current = resposta.dados;
       setDados(resposta.dados);
       setBase(resposta.dados);
+      trocarCorpo("sempre");
       fila.conflitoResolvido({ tipo: "salvo", id, revisao: resposta.revisao, salvoEm: resposta.salvoEm });
       setPublicacao((atual) => ({ ...atual, revisaoPublicada: resposta.revisao }));
       toast.success("Alterações descartadas. O editor voltou a ficar igual ao site.");
@@ -666,6 +677,7 @@ export function EditorNoticia({
       dadosAtuais.current = resposta.dados;
       setDados(resposta.dados);
       setBase(resposta.dados);
+      trocarCorpo("sempre");
       fila.conflitoResolvido({ tipo: "salvo", id, revisao: resposta.revisao, salvoEm: resposta.salvoEm });
       toast.success(`Versão ${versao} restaurada como rascunho. O site continua igual até você publicar.`);
       return true;
@@ -928,6 +940,7 @@ export function EditorNoticia({
                 valor={dados.corpo}
                 aoMudar={(corpo) => mudar({ corpo })}
                 aoCriar={setCorpoEditor}
+                troca={trocaDoCorpo}
                 conectado={conectado}
                 limites={limites}
                 rodape={<StatusCurto estado={estado} />}
@@ -1270,10 +1283,17 @@ export function EditorNoticia({
 
 /** Desfazer e refazer do topo (Figma 112:1091): agem no texto rico, como os da barra (E40). */
 function DesfazerRefazer({ editor }: { editor: Editor | null }) {
-  const pode = useEditorState({
-    editor,
-    selector: ({ editor: e }) => (e ? { desfazer: e.can().undo(), refazer: e.can().redo() } : null),
-  });
+  // Montado de novo para cada editor: o useEditorState guarda o editor da montagem e só relê o estado
+  // na próxima transação; com o editor trocado depois, mostraria o estado antigo (#50).
+  return editor ? <DesfazerRefazerDoEditor key={editor.instanceId} editor={editor} /> : <BotoesDesfazerRefazer editor={null} pode={null} />;
+}
+
+function DesfazerRefazerDoEditor({ editor }: { editor: Editor }) {
+  const pode = useEditorState({ editor, selector: ({ editor: e }) => ({ desfazer: e.can().undo(), refazer: e.can().redo() }) });
+  return <BotoesDesfazerRefazer editor={editor} pode={pode} />;
+}
+
+function BotoesDesfazerRefazer({ editor, pode }: { editor: Editor | null; pode: { desfazer: boolean; refazer: boolean } | null }) {
   const classe =
     "alvo-toque flex size-10 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40 [&_svg]:size-5";
   return (
