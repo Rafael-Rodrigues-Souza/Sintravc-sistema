@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { expect, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { RESPONSIVO } from "../playwright.config";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
@@ -19,6 +20,15 @@ export const ALTURA_MAXIMA_DA_FOLHA = (() => {
   if (!achado) throw new Error("drawer.tsx sem max-h-[NNdvh]: a folha inferior precisa de altura máxima (nunca tela cheia)");
   return Number(achado[1]) / 100;
 })();
+
+/** PDF com texto de verdade, como o edital assinado que o sindicato digitaliza. */
+export async function pdfComTexto(linhas: string[]) {
+  const doc = await PDFDocument.create();
+  const fonte = await doc.embedFont(StandardFonts.Helvetica);
+  const pagina = doc.addPage();
+  linhas.forEach((texto, i) => pagina.drawText(texto, { x: 50, y: 700 - i * 24, size: 14, font: fonte }));
+  return Buffer.from(await doc.save());
+}
 
 /** A menor altura da varredura da janela: a “tela baixa” (notebook baixo, tela dividida). */
 export const ALTURA_BAIXA = Math.min(...RESPONSIVO.varredura.alturas);
@@ -204,9 +214,18 @@ export async function textoVisivelCruza(a: Locator, b: Locator): Promise<boolean
 export async function linhasDoTexto(el: Locator): Promise<number> {
   return el.evaluate((no, tolerancia) => {
     // Só os nós de texto (um ícone ao lado do texto não é uma linha); topos próximos são a mesma linha.
+    // O texto só para o leitor de tela (sr-only: caixa de 1 px recortada) não aparece: não conta.
+    const soParaLeitor = (el: Element | null) => {
+      for (; el && no.contains(el); el = el.parentElement) {
+        const r = el.getBoundingClientRect();
+        if (r.width <= 1 && r.height <= 1 && getComputedStyle(el).overflow === "hidden") return true;
+      }
+      return false;
+    };
     const topos: number[] = [];
     const andar = document.createTreeWalker(no, NodeFilter.SHOW_TEXT);
     for (let texto = andar.nextNode(); texto; texto = andar.nextNode()) {
+      if (soParaLeitor(texto.parentElement)) continue;
       const intervalo = document.createRange();
       intervalo.selectNodeContents(texto);
       for (const r of intervalo.getClientRects()) {
@@ -223,6 +242,42 @@ export async function textoCortado(el: Locator): Promise<boolean> {
     (no, tolerancia) => no.scrollWidth > no.clientWidth + tolerancia || no.scrollHeight > no.clientHeight + tolerancia,
     TOLERANCIA.arredondamento,
   );
+}
+
+/** Contraste mínimo do texto comum no WCAG 2.1 AA (RNF09). */
+export const CONTRASTE_MINIMO = 4.5;
+
+/**
+ * Contraste WCAG 2.1 (de 1 a 21) entre a cor do texto do elemento e o fundo atrás dele, pelas cores
+ * calculadas na tela. Fundo translúcido é somado ao dos pais até chegar a um opaco (RNF09).
+ */
+export async function contraste(el: Locator): Promise<number> {
+  return el.evaluate((no) => {
+    type Rgba = [number, number, number, number];
+    const ler = (cor: string): Rgba => {
+      const n = cor.match(/[\d.]+/g)?.map(Number) ?? [];
+      return [n[0] ?? 0, n[1] ?? 0, n[2] ?? 0, n[3] ?? 1];
+    };
+    // Põe a cor de cima (com transparência) sobre a de baixo, já opaca.
+    const sobre = ([r, g, b, a]: Rgba, [R, G, B]: Rgba): Rgba => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a), 1];
+    const camadas: Rgba[] = [];
+    for (let atual: Element | null = no; atual; atual = atual.parentElement) {
+      const cor = ler(getComputedStyle(atual).backgroundColor);
+      if (cor[3] > 0) camadas.push(cor);
+      if (cor[3] >= 1) break;
+    }
+    const fundo = camadas.reduceRight<Rgba>((baixo, cima) => sobre(cima, baixo), [255, 255, 255, 1]);
+    const texto = sobre(ler(getComputedStyle(no).color), fundo);
+    const luminancia = ([r, g, b]: Rgba) => {
+      const canal = (c: number) => {
+        const s = c / 255;
+        return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+    };
+    const [claro, escuro] = [luminancia(texto), luminancia(fundo)].sort((a, b) => b - a) as [number, number];
+    return (claro + 0.05) / (escuro + 0.05);
+  });
 }
 
 /** Largura que a barra de rolagem vertical ocupa dentro do elemento (0 quando ela não ocupa espaço). */

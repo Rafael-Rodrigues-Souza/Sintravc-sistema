@@ -68,8 +68,11 @@ import {
   CampoComContador,
   Cartao,
   CamposDeData,
+  ICONE_COMPACTO,
   mesmaData,
   resumoDasFaltas,
+  RotuloPublicar,
+  RotuloSalvar,
   SecaoQueAbre,
   StatusDoSalvamento,
   useSecoesAbertas,
@@ -691,11 +694,12 @@ export function EditorDocumento({
 
   return (
     <div data-editor-documento className="flex flex-1 flex-col">
-      {/* Os botões descem inteiros para a linha de baixo quando o título e o status não cabem ao lado (E48).
+      {/* Título, status e botões ficam numa linha só (#48): sem espaço para os rótulos, os botões viram
+          ícone (variante topo-compacto, globals.css) e o título quebra a linha, sem reticências.
           Abaixo do lg, o mesmo topo compacto do editor de notícia (E49, E50): Salvar e Publicar vão
           para a barra de baixo. */}
-      <header className="sticky top-0 z-30 flex items-center gap-x-3 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:flex-wrap lg:gap-x-4 lg:px-10">
-        <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-[1_1_max-content]">
+      <header className="@container/topo sticky top-0 z-30 flex items-center gap-x-3 gap-y-3 border-b border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:gap-x-4 lg:px-10">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <Link
             href="/painel/conteudos"
             aria-label="Voltar para Conteúdos"
@@ -705,7 +709,7 @@ export function EditorDocumento({
           </Link>
           <div className="flex min-w-0 flex-col">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="texto-titulo-card text-texto-primario lg:truncate">
+              <h1 className="texto-titulo-card text-texto-primario break-words">
                 {estado.id ? `Editar ${tipo === "edital" ? "edital" : "acordo ou convenção"}` : tipo === "edital" ? "Novo edital" : "Novo acordo ou convenção"}
               </h1>
               <SeloEstado estado={publicacao.estado} className="max-lg:hidden" />
@@ -720,7 +724,7 @@ export function EditorDocumento({
           </div>
         </div>
         {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48). */}
-        <div className="flex shrink-0 items-center gap-1 max-lg:pointer-coarse:vao-toque-10 lg:flex-wrap lg:gap-2">
+        <div className="flex shrink-0 items-center gap-1 max-lg:pointer-coarse:vao-toque-10 lg:gap-2">
           {estado.id ? (
             <Button
               type="button"
@@ -728,19 +732,20 @@ export function EditorDocumento({
               size="pequeno"
               disabled={!!preparando}
               onClick={() => void abrirPrevia()}
-              className="max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0"
+              title="Pré-visualizar"
+              className={ICONE_COMPACTO.botao}
             >
               <Eye aria-hidden />
-              <span className="max-lg:sr-only">{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
+              <span className={ICONE_COMPACTO.rotulo}>{preparando === "previa" ? "Salvando…" : "Pré-visualizar"}</span>
             </Button>
           ) : (
             <BotaoTravado rotulo="Pré-visualizar" dica="Preencha o documento para pré-visualizar" icone={<Eye aria-hidden />} compacto />
           )}
           <Button type="button" variant="secundario" size="pequeno" className="max-lg:hidden" onClick={() => void fila.salvarAgora()}>
-            {jaFoiAoAr(publicacao.estado) ? "Salvar" : "Salvar rascunho"}
+            <RotuloSalvar rascunho={!jaFoiAoAr(publicacao.estado)} />
           </Button>
           {dicaPublicar ? (
-            <BotaoTravado rotulo={rotuloPublicar} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
+            <BotaoTravado rotulo={<RotuloPublicar rotulo={rotuloPublicar} alteracoes={noAr} />} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
           ) : (
             <Button
               ref={botaoPublicar}
@@ -751,7 +756,7 @@ export function EditorDocumento({
               onClick={() => void pedirPublicacao()}
             >
               {vaiAgendar ? <CalendarDays aria-hidden /> : <Upload aria-hidden />}
-              {preparando === "publicar" ? "Conferindo…" : rotuloPublicar}
+              {preparando === "publicar" ? "Conferindo…" : <RotuloPublicar rotulo={rotuloPublicar} alteracoes={noAr} />}
             </Button>
           )}
           {estado.id ? (
@@ -1477,7 +1482,8 @@ function EnvioDoPdf({
             </span>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* Os botões ficam numa linha (#48): quem encolhe é o nome do arquivo, com reticências. */}
+        <div className="flex shrink-0 gap-2">
           {pdf && idDoDocumento ? (
             <Button asChild variant="secundario" size="pequeno">
               <a href={`/painel/documentos/${idDoDocumento}/pdf?modo=abrir`} target="_blank" rel="noopener">
@@ -1498,20 +1504,21 @@ function EnvioDoPdf({
             <Upload aria-hidden />
             {pdf ? "Substituir" : "Enviar PDF"}
           </Button>
-          <input
-            ref={entrada}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden
-            onChange={(evento) => {
-              const arquivo = evento.target.files?.[0];
-              evento.target.value = "";
-              if (arquivo) enviar(arquivo);
-            }}
-          />
         </div>
+        {/* Fora do grupo dos botões: o campo escondido não ocupa lugar na linha. */}
+        <input
+          ref={entrada}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(evento) => {
+            const arquivo = evento.target.files?.[0];
+            evento.target.value = "";
+            if (arquivo) enviar(arquivo);
+          }}
+        />
       </div>
       <p id="dica-pdf" className={cn("texto-pequeno", erro || falha ? "text-status-perigo-texto" : "text-texto-terciario")}>
         {falha ?? erro ?? dica}

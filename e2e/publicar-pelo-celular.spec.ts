@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { apertar } from "./entrar";
-import { assentar, entrarComo, janelaEstreitaNoDesktop, pessoas, semRolagemLateral, tabletQueGira, telaEstreita } from "./responsivo";
+import { assentar, entrarComo, janelaEstreitaNoDesktop, pdfComTexto, pessoas, semRolagemLateral, tabletQueGira, telaEstreita } from "./responsivo";
 
 // Envia um PDF para a Mídia: por isso roda depois de midia.spec.ts (que começa com a Mídia vazia).
 
@@ -24,14 +23,6 @@ async function abrirSecao(page: Page, titulo: string, toque: boolean) {
   if ((await botao.getAttribute("aria-expanded")) !== "true") await apertar(botao, toque);
   await expect(botao).toHaveAttribute("aria-expanded", "true");
   return botao;
-}
-
-async function pdfComTexto(linhas: string[]) {
-  const doc = await PDFDocument.create();
-  const fonte = await doc.embedFont(StandardFonts.Helvetica);
-  const pagina = doc.addPage();
-  linhas.forEach((texto, i) => pagina.drawText(texto, { x: 50, y: 700 - i * 24, size: 14, font: fonte }));
-  return Buffer.from(await doc.save());
 }
 
 test.describe("editores no celular", { tag: "@responsivo" }, () => {

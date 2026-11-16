@@ -54,11 +54,14 @@ export default async function PaginaEquipe() {
                 className={cn("flex flex-col gap-3 border-b border-borda-padrao px-6 py-3.5 last:border-b-0", LINHA)}
               >
                 <div role="cell" className="flex min-w-0 items-center gap-3">
+                  {/* Iniciais com contraste de 4,5:1 nos dois temas (RNF09, #48): o marinho fixo só sobre o
+                      amarelo do “você”; nos outros, a cor do texto do tema (no claro, quase o marinho do Figma). */}
                   <span
                     aria-hidden
+                    data-testid="avatar-da-pessoa"
                     className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-full texto-etiqueta text-destaque-marinho-fixo",
-                      ehVoce ? "bg-destaque-amarelo" : "bg-status-neutro-fundo",
+                      "flex size-10 shrink-0 items-center justify-center rounded-full texto-etiqueta",
+                      ehVoce ? "bg-destaque-amarelo text-destaque-marinho-fixo" : "bg-status-neutro-fundo text-texto-primario",
                     )}
                   >
                     {iniciais(integrante.nome)}

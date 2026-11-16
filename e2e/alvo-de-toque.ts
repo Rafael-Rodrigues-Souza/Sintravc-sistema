@@ -14,7 +14,9 @@
  */
 export type AlvoPequeno = { alvo: string; molde: string; tamanho: string };
 
-export function alvosDeToquePequenos(minimo: number): AlvoPequeno[] {
+/** `dentro` (seletor) limita os alvos medidos a uma parte da tela; os vizinhos de fora continuam podendo cobri-los. */
+export function alvosDeToquePequenos(medida: number | { minimo: number; dentro: string }): AlvoPequeno[] {
+  const { minimo, dentro } = typeof medida === "number" ? { minimo: medida, dentro: "body" } : medida;
   const CLICAVEIS =
     "a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=checkbox], [role=switch], [role=tab], [role=menuitem], [role=radio], [role=link], [role=combobox]";
 
@@ -55,7 +57,9 @@ export function alvosDeToquePequenos(minimo: number): AlvoPequeno[] {
   };
 
   const pequenos: AlvoPequeno[] = [];
-  const alvos = [...document.querySelectorAll(CLICAVEIS)].filter((el) => visivel(el) && !linkNoTexto(el) && !dePropósito(el));
+  const raiz = document.querySelector(dentro);
+  if (!raiz) throw new Error(`alvosDeToquePequenos: nada em “${dentro}”`);
+  const alvos = [...raiz.querySelectorAll(CLICAVEIS)].filter((el) => visivel(el) && !linkNoTexto(el) && !dePropósito(el));
   // Um alvo dentro de outro (ícone dentro do link) conta como o de fora.
   const externos = alvos.filter((el) => !alvos.some((outro) => outro !== el && outro.contains(el)));
   for (const el of externos) {
