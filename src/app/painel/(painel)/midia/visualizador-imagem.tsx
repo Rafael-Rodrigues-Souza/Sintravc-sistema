@@ -8,6 +8,8 @@ import { IconeFigma } from "@/components/icone-figma";
 import { enquadramentoDaImagem } from "@/lib/midia/apresentacao";
 import {
   alternarZoom,
+  ehToqueDuplo,
+  escalaDaPinca,
   limitarDeslocamento,
   VISTA_INICIAL,
   ZOOM,
@@ -30,13 +32,17 @@ export type ImagemParaVer = {
 const PASSO_DA_SETA = 48;
 /** Sensibilidade da roda do mouse: cada 100 de deltaY muda a escala em cerca de 22%. */
 const SENSIBILIDADE_DA_RODA = 0.002;
+/** Um dedo que andou mais que isto (px) arrastou: não conta como toque. */
+const FOLGA_DO_TOQUE = 10;
+/** Marca, no history.state, da entrada que o visualizador acrescenta ao abrir (o voltar do celular fecha). */
+const CHAVE_NO_HISTORICO = "visualizadorDaMidia";
 
-/**
- * Visualizador de imagem da Mídia (E53): a imagem inteira em tela cheia, sobre o painel, com zoom.
- * Não tem frame no Figma: segue o Dialog do E23 e, no celular, o padrão do E50 (topo compacto, ações
- * ao alcance do polegar). O fundo é escuro nos dois temas, como em todo visualizador de fotos.
- * O cálculo do zoom fica em `@/lib/midia/zoom` (funções puras, testadas).
- */
+const CENTRO: Ponto = { x: 0, y: 0 };
+const distancia = (a: Ponto, b: Ponto) => Math.hypot(a.x - b.x, a.y - b.y);
+const meio = (a: Ponto, b: Ponto): Ponto => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const marcaNoHistorico = (): unknown =>
+  (window.history.state as Record<string, unknown> | null)?.[CHAVE_NO_HISTORICO];
+
 /** A imagem em 100% (o tamanho do layout, sem o transform) e a área onde ela aparece. */
 function medir(img: HTMLImageElement | null, caixa: HTMLElement | null): Medidas {
   return {
@@ -50,8 +56,6 @@ function pontoNaArea(caixa: HTMLElement, clienteX: number, clienteY: number): Po
   const r = caixa.getBoundingClientRect();
   return { x: clienteX - (r.left + r.width / 2), y: clienteY - (r.top + r.height / 2) };
 }
-
-const CENTRO: Ponto = { x: 0, y: 0 };
 
 /**
  * Visualizador de imagem da Mídia (E53): a imagem inteira em tela cheia, sobre o painel, com zoom.
@@ -71,8 +75,38 @@ export function VisualizadorImagem({
   /** Para onde o foco volta ao fechar: quem abriu (a prévia ou “Ver inteira”). */
   aoDevolverFoco: () => void;
 }) {
+  // O voltar do celular fecha o visualizador, sem sair da página: ao abrir, entra uma entrada no
+  // histórico, marcada com o código desta abertura, e o voltar a tira e fecha. Fechar pelo X ou pelo
+  // Esc também tira a entrada (history.back), para não sobrar um “voltar” que não faz nada.
+  const abertura = React.useRef<string | null>(null);
+  const fechar = React.useEffectEvent(() => {
+    abertura.current = null;
+    aoMudar(false);
+  });
+  React.useEffect(() => {
+    if (!aberto) return;
+    abertura.current ??= `${Date.now()}-${Math.random()}`;
+    const minha = abertura.current;
+    // No modo estrito do React o efeito roda duas vezes: a entrada só entra uma vez.
+    if (marcaNoHistorico() !== minha) {
+      window.history.pushState({ ...(window.history.state as object | null), [CHAVE_NO_HISTORICO]: minha }, "");
+    }
+    const aoVoltar = () => {
+      if (marcaNoHistorico() !== minha) fechar();
+    };
+    window.addEventListener("popstate", aoVoltar);
+    return () => window.removeEventListener("popstate", aoVoltar);
+  }, [aberto]);
+
+  function mudar(novo: boolean) {
+    if (novo) aoMudar(true);
+    // Fecha pelo histórico: quem fecha de fato é o popstate acima.
+    else if (abertura.current && marcaNoHistorico() === abertura.current) window.history.back();
+    else fechar();
+  }
+
   return (
-    <DialogPrimitive.Root open={aberto} onOpenChange={aoMudar}>
+    <DialogPrimitive.Root open={aberto} onOpenChange={mudar}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           data-slot="visualizador-imagem"
@@ -90,13 +124,25 @@ export function VisualizadorImagem({
   );
 }
 
+type Gesto =
+  | { tipo: "arraste"; id: number; inicio: Ponto; vista: Vista }
+  | { tipo: "pinca"; distancia: number; centro: Ponto; vista: Vista };
+
 function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
   const { fundo } = enquadramentoDaImagem(imagem.mostrarInteira);
   const [vista, setVista] = React.useState<Vista>(VISTA_INICIAL);
   const [arrastando, setArrastando] = React.useState(false);
   const area = React.useRef<HTMLDivElement>(null);
   const foto = React.useRef<HTMLImageElement>(null);
-  const arraste = React.useRef<{ id: number; inicio: Ponto; vista: Vista } | null>(null);
+
+  // Gestos por Pointer Events (mouse, caneta e dedos): um ponteiro arrasta a imagem ampliada, dois
+  // fazem a pinça. A área tem touch-action: none: o navegador não rola nem dá zoom na página.
+  const dedos = React.useRef(new Map<number, Ponto>());
+  const gesto = React.useRef<Gesto | null>(null);
+  // O toque duplo é feito aqui: com touch-action: none, o navegador não gera dblclick confiável no toque.
+  const toque = React.useRef<{ inicio: Ponto; moveu: boolean } | null>(null);
+  const ultimoToque = React.useRef<{ tempo: number; x: number; y: number } | null>(null);
+  const ultimoPonteiro = React.useRef("mouse");
 
   const medidas = () => medir(foto.current, area.current);
   const zoom = (escala: (atual: number) => number, ponto: Ponto = CENTRO) =>
@@ -119,29 +165,84 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
     return () => no.removeEventListener("wheel", naRoda);
   }, []);
 
+  /** Arraste só com a imagem ampliada: em 100% não há o que mover. */
+  function comecarArraste(id: number, inicio: Ponto, atual: Vista) {
+    const ampliada = atual.escala > ZOOM.minimo;
+    gesto.current = ampliada ? { tipo: "arraste", id, inicio, vista: atual } : null;
+    setArrastando(ampliada);
+  }
+
   function aoApertar(evento: React.PointerEvent<HTMLDivElement>) {
-    if (evento.button !== 0 || vista.escala <= ZOOM.minimo) return;
+    ultimoPonteiro.current = evento.pointerType;
+    if (evento.pointerType === "mouse" && evento.button !== 0) return;
     evento.currentTarget.setPointerCapture(evento.pointerId);
-    arraste.current = { id: evento.pointerId, inicio: { x: evento.clientX, y: evento.clientY }, vista };
-    setArrastando(true);
+    const ponto = { x: evento.clientX, y: evento.clientY };
+    dedos.current.set(evento.pointerId, ponto);
+    if (dedos.current.size === 1) {
+      toque.current = { inicio: ponto, moveu: false };
+      comecarArraste(evento.pointerId, ponto, vista);
+    } else if (dedos.current.size === 2) {
+      toque.current = null;
+      const [a, b] = [...dedos.current.values()] as [Ponto, Ponto];
+      gesto.current = { tipo: "pinca", distancia: distancia(a, b), centro: meio(a, b), vista };
+      setArrastando(true);
+    }
   }
 
   function aoMover(evento: React.PointerEvent<HTMLDivElement>) {
-    const atual = arraste.current;
-    if (!atual || atual.id !== evento.pointerId) return;
-    const { vista: inicial, inicio } = atual;
-    setVista(
-      limitarDeslocamento(
-        { ...inicial, x: inicial.x + evento.clientX - inicio.x, y: inicial.y + evento.clientY - inicio.y },
-        medidas(),
-      ),
-    );
+    if (!dedos.current.has(evento.pointerId)) return;
+    const ponto = { x: evento.clientX, y: evento.clientY };
+    dedos.current.set(evento.pointerId, ponto);
+    if (toque.current && distancia(ponto, toque.current.inicio) > FOLGA_DO_TOQUE) toque.current.moveu = true;
+
+    const atual = gesto.current;
+    if (atual?.tipo === "pinca" && dedos.current.size >= 2) {
+      const [a, b] = [...dedos.current.values()] as [Ponto, Ponto];
+      const centro = meio(a, b);
+      const escala = escalaDaPinca(atual.vista.escala, atual.distancia, distancia(a, b));
+      // Zoom no ponto onde a pinça começou e, junto, o quanto os dedos andaram.
+      const inicio = pontoNaArea(evento.currentTarget, atual.centro.x, atual.centro.y);
+      const ampliada = zoomNoPonto(atual.vista, escala, inicio, medidas());
+      const dx = centro.x - atual.centro.x;
+      const dy = centro.y - atual.centro.y;
+      setVista(limitarDeslocamento({ ...ampliada, x: ampliada.x + dx, y: ampliada.y + dy }, medidas()));
+    } else if (atual?.tipo === "arraste" && atual.id === evento.pointerId) {
+      const { vista: inicial, inicio } = atual;
+      const x = inicial.x + ponto.x - inicio.x;
+      const y = inicial.y + ponto.y - inicio.y;
+      setVista(limitarDeslocamento({ ...inicial, x, y }, medidas()));
+    }
   }
 
   function aoSoltar(evento: React.PointerEvent<HTMLDivElement>) {
-    if (arraste.current?.id !== evento.pointerId) return;
-    arraste.current = null;
-    setArrastando(false);
+    if (!dedos.current.delete(evento.pointerId)) return;
+    const atual = gesto.current;
+    const restante = [...dedos.current.entries()][0];
+    if (atual?.tipo === "pinca") {
+      // Tirou um dedo da pinça: o outro continua arrastando.
+      if (restante) comecarArraste(restante[0], restante[1], vista);
+      else {
+        gesto.current = null;
+        setArrastando(false);
+      }
+    } else if (atual?.tipo === "arraste" && atual.id === evento.pointerId) {
+      gesto.current = null;
+      setArrastando(false);
+    }
+
+    const foiToque =
+      evento.type === "pointerup" && evento.pointerType === "touch" && !restante && toque.current?.moveu === false;
+    if (foiToque) {
+      const agora = { tempo: evento.timeStamp, x: evento.clientX, y: evento.clientY };
+      if (ehToqueDuplo(ultimoToque.current, agora)) {
+        ultimoToque.current = null;
+        const ponto = pontoNaArea(evento.currentTarget, agora.x, agora.y);
+        setVista((v) => alternarZoom(v, ponto, medidas()));
+      } else {
+        ultimoToque.current = agora;
+      }
+    }
+    if (!restante) toque.current = null;
   }
 
   // O teclado vale em qualquer ponto do visualizador: depois de um clique na imagem, o foco fica no
@@ -197,6 +298,8 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
         onPointerUp={aoSoltar}
         onPointerCancel={aoSoltar}
         onDoubleClick={(evento) => {
+          // No toque, quem cuida é o toque duplo acima (o dblclick do toque contaria em dobro).
+          if (ultimoPonteiro.current === "touch") return;
           const ponto = pontoNaArea(evento.currentTarget, evento.clientX, evento.clientY);
           setVista((v) => alternarZoom(v, ponto, medidas()));
         }}

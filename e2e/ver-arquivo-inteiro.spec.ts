@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import { expect, request as novoPedido, test, type Locator, type Page } from "@playwright/test";
 import sharp from "sharp";
 
+import { RESPONSIVO } from "../playwright.config";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { office, openDocument } from "../src/testes/arquivos/gerar";
-import { entrarNoPainel } from "./entrar";
-import { pdfComTexto } from "./responsivo";
+import { alvosDeToquePequenos } from "./alvo-de-toque";
+import { apertar, entrarNoPainel } from "./entrar";
+import { entrarComo, pdfComTexto, semAnimacao } from "./responsivo";
 
 /** Ver o arquivo inteiro na Mídia (issue #54, E53): imagem em tela cheia, “Abrir PDF” e “Baixar”. */
 
@@ -20,6 +22,8 @@ async function entrar(page: Page, p: PessoaDeTeste, voltar = "/painel/midia") {
 
 /** Envia pela própria tela, espera o aviso e abre os detalhes pelo cartão. */
 async function enviarEAbrir(page: Page, nome: string, buffer: Buffer, mimeType: string) {
+  // O campo de arquivo já vem no HTML: antes de a página carregar os scripts, a escolha se perde.
+  await page.waitForLoadState("networkidle");
   await page.getByTestId("entrada-arquivos").setInputFiles({ name: nome, mimeType, buffer });
   await expect(page.getByText(`${nome} está na Mídia.`)).toBeVisible();
   await page.getByRole("list", { name: "Arquivos" }).getByRole("link").filter({ hasText: nome }).click();
@@ -229,4 +233,156 @@ test("Zoom por botões, roda, duplo clique e teclado; com zoom, arrasta; Esc fec
 
   await page.keyboard.press("Escape");
   await expect(visualizador).toBeHidden();
+});
+
+/**
+ * Dedos na tela pelo protocolo do Chromium (todos os projetos são Chromium): o Playwright só toca com
+ * um dedo e não faz pinça. Cada toque vira Pointer Events de toque, como no aparelho.
+ */
+async function dedos(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  type Ponto = { x: number; y: number };
+  const pontos = (lista: Ponto[]) => lista.map((p, id) => ({ x: Math.round(p.x), y: Math.round(p.y), id }));
+  const enviar = (type: "touchStart" | "touchMove" | "touchEnd", lista: Ponto[]) =>
+    cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pontos(lista) });
+  return {
+    /** Encosta os dedos em `de`, leva até `ate` em passos e solta. */
+    async deslizar(de: Ponto[], ate: Ponto[], passos = 8) {
+      await enviar("touchStart", de);
+      for (let i = 1; i <= passos; i++) {
+        await enviar(
+          "touchMove",
+          de.map((p, j) => ({ x: p.x + ((ate[j]!.x - p.x) * i) / passos, y: p.y + ((ate[j]!.y - p.y) * i) / passos })),
+        );
+      }
+      await enviar("touchEnd", []);
+    },
+    /** Dois toques rápidos no mesmo ponto. */
+    async toqueDuplo(ponto: Ponto) {
+      for (let i = 0; i < 2; i++) {
+        await enviar("touchStart", [ponto]);
+        await enviar("touchEnd", []);
+      }
+    },
+  };
+}
+
+const naPagina = (page: Page) => page.evaluate(() => ({ escala: window.visualViewport!.scale, rolagem: window.scrollY }));
+
+test.describe("visualizador no celular, no tablet e no computador", { tag: "@responsivo" }, () => {
+  test("abre em tela cheia; no toque, pinça, arrasta e toque duplo sem mexer na página; voltar fecha", async ({ page, hasTouch }) => {
+    await entrarComo(page, pessoas.com, "/painel/midia", { toque: hasTouch });
+    const nome = `onibus-novos-${Date.now()}.jpg`;
+    // O campo de arquivo já vem no HTML: antes de a página carregar os scripts, a escolha se perde.
+    await page.waitForLoadState("networkidle");
+    await page.getByTestId("entrada-arquivos").setInputFiles({ name: nome, mimeType: "image/jpeg", buffer: await fotoJpg() });
+    await expect(page.getByText(`${nome} está na Mídia.`)).toBeVisible({ timeout: 20_000 });
+    await apertar(page.getByRole("list", { name: "Arquivos" }).getByRole("link").filter({ hasText: nome }), hasTouch);
+    const detalhes = page.getByRole("complementary", { name: "Detalhes do arquivo" });
+    await expect(detalhes.getByLabel("Nome do arquivo")).toHaveValue(nome);
+    const enderecoDosDetalhes = page.url();
+
+    await apertar(detalhes.getByRole("button", { name: "Ver a imagem inteira" }), hasTouch);
+    const visualizador = page.getByRole("dialog", { name: nome });
+    await expect(visualizador).toBeVisible();
+    await semAnimacao(page);
+    const janela = page.viewportSize()!;
+    const caixa = (await visualizador.boundingBox())!;
+    expect([Math.round(caixa.width), Math.round(caixa.height)]).toEqual([janela.width, janela.height]);
+    // A imagem aparece inteira, dentro da tela.
+    const imagem = visualizador.locator("img");
+    const inicial = (await imagem.boundingBox())!;
+    expect(inicial.x).toBeGreaterThanOrEqual(0);
+    expect(inicial.y).toBeGreaterThanOrEqual(0);
+    expect(inicial.x + inicial.width).toBeLessThanOrEqual(janela.width);
+    expect(inicial.y + inicial.height).toBeLessThanOrEqual(janela.height);
+    const nivel = visualizador.getByRole("status");
+    await expect(nivel).toHaveText("100%");
+
+    if (hasTouch) {
+      expect(await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "[role=dialog]" })).toEqual([]);
+      const pagina = await naPagina(page);
+      const toque = await dedos(page);
+      const centro = { x: inicial.x + inicial.width / 2, y: inicial.y + inicial.height / 2 };
+
+      // Pinça: os dedos se afastam de 80 px para 240 px → 300%. A página não dá zoom nem rola.
+      await toque.deslizar(
+        [
+          { x: centro.x - 40, y: centro.y },
+          { x: centro.x + 40, y: centro.y },
+        ],
+        [
+          { x: centro.x - 120, y: centro.y },
+          { x: centro.x + 120, y: centro.y },
+        ],
+      );
+      await expect(nivel).toHaveText("300%");
+      expect(await naPagina(page)).toEqual(pagina);
+
+      // Com zoom, um dedo arrasta a imagem. Na horizontal, porque no celular em pé a imagem ampliada
+      // passa pouco da tela na vertical (e não sai da tela).
+      await semAnimacao(page);
+      const antes = (await imagem.boundingBox())!;
+      await toque.deslizar([centro], [{ x: centro.x + 30, y: centro.y }]);
+      await expect.poll(async () => Math.round((await imagem.boundingBox())!.x - antes.x)).toBe(30);
+
+      // Toque duplo: ampliada, volta a 100%; em 100%, vai a 200%.
+      await toque.toqueDuplo(centro);
+      await expect(nivel).toHaveText("100%");
+      await toque.toqueDuplo(centro);
+      await expect(nivel).toHaveText("200%");
+      expect(await naPagina(page)).toEqual(pagina);
+    }
+
+    // O voltar do celular fecha o visualizador; a pessoa continua nos detalhes do mesmo arquivo.
+    await page.goBack();
+    await expect(visualizador).toBeHidden();
+    expect(page.url()).toBe(enderecoDosDetalhes);
+    await expect(detalhes.getByLabel("Nome do arquivo")).toHaveValue(nome);
+  });
+});
+
+test.describe("voltar depois de fechar", () => {
+  let enderecoDosDetalhes = "";
+
+  test.beforeEach(async ({ page }) => {
+    await entrar(page, pessoas.com);
+    if (!enderecoDosDetalhes) {
+      await enviarEAbrir(page, `garagem-${Date.now()}.jpg`, await fotoJpg(), "image/jpeg");
+      enderecoDosDetalhes = page.url();
+    }
+    // Vem do início do painel para os detalhes: o voltar tem de levar de novo ao início.
+    await page.goto("/painel");
+    await page.goto(enderecoDosDetalhes);
+  });
+
+  const abrir = async (page: Page) => {
+    await page.getByRole("button", { name: "Ver a imagem inteira" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  };
+  const fechar = async (page: Page, como: "X" | "Esc") => {
+    if (como === "X") await page.getByRole("button", { name: "Fechar a imagem" }).click();
+    else await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+  };
+  const voltarSaiDaMidia = async (page: Page) => {
+    await page.goBack();
+    await expect(page).toHaveURL((url) => url.pathname === "/painel");
+  };
+
+  for (const como of ["X", "Esc"] as const) {
+    test(`fechar pelo ${como} não deixa um “voltar” que não faz nada`, async ({ page }) => {
+      await abrir(page);
+      await fechar(page, como);
+      await voltarSaiDaMidia(page);
+    });
+  }
+
+  test("abrir e fechar duas vezes seguidas: um só “voltar” sai da Mídia", async ({ page }) => {
+    await abrir(page);
+    await fechar(page, "X");
+    await abrir(page);
+    await fechar(page, "Esc");
+    await voltarSaiDaMidia(page);
+  });
 });
