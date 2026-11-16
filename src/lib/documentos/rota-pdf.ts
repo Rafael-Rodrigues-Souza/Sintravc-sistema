@@ -1,16 +1,12 @@
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { conferirSessaoDaEquipe, sessaoRecusada } from "@/lib/acesso/sessao-da-equipe";
-import { armazenamentoS3, contentDisposition, type Armazenamento } from "@/lib/armazenamento";
+import type { Armazenamento } from "@/lib/armazenamento";
 import { banco } from "@/lib/db";
-import { midia } from "@/lib/db/schema";
+import { respostaDeTexto as texto, responderPdfDaMidia } from "@/lib/midia/responder-pdf";
 import { pode } from "@/lib/permissoes";
 
 import { lerDocumento, retratoDoDocumento } from "./carregar";
-
-const texto = (status: number, corpo: string) =>
-  new Response(corpo, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "private, no-store" } });
 
 /**
  * GET /painel/documentos/[id]/pdf: o PDF oficial no painel (RF42, E46). Na Mídia, o PDF é gravado
@@ -42,22 +38,5 @@ export async function tratarPdfDoDocumento(
         : (await retratoDoDocumento(banco(), pedido.id))?.dados.pdfMidiaId;
   if (!pdfMidiaId) return texto(404, "Este documento não tem PDF.");
 
-  const [arquivo] = await banco()
-    .select({ chave: midia.chaveR2, nome: midia.nomeArquivo, bytes: midia.bytes, tipo: midia.tipo })
-    .from(midia)
-    .where(eq(midia.id, pdfMidiaId));
-  if (!arquivo || arquivo.tipo !== "pdf") return texto(404, "Este documento não tem PDF.");
-  const corpo = await (deps.armazenamento ?? armazenamentoS3).ler(arquivo.chave);
-  if (!corpo) return texto(404, "O PDF não foi encontrado no armazenamento.");
-
-  return new Response(corpo, {
-    status: 200,
-    headers: {
-      "content-type": "application/pdf",
-      "content-length": String(arquivo.bytes),
-      "content-disposition": contentDisposition({ tipo: pedido.modo === "abrir" ? "inline" : "attachment", nome: arquivo.nome }),
-      "cache-control": "private, no-store",
-      "x-content-type-options": "nosniff",
-    },
-  });
+  return responderPdfDaMidia(pdfMidiaId, pedido.modo, { armazenamento: deps.armazenamento, semPdf: "Este documento não tem PDF." });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -163,6 +164,15 @@ export function DetalhesArquivo({
         ) : null}
 
         <div className="flex flex-wrap gap-2.5">
+          {arquivo.tipo === "pdf" ? (
+            // A rota do painel responde inline (E53): o endereço público baixa, por causa do attachment (E39).
+            <Button asChild variant="secundario">
+              <a href={`/painel/midia/${arquivo.id}/pdf?modo=abrir`} target="_blank" rel="noopener noreferrer">
+                <FileText aria-hidden />
+                Abrir PDF
+              </a>
+            </Button>
+          ) : null}
           <Button type="button" variant="secundario" onClick={copiarLink}>
             <IconeFigma src="/painel/icone-copiar.svg" tamanho={18} />
             Copiar link
