@@ -142,13 +142,13 @@ export function TabelaConteudos({
               <th scope="col" className={cn("py-3.5 pr-3 font-[inherit]", comSelecao ? "pl-2" : "pl-5")}>
                 Título
               </th>
-              <th scope="col" className="px-2 py-3.5 xl:px-3 font-[inherit]">Tipo</th>
-              <th scope="col" className="px-2 py-3.5 xl:px-3 font-[inherit]">Estado</th>
-              {/* “No site” e “Atualizado” numa linha (#48): quem encolhe é o título, até a largura mínima dele (#51). Entre o
-                  lg e o xl, Tipo, Estado, Atualizado e as ações têm espaçamento menor para o título caber. */}
-              <th scope="col" className="hidden px-3 py-3.5 font-[inherit] whitespace-nowrap xl:table-cell">No site</th>
-              <th scope="col" className="px-2 py-3.5 xl:px-3 font-[inherit] whitespace-nowrap">Atualizado</th>
-              <th scope="col" className="px-3 py-3.5 xl:px-5 font-[inherit]">
+              <th scope="col" className="px-2 py-3.5 2xl:px-3 font-[inherit]">Tipo</th>
+              <th scope="col" className="px-2 py-3.5 2xl:px-3 font-[inherit]">Estado</th>
+              {/* “No site” e “Atualizado” numa linha (#48): quem encolhe é o título, até a largura mínima dele (#51). Até o
+                  2xl, Tipo, Estado, No site, Atualizado e as ações têm espaçamento menor para o título caber. */}
+              <th scope="col" className="hidden px-2 py-3.5 font-[inherit] whitespace-nowrap xl:table-cell 2xl:px-3">No site</th>
+              <th scope="col" className="px-2 py-3.5 2xl:px-3 font-[inherit] whitespace-nowrap">Atualizado</th>
+              <th scope="col" className="px-3 py-3.5 2xl:px-5 font-[inherit]">
                 <span className="sr-only">Ações</span>
               </th>
             </tr>
@@ -229,8 +229,8 @@ function Linha({
       ) : null}
       <td className={cn("col-span-2 col-start-1 row-start-2 lg:py-4 lg:pr-3", comSelecao ? "lg:pl-2" : "lg:pl-5")}>
         {/* Logo acima do corte, com as pílulas do estado numa linha, o título ainda mostra algumas palavras:
-            largura mínima, com o espaço tirado do espaçamento das outras colunas entre o lg e o xl (#51). */}
-        <div className="flex min-w-0 flex-col gap-1 lg:min-w-[9.5rem]">
+            largura mínima, com o espaço tirado do espaçamento das outras colunas até o 2xl (#51). */}
+        <div className="flex min-w-0 flex-col gap-1 lg:min-w-[10rem]">
           {linha.hrefEditor ? (
             <Link
               href={linha.hrefEditor}
@@ -253,25 +253,25 @@ function Linha({
           </span>
         </div>
       </td>
-      <td className={cn("row-start-1 texto-pequeno text-texto-secundario lg:px-2 lg:py-4 xl:px-3", comSelecao ? "col-start-2" : "col-span-2 col-start-1")}>
+      <td className={cn("row-start-1 texto-pequeno text-texto-secundario lg:px-2 lg:py-4 2xl:px-3", comSelecao ? "col-start-2" : "col-span-2 col-start-1")}>
         <span className="inline-flex items-center gap-1.5">
           <tipo.icone aria-hidden className="size-4" />
           {tipo.rotulo}
         </span>
       </td>
-      <td className="col-start-3 row-start-1 justify-self-end lg:px-2 lg:py-4 xl:px-3">
+      <td className="col-start-3 row-start-1 justify-self-end lg:px-2 lg:py-4 2xl:px-3">
         {/* Na tabela, estado e vigência ficam numa linha: quem cede o espaço é o título (line-clamp-1) (#51). */}
         <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:flex-nowrap lg:justify-start lg:whitespace-nowrap">
           <SeloEstado estado={linha.estado} />
           <SeloVigencia selo={linha.seloVigencia ?? null} />
         </span>
       </td>
-      <td className="hidden texto-pequeno whitespace-nowrap text-texto-secundario lg:px-3 lg:py-4 xl:table-cell">{linha.noSite}</td>
-      <td className="col-span-3 col-start-1 row-start-3 texto-pequeno text-texto-secundario lg:px-2 lg:py-4 xl:px-3">
+      <td className="hidden texto-pequeno whitespace-nowrap text-texto-secundario lg:px-2 lg:py-4 xl:table-cell 2xl:px-3">{linha.noSite}</td>
+      <td className="col-span-3 col-start-1 row-start-3 texto-pequeno text-texto-secundario lg:px-2 lg:py-4 2xl:px-3">
         <span className="lg:hidden">{linha.resumo}</span>
         <span className="hidden whitespace-nowrap lg:inline">{linha.atualizado}</span>
       </td>
-      <td className="col-start-3 row-start-2 self-start max-lg:pointer-coarse:py-1 lg:px-3 lg:py-4 xl:px-5">
+      <td className="col-start-3 row-start-2 self-start max-lg:pointer-coarse:py-1 lg:px-3 lg:py-4 2xl:px-5">
         {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48); no cartão, o py
             guarda a área de toque, que passa 4 px dos ícones. Do lg ao 2xl, só o ⋯ (#51): Edição rápida e
             Editar viram os primeiros itens dele, para o título ter espaço (ele também abre o editor). */}
