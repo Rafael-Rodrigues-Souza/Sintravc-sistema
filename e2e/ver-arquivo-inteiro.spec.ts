@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
-import { expect, request as novoPedido, test, type Page } from "@playwright/test";
+import { expect, request as novoPedido, test, type Locator, type Page } from "@playwright/test";
+import sharp from "sharp";
 
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { office, openDocument } from "../src/testes/arquivos/gerar";
@@ -79,4 +80,63 @@ test("“Baixar” baixa o documento com o nome original", async ({ page }) => {
     const [download] = await Promise.all([page.waitForEvent("download"), detalhes.getByRole("link", { name: "Baixar" }).click()]);
     expect(download.suggestedFilename()).toBe(nome);
   }
+});
+
+/** Logo com fundo transparente (PNG) e foto (JPG), como os que a Comunicação envia. */
+const logoPng = () =>
+  sharp({ create: { width: 900, height: 300, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0 } } })
+    .composite([{ input: { create: { width: 300, height: 100, channels: 4, background: "#02488d" } }, top: 100, left: 300 }])
+    .png()
+    .toBuffer();
+const fotoJpg = () => sharp({ create: { width: 1600, height: 1200, channels: 3, background: "#f2b705" } }).jpeg().toBuffer();
+
+async function descrever(detalhes: Locator, alt: string) {
+  await detalhes.getByLabel("Texto alternativo *").fill(alt);
+  await detalhes.getByRole("button", { name: "Salvar" }).click();
+  await expect(detalhes.page().getByText("Alterações salvas.")).toBeVisible();
+}
+
+const temFundo = (img: Locator) => img.evaluate((el) => getComputedStyle(el).backgroundImage !== "none");
+
+test("A imagem abre em tela cheia pela prévia e por “Ver inteira”; Esc e X fecham e o foco volta", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  const nome = `logo-parceiro-${Date.now()}.png`;
+  const detalhes = await enviarEAbrir(page, nome, await logoPng(), "image/png");
+  await descrever(detalhes, "Logo azul do parceiro");
+
+  // Pela prévia, fecha com Esc: o foco volta para a prévia.
+  const previa = detalhes.getByRole("button", { name: "Ver a imagem inteira" });
+  await previa.click();
+  const visualizador = page.getByRole("dialog", { name: nome });
+  await expect(visualizador).toBeVisible();
+  await expect(visualizador).toHaveAccessibleDescription(/zoom/);
+  const imagem = visualizador.getByRole("img", { name: "Logo azul do parceiro" });
+  await expect(imagem).toBeVisible();
+  // Logo em PNG: inteiro, sobre o xadrez, como na prévia.
+  expect(await temFundo(imagem)).toBe(true);
+  // Tela cheia: o visualizador ocupa a janela toda.
+  const caixa = (await visualizador.boundingBox())!;
+  const janela = page.viewportSize()!;
+  expect([Math.round(caixa.width), Math.round(caixa.height)]).toEqual([janela.width, janela.height]);
+  await page.keyboard.press("Escape");
+  await expect(visualizador).toBeHidden();
+  await expect(previa).toBeFocused();
+
+  // Por “Ver inteira”, fecha pelo X: o foco volta para o botão.
+  const verInteira = detalhes.getByRole("button", { name: "Ver inteira" });
+  await verInteira.click();
+  await expect(visualizador).toBeVisible();
+  await visualizador.getByRole("button", { name: "Fechar a imagem" }).click();
+  await expect(visualizador).toBeHidden();
+  await expect(verInteira).toBeFocused();
+});
+
+test("Foto em JPG abre sem o xadrez", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  const nome = `assembleia-${Date.now()}.jpg`;
+  const detalhes = await enviarEAbrir(page, nome, await fotoJpg(), "image/jpeg");
+  await detalhes.getByRole("button", { name: "Ver a imagem inteira" }).click();
+  const imagem = page.getByRole("dialog", { name: nome }).locator("img");
+  await expect(imagem).toBeVisible();
+  expect(await temFundo(imagem)).toBe(false);
 });

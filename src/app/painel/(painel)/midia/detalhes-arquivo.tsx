@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -23,6 +23,7 @@ import type { UsoDaMidia } from "@/lib/midia/erros";
 import { cn } from "@/lib/utils";
 
 import { acaoExcluirMidia, acaoSalvarDetalhes, type EstadoDetalhes } from "./acoes";
+import { VisualizadorImagem } from "./visualizador-imagem";
 
 export type ArquivoDetalhado = {
   id: string;
@@ -65,6 +66,14 @@ export function DetalhesArquivo({
     if (window.matchMedia("(max-width: 1023px)").matches) painel.current?.scrollIntoView({ block: "start" });
   }, [arquivo.id]);
 
+  // Visualizador da imagem (E53): o foco volta para quem abriu (a prévia ou “Ver inteira”).
+  const [vendo, setVendo] = React.useState(false);
+  const abridor = React.useRef<HTMLElement | null>(null);
+  const verInteira = (evento: React.MouseEvent<HTMLElement>) => {
+    abridor.current = evento.currentTarget;
+    setVendo(true);
+  };
+
   async function copiarLink() {
     try {
       await navigator.clipboard.writeText(arquivo.url);
@@ -94,7 +103,15 @@ export function DetalhesArquivo({
         </Link>
       </div>
 
-      <Previa arquivo={arquivo} />
+      <Previa arquivo={arquivo} aoVer={verInteira} />
+      {arquivo.tipo === "imagem" ? (
+        <VisualizadorImagem
+          imagem={arquivo}
+          aberto={vendo}
+          aoMudar={setVendo}
+          aoDevolverFoco={() => abridor.current?.focus()}
+        />
+      ) : null}
 
       <form action={salvar} className="flex flex-col gap-4" key={arquivo.id}>
         <input type="hidden" name="id" value={arquivo.id} />
@@ -164,6 +181,12 @@ export function DetalhesArquivo({
         ) : null}
 
         <div className="flex flex-wrap gap-2.5">
+          {arquivo.tipo === "imagem" ? (
+            <Button type="button" variant="secundario" onClick={verInteira}>
+              <Maximize2 aria-hidden />
+              Ver inteira
+            </Button>
+          ) : null}
           {arquivo.tipo === "pdf" ? (
             // A rota do painel responde inline (E53): o endereço público baixa, por causa do attachment (E39).
             <Button asChild variant="secundario">
@@ -199,17 +222,25 @@ export function DetalhesArquivo({
   );
 }
 
-function Previa({ arquivo }: { arquivo: ArquivoDetalhado }) {
+function Previa({ arquivo, aoVer }: { arquivo: ArquivoDetalhado; aoVer: (evento: React.MouseEvent<HTMLElement>) => void }) {
   if (arquivo.tipo === "imagem") {
     const { fundo, imagem } = enquadramentoDaImagem(arquivo.mostrarInteira);
     return (
-      // A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={arquivo.url}
-        alt={arquivo.alt ?? ""}
-        className={cn("h-[170px] w-full rounded-[14px]", fundo, imagem)}
-      />
+      // Tocar na prévia abre a imagem inteira (E53).
+      <button
+        type="button"
+        aria-label="Ver a imagem inteira"
+        onClick={aoVer}
+        className="block w-full cursor-zoom-in rounded-[14px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+      >
+        {/* A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={arquivo.url}
+          alt={arquivo.alt ?? ""}
+          className={cn("h-[170px] w-full rounded-[14px]", fundo, imagem)}
+        />
+      </button>
     );
   }
   return <MiniaturaDeArquivo sigla={arquivo.sigla} tipo={arquivo.tipo} className="h-[170px] rounded-[14px]" />;
