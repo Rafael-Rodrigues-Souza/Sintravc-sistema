@@ -7,6 +7,7 @@ import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { codigoTotp } from "../src/lib/acesso/totp";
 import { bahiaEmCampos, bahiaParaUtc } from "../src/lib/datas";
 import { ambienteE2E } from "../playwright.config";
+import { acaoDaLinha } from "./responsivo";
 
 // Agendar (CA-US21.2), calendário (RF36) e Edição rápida pela tela, como uma pessoa faria.
 // O banco só é lido para conferir o resultado.
@@ -137,7 +138,7 @@ test("calendário: arrastar um rascunho sem data para um dia agenda na hora esco
 
 test("Edição rápida: muda título e data sem sair da lista; fechar com mudança pergunta antes", async ({ page }) => {
   await entrar(page, pessoas.com, "/painel/conteudos");
-  await page.getByRole("link", { name: `Edição rápida de “${SEGUNDA}”` }).click();
+  await acaoDaLinha(page.getByRole("row").filter({ hasText: SEGUNDA }), `Edição rápida de “${SEGUNDA}”`);
   const painel = page.getByRole("dialog", { name: "Edição rápida" });
   await expect(painel).toBeVisible();
   await expect(painel.getByRole("radio", { name: /Agendado/ })).toBeChecked();

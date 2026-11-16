@@ -7,6 +7,7 @@ import postgres from "postgres";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { codigoTotp } from "../src/lib/acesso/totp";
 import { ambienteE2E } from "../playwright.config";
+import { acaoDaLinha } from "./responsivo";
 
 // Envia PDFs para a Mídia: por isso roda depois de midia.spec.ts (que começa com a Mídia vazia).
 // Tudo é feito pela tela, como uma pessoa faria; o banco só é lido para conferir o resultado.
@@ -192,8 +193,14 @@ test("acordo ou convenção: abrangência, partes e vigência; agendar também p
 test("CA-US23.2 · a Comunicação abre o edital para ver e baixar, sem editar, substituir ou remover", async ({ page }) => {
   await entrar(page, pessoas.com, "/painel/conteudos?tipo=edital");
   const linha = page.getByRole("row").filter({ hasText: TITULO_EDITAL });
-  await expect(linha.getByRole("button", { name: /Mais ações/ })).toHaveCount(0);
-  await linha.getByRole("link", { name: `Abrir “${TITULO_EDITAL}”` }).click();
+  // Sem ações do ciclo de vida: do lg ao 2xl o ⋯ aparece só com “Abrir” (#51); fora dessa faixa, não há ⋯.
+  const mais = linha.getByRole("button", { name: /Mais ações/ });
+  if (await mais.isVisible()) {
+    await mais.click();
+    await expect(page.getByRole("menuitem")).toHaveText(["Abrir"]);
+    await page.keyboard.press("Escape");
+  }
+  await acaoDaLinha(linha, `Abrir “${TITULO_EDITAL}”`);
 
   await expect(page.getByText("Você pode ver e baixar este documento")).toBeVisible();
   await expect(page.getByRole("link", { name: "Baixar PDF" })).toBeVisible();

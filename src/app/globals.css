@@ -41,7 +41,8 @@
  * - Média (barra-media): B, I | Estilo | Lista | Link, Imagem e ⋯, com 3 separadores e 9 vãos: 414 px.
  *   Cabe de 28rem (448 px) para cima.
  * - Estreita (barra-estreita): B, I, Lista, Link e ⋯, sem separadores, com 4 vãos: 212 px. Cabe na
- *   menor barra da varredura (228 px, janela de 320 px). O select não cabe aqui com a área de toque.
+ *   barra da janela mais estreita de RESPONSIVO.varredura. O select de estilo não cabe aqui com a
+ *   área de toque e vai para o ⋯ antes de Lista e Link (a exceção à prioridade, no E51).
  */
 @custom-variant barra-media {
   @container barra (width < 39rem) {

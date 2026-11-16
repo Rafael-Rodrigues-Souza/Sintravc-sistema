@@ -16,6 +16,7 @@ import {
   FERRAMENTAS_DO_CORPO,
   ferramentaDoCorpo,
   itensEsmagados,
+  largurasDaVarredura,
   larguraDaBarra,
   linhasDoTexto,
   pdfComTexto,
@@ -322,6 +323,23 @@ for (const tema of ["claro", "escuro"] as const) {
       await emCadaLargura(page, testInfo, async (largura) => {
         if (largura < RESPONSIVO.menuLateralAPartirDe) return;
         expect.soft(await distanciaDosCentros(publicado, prazo), `a ${largura} px, “Publicado” e “Prazo” ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+        // O título não fica espremido: as 3 primeiras palavras ficam inteiras na 1ª linha, a única que aparece
+        // (line-clamp: o resto do texto quebra para linhas escondidas).
+        const titulo = linha.getByRole("link").first().locator("span").first();
+        const tresPalavras = await titulo.evaluate((el, tolerancia) => {
+          const texto = el.firstChild!;
+          const fim = (texto.textContent ?? "").split(" ").slice(0, 3).join(" ").length;
+          const intervalo = document.createRange();
+          intervalo.setStart(texto, 0);
+          intervalo.setEnd(texto, fim);
+          const linhas = [...intervalo.getClientRects()];
+          return { naPrimeiraLinha: linhas.every((r) => Math.abs(r.top - linhas[0]!.top) < tolerancia), mostra: el.clientWidth };
+        }, TOLERANCIA.linhaDeTexto);
+        expect.soft(tresPalavras.naPrimeiraLinha, `a ${largura} px, o título mostra as 3 primeiras palavras (o título tem ${tresPalavras.mostra} px)`).toBe(true);
+        // A tabela não fica mais larga que a caixa dela (a caixa esconde o que passa, sem rolar a página). Mede-se a
+        // caixa da tabela, e não o scrollWidth, que no toque conta a área invisível dos ícones (alvo-toque).
+        const medida = await page.getByRole("table").evaluate((tabela) => ({ tabela: tabela.getBoundingClientRect().width, caixa: tabela.parentElement!.clientWidth }));
+        expect.soft(medida.tabela, `a ${largura} px, a tabela cabe na caixa`).toBeLessThanOrEqual(medida.caixa + TOLERANCIA.arredondamento);
         await semRolagemLateral(page);
       });
     });
@@ -355,6 +373,77 @@ for (const tema of ["claro", "escuro"] as const) {
           await conferir(`com o tablet ${posicao}`);
         }
       }
+    });
+
+    test("editor de notícia: o ⋯ da barra do corpo fecha quando a barra muda de degrau com ele aberto (#51)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, NOTICIA.endereco, { toque: hasTouch });
+      const barra = barraDoCorpo(page);
+      const mais = barra.getByRole("button", { name: "Mais formatação" });
+      const menu = page.getByRole("menu", { name: "Mais formatação" });
+      await expect(barra).toBeVisible();
+      /** O degrau da barra pelo que ela mostra: o que aparece e o que foi para o ⋯. */
+      const degrau = async () =>
+        (
+          await Promise.all(
+            FERRAMENTAS_DO_CORPO.map((nome) => barra.getByRole(nome === "Estilo do parágrafo" ? "combobox" : "button", { name: nome, exact: true }).isVisible()),
+          )
+        ).join();
+      /** Abre o ⋯ na janela `de`, muda para `para` sem recarregar e confere que o menu fechou. */
+      const mudarComOMenuAberto = async (de: { width: number; height: number }, para: { width: number; height: number }, onde: string) => {
+        await page.setViewportSize(de);
+        await assentar(page);
+        await apertar(mais, hasTouch);
+        await expect(menu).toBeVisible();
+        await page.setViewportSize(para);
+        await assentar(page);
+        await expect(menu, `${onde}: a barra mudou de degrau e o ⋯ fechou`).toBeHidden();
+      };
+
+      const giro = tabletQueGira(testInfo.project.name);
+      if (giro) {
+        // Tablet que gira com o menu aberto: abre na posição que tem o ⋯ e gira para a outra.
+        await page.setViewportSize(giro.deitado);
+        await assentar(page);
+        const comMais = (await mais.isVisible()) ? giro.deitado : giro.emPe;
+        const outra = comMais === giro.deitado ? giro.emPe : giro.deitado;
+        await page.setViewportSize(comMais);
+        await assentar(page);
+        test.skip(!(await mais.isVisible()), "este tablet mostra a barra inteira nas duas posições: não há ⋯ para abrir");
+        await mudarComOMenuAberto(comMais, outra, "ao girar o tablet");
+        return;
+      }
+      test.skip(testInfo.project.name !== "chromium", "muda a largura da janela: no desktop e nos tablets que giram");
+      // No desktop: de um degrau com ⋯ para outro também com ⋯ (o ⋯ continua, mas a lista muda), achados pela varredura.
+      const altura = page.viewportSize()!.height;
+      const degraus = new Map<string, number>();
+      for (const largura of largurasDaVarredura()) {
+        await page.setViewportSize({ width: largura, height: altura });
+        await assentar(page);
+        if (await mais.isVisible()) {
+          const qual = await degrau();
+          if (!degraus.has(qual)) degraus.set(qual, largura);
+        }
+      }
+      const [estreita, media] = [...degraus.values()];
+      expect(media, "a varredura passa por dois degraus com ⋯").toBeDefined();
+      await mudarComOMenuAberto({ width: media!, height: altura }, { width: estreita!, height: altura }, `de ${media} para ${estreita} px`);
+      await mudarComOMenuAberto({ width: estreita!, height: altura }, { width: media!, height: altura }, `de ${estreita} para ${media} px`);
+    });
+
+    test("editor de notícia: no ⋯, o Desfazer travado diz o motivo (#51)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, NOTICIA.endereco, { toque: hasTouch });
+      // Na janela mais estreita da varredura (no desktop) ou no próprio perfil.
+      if (testInfo.project.name === "chromium") {
+        await page.setViewportSize({ width: RESPONSIVO.varredura.de, height: page.viewportSize()!.height });
+        await assentar(page);
+      }
+      await expect(barraDoCorpo(page)).toBeVisible();
+      // Notícia nova, sem nada escrito no corpo: nada para desfazer.
+      const desfazer = await ferramentaDoCorpo(page, "Desfazer (Ctrl+Z)", hasTouch);
+      test.skip(!desfazer.noMenu, "no degrau largo, o Desfazer fica à mostra na barra, sem o ⋯");
+      await expect(desfazer.alvo).toBeDisabled();
+      await expect(desfazer.alvo, "o item travado diz por quê").toContainText("Nada para desfazer");
+      await desfazer.fechar();
     });
 
     test("editor de notícia: o “Mais” da barra do corpo lista só o que está escondido e aplica o formato (#51)", async ({ page, hasTouch }, testInfo) => {

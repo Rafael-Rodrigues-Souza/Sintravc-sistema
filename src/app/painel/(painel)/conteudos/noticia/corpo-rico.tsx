@@ -227,6 +227,14 @@ const SAI_DA_BARRA: Record<Ferramenta, string> = {
   refazer: "barra-media:hidden",
 };
 
+/** Os estilos do bloco: o select da barra e a escolha no menu saem daqui. */
+const ESTILOS = [
+  { valor: "p", nome: "Parágrafo" },
+  { valor: "h2", nome: "Subtítulo" },
+] as const;
+type Estilo = (typeof ESTILOS)[number]["valor"];
+const ehEstilo = (valor: string): valor is Estilo => ESTILOS.some((opcao) => opcao.valor === valor);
+
 /** Uma ferramenta com botão (todas menos o estilo, que é um select na barra e uma escolha no menu). */
 type Acao = {
   /** Nome acessível, o mesmo na barra e no menu (com o atalho, quando há). */
@@ -298,8 +306,8 @@ function BarraDeFerramentas({
 
   if (!ativo) return <BarraVazia />;
   const cadeia = () => editor.chain().focus();
-  const estilo = ativo.subtitulo ? "h2" : "p";
-  const mudarEstilo = (valor: string) => (valor === "h2" ? cadeia().setHeading({ level: 2 }).run() : cadeia().setParagraph().run());
+  const estilo: Estilo = ativo.subtitulo ? "h2" : "p";
+  const mudarEstilo = (valor: Estilo) => (valor === "h2" ? cadeia().setHeading({ level: 2 }).run() : cadeia().setParagraph().run());
 
   const acoes: Acoes = {
     negrito: { rotulo: "Negrito (Ctrl+B)", nome: "Negrito", atalho: "Ctrl+B", icone: Bold, alterna: true, ligado: ativo.negrito, agir: () => cadeia().toggleBold().run() },
@@ -373,14 +381,19 @@ function BarraDeFerramentas({
                   id="estilo-do-bloco"
                   data-ferramenta={ferramenta}
                   value={estilo}
-                  onChange={(evento) => mudarEstilo(evento.target.value)}
+                  onChange={(evento) => {
+                    if (ehEstilo(evento.target.value)) mudarEstilo(evento.target.value);
+                  }}
                   className={cn(
                     "h-9 shrink-0 rounded-[8px] border border-borda-padrao bg-fundo-superficie px-2 texto-pequeno pointer-coarse:h-(--alvo-toque) text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                     SAI_DA_BARRA[ferramenta],
                   )}
                 >
-                  <option value="p">Parágrafo</option>
-                  <option value="h2">Subtítulo</option>
+                  {ESTILOS.map((opcao) => (
+                    <option key={opcao.valor} value={opcao.valor}>
+                      {opcao.nome}
+                    </option>
+                  ))}
                 </select>
               </React.Fragment>
             ) : (
@@ -421,11 +434,6 @@ function BarraDeFerramentas({
 const CLASSE_DO_ITEM =
   "flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2.5 texto-pequeno text-texto-primario outline-none pointer-coarse:min-h-(--alvo-toque) data-[highlighted]:bg-fundo-superficie-alt data-[disabled]:cursor-not-allowed data-[disabled]:text-texto-terciario";
 
-const ESTILOS = [
-  { valor: "p", nome: "Parágrafo" },
-  { valor: "h2", nome: "Subtítulo" },
-] as const;
-
 /**
  * O ⋯ da barra (E51): aparece só abaixo do degrau largo e lista só as ferramentas que o CSS escondeu
  * na barra naquele momento. Não mede nada: lê o resultado das container queries ao abrir. A ação
@@ -440,25 +448,25 @@ function MaisFormatacao({
 }: {
   barra: React.RefObject<HTMLDivElement | null>;
   acoes: Acoes;
-  estilo: string;
-  aoMudarEstilo: (valor: string) => void;
+  estilo: Estilo;
+  aoMudarEstilo: (valor: Estilo) => void;
 }) {
   const [aberto, setAberto] = React.useState(false);
   const [escondidas, setEscondidas] = React.useState<ReadonlySet<Ferramenta>>(() => new Set());
   const gatilho = React.useRef<HTMLButtonElement>(null);
   const depoisDeFechar = React.useRef<(() => void) | null>(null);
 
-
-  // Girar o tablet ou mudar a janela com o menu aberto: a barra pode mudar de degrau.
+  // Girar o tablet ou mudar a janela com o menu aberto: se a barra mudar de degrau (outras ferramentas
+  // escondidas, ou nenhuma, e o ⋯ some), o menu fecha, em vez de mostrar uma lista que não vale mais.
   React.useEffect(() => {
     if (!aberto) return;
     const aoMudarTamanho = () => {
-      if (!gatilho.current || escondidoNaBarra(gatilho.current)) setAberto(false);
-      else setEscondidas(escondidasNa(barra.current));
+      const agora = escondidasNa(barra.current);
+      if (agora.size !== escondidas.size || [...agora].some((ferramenta) => !escondidas.has(ferramenta))) setAberto(false);
     };
     window.addEventListener("resize", aoMudarTamanho);
     return () => window.removeEventListener("resize", aoMudarTamanho);
-  }, [aberto, barra]);
+  }, [aberto, barra, escondidas]);
 
   const escolher = (acao: () => void) => () => {
     depoisDeFechar.current = acao;

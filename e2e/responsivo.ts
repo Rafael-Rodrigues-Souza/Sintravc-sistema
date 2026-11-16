@@ -332,3 +332,14 @@ export async function usarFerramentaDoCorpo(page: Page, nome: (typeof FERRAMENTA
   const { alvo } = await ferramentaDoCorpo(page, nome, toque);
   await apertar(alvo, toque);
 }
+
+/**
+ * Uma ação de uma linha de Conteúdos (“Edição rápida de …”, “Editar …”, “Abrir …”): o ícone, se está
+ * à mostra; se não (do lg ao 2xl, a coluna Ações só tem o ⋯, #51), o item do ⋯ da linha.
+ */
+export async function acaoDaLinha(linha: Locator, nome: string | RegExp, toque = false) {
+  const icone = linha.getByRole("link", { name: nome });
+  if (await icone.isVisible()) return apertar(icone, toque);
+  await apertar(linha.getByRole("button", { name: /^Mais ações para/ }), toque);
+  await apertar(linha.page().getByRole("menuitem", { name: nome }), toque);
+}

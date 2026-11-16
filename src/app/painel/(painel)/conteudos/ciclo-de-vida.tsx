@@ -313,7 +313,13 @@ const ITENS_DO_MENU: Record<AcaoDoMenu, { rotulo: string; icone: typeof Eye; per
   excluir: { rotulo: "Excluir rascunho", icone: Trash2, perigo: true },
 };
 
-export type ItemExtraDoMenu = { rotulo: string; icone: typeof Eye; aoSelecionar: () => void };
+export type ItemExtraDoMenu = {
+  rotulo: string;
+  icone: typeof Eye;
+  aoSelecionar: () => void;
+  /** Nome acessível, quando precisa dizer mais que o rótulo (ex.: o título do conteúdo). */
+  nome?: string;
+};
 
 /**
  * Menu ⋯ (Figma 110:845): só o que o estado e o perfil permitem (acoesDisponiveis). O editor
@@ -323,11 +329,14 @@ export function MenuDeAcoes({
   acoes,
   aoPedir,
   extras = [],
+  classeDosExtras,
   children,
 }: {
   acoes: AcaoDoMenu[];
   aoPedir: (acao: AcaoDoMenu) => void;
   extras?: ItemExtraDoMenu[];
+  /** Classes dos extras e do separador deles (ex.: só em alguns tamanhos de tela). */
+  classeDosExtras?: string;
   children: React.ReactNode;
 }) {
   const classeDoItem =
@@ -342,12 +351,17 @@ export function MenuDeAcoes({
           className="z-50 flex min-w-[220px] flex-col gap-0.5 rounded-[14px] border border-borda-padrao bg-fundo-superficie p-1.5 shadow-[0_12px_32px_rgb(11_20_36/0.16)]"
         >
           {extras.map((extra) => (
-            <DropdownMenu.Item key={extra.rotulo} onSelect={extra.aoSelecionar} className={cn(classeDoItem, "text-texto-primario")}>
+            <DropdownMenu.Item
+              key={extra.rotulo}
+              aria-label={extra.nome}
+              onSelect={extra.aoSelecionar}
+              className={cn(classeDoItem, "text-texto-primario", classeDosExtras)}
+            >
               <extra.icone aria-hidden className="size-4" />
               {extra.rotulo}
             </DropdownMenu.Item>
           ))}
-          {extras.length > 0 && acoes.length > 0 ? <DropdownMenu.Separator className="mx-2 my-1 h-px bg-borda-padrao" /> : null}
+          {extras.length > 0 && acoes.length > 0 ? <DropdownMenu.Separator className={cn("mx-2 my-1 h-px bg-borda-padrao", classeDosExtras)} /> : null}
           {acoes.map((acao) => {
             const item = ITENS_DO_MENU[acao];
             return (

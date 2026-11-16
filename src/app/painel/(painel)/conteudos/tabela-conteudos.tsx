@@ -12,7 +12,7 @@ import type { EstadoConteudo, TipoConteudo } from "@/lib/conteudos/listar";
 import type { SeloDeVigencia } from "@/lib/documentos/selo";
 import { cn } from "@/lib/utils";
 
-import { ConfirmarAcao, MenuDeAcoes, type Alvo, type PedidoDeAcao } from "./ciclo-de-vida";
+import { ConfirmarAcao, MenuDeAcoes, type Alvo, type ItemExtraDoMenu, type PedidoDeAcao } from "./ciclo-de-vida";
 import { SeloCategoria, SeloEstado, SeloVigencia } from "./selos";
 
 /** Uma linha da lista, já com os textos prontos (datas no horário da Bahia, feitas no servidor). */
@@ -43,6 +43,10 @@ const NOME_DO_TIPO: Record<TipoConteudo, { rotulo: string; icone: typeof FileTex
   edital: { rotulo: "Edital", icone: FolderClosed },
   acordo: { rotulo: "Acordo", icone: Scale },
 };
+
+/** Do lg ao 2xl, a coluna Ações mostra só o ⋯ (#51): estes ícones somem e entram como itens do menu. */
+const SO_FORA_DO_MEIO = "lg:max-2xl:hidden";
+const SO_NO_MEIO = "max-lg:hidden 2xl:hidden";
 
 const BOTAO_ICONE =
   "alvo-toque inline-flex size-9 items-center justify-center rounded-[10px] text-texto-secundario outline-none hover:bg-fundo-superficie-alt hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring";
@@ -138,12 +142,13 @@ export function TabelaConteudos({
               <th scope="col" className={cn("py-3.5 pr-3 font-[inherit]", comSelecao ? "pl-2" : "pl-5")}>
                 Título
               </th>
-              <th scope="col" className="px-3 py-3.5 font-[inherit]">Tipo</th>
-              <th scope="col" className="px-3 py-3.5 font-[inherit]">Estado</th>
-              {/* “No site” e “Atualizado” numa linha (#48): quem encolhe é o título. */}
+              <th scope="col" className="px-2 py-3.5 xl:px-3 font-[inherit]">Tipo</th>
+              <th scope="col" className="px-2 py-3.5 xl:px-3 font-[inherit]">Estado</th>
+              {/* “No site” e “Atualizado” numa linha (#48): quem encolhe é o título, até a largura mínima dele (#51). Entre o
+                  lg e o xl, Tipo, Estado, Atualizado e as ações têm espaçamento menor para o título caber. */}
               <th scope="col" className="hidden px-3 py-3.5 font-[inherit] whitespace-nowrap xl:table-cell">No site</th>
-              <th scope="col" className="px-3 py-3.5 font-[inherit] whitespace-nowrap">Atualizado</th>
-              <th scope="col" className="px-5 py-3.5 font-[inherit]">
+              <th scope="col" className="px-2 py-3.5 xl:px-3 font-[inherit] whitespace-nowrap">Atualizado</th>
+              <th scope="col" className="px-3 py-3.5 xl:px-5 font-[inherit]">
                 <span className="sr-only">Ações</span>
               </th>
             </tr>
@@ -195,6 +200,17 @@ function Linha({
   aoPedir: (acao: AcaoDoMenu) => void;
 }) {
   const tipo = NOME_DO_TIPO[linha.tipo];
+  const router = useRouter();
+  const abrir =
+    linha.hrefEditor && linha.estado !== "arquivado"
+      ? { href: linha.hrefEditor, rotulo: linha.somenteVer ? "Abrir" : "Editar", nome: `${linha.somenteVer ? "Abrir" : "Editar"} “${linha.titulo}”` }
+      : null;
+  const extras: ItemExtraDoMenu[] = [
+    ...(linha.hrefRapida
+      ? [{ rotulo: "Edição rápida", nome: `Edição rápida de “${linha.titulo}”`, icone: SlidersHorizontal, aoSelecionar: () => router.push(linha.hrefRapida!, { scroll: false }) }]
+      : []),
+    ...(abrir ? [{ rotulo: abrir.rotulo, nome: abrir.nome, icone: linha.somenteVer ? Eye : Pencil, aoSelecionar: () => router.push(abrir.href) }] : []),
+  ];
   return (
     <tr
       data-selecionada={marcada || undefined}
@@ -212,7 +228,9 @@ function Linha({
         </td>
       ) : null}
       <td className={cn("col-span-2 col-start-1 row-start-2 lg:py-4 lg:pr-3", comSelecao ? "lg:pl-2" : "lg:pl-5")}>
-        <div className="flex min-w-0 flex-col gap-1">
+        {/* Logo acima do corte, com as pílulas do estado numa linha, o título ainda mostra algumas palavras:
+            largura mínima, com o espaço tirado do espaçamento das outras colunas entre o lg e o xl (#51). */}
+        <div className="flex min-w-0 flex-col gap-1 lg:min-w-[9.5rem]">
           {linha.hrefEditor ? (
             <Link
               href={linha.hrefEditor}
@@ -235,13 +253,13 @@ function Linha({
           </span>
         </div>
       </td>
-      <td className={cn("row-start-1 texto-pequeno text-texto-secundario lg:px-3 lg:py-4", comSelecao ? "col-start-2" : "col-span-2 col-start-1")}>
+      <td className={cn("row-start-1 texto-pequeno text-texto-secundario lg:px-2 lg:py-4 xl:px-3", comSelecao ? "col-start-2" : "col-span-2 col-start-1")}>
         <span className="inline-flex items-center gap-1.5">
           <tipo.icone aria-hidden className="size-4" />
           {tipo.rotulo}
         </span>
       </td>
-      <td className="col-start-3 row-start-1 justify-self-end lg:px-3 lg:py-4">
+      <td className="col-start-3 row-start-1 justify-self-end lg:px-2 lg:py-4 xl:px-3">
         {/* Na tabela, estado e vigência ficam numa linha: quem cede o espaço é o título (line-clamp-1) (#51). */}
         <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:flex-nowrap lg:justify-start lg:whitespace-nowrap">
           <SeloEstado estado={linha.estado} />
@@ -249,27 +267,38 @@ function Linha({
         </span>
       </td>
       <td className="hidden texto-pequeno whitespace-nowrap text-texto-secundario lg:px-3 lg:py-4 xl:table-cell">{linha.noSite}</td>
-      <td className="col-span-3 col-start-1 row-start-3 texto-pequeno text-texto-secundario lg:px-3 lg:py-4">
+      <td className="col-span-3 col-start-1 row-start-3 texto-pequeno text-texto-secundario lg:px-2 lg:py-4 xl:px-3">
         <span className="lg:hidden">{linha.resumo}</span>
         <span className="hidden whitespace-nowrap lg:inline">{linha.atualizado}</span>
       </td>
-      <td className="col-start-3 row-start-2 self-start max-lg:pointer-coarse:py-1 lg:px-5 lg:py-4">
+      <td className="col-start-3 row-start-2 self-start max-lg:pointer-coarse:py-1 lg:px-3 lg:py-4 xl:px-5">
         {/* No toque, vão para a área de toque de um ícone não cobrir a do vizinho (E48); no cartão, o py
-            guarda a área de toque, que passa 4 px dos ícones. */}
+            guarda a área de toque, que passa 4 px dos ícones. Do lg ao 2xl, só o ⋯ (#51): Edição rápida e
+            Editar viram os primeiros itens dele, para o título ter espaço (ele também abre o editor). */}
         <div className="flex items-center gap-1 pointer-coarse:vao-toque-9">
           {linha.hrefRapida ? (
-            <Link href={linha.hrefRapida} scroll={false} aria-label={`Edição rápida de “${linha.titulo}”`} title="Edição rápida" className={BOTAO_ICONE}>
+            <Link
+              href={linha.hrefRapida}
+              scroll={false}
+              aria-label={`Edição rápida de “${linha.titulo}”`}
+              title="Edição rápida"
+              className={cn(BOTAO_ICONE, SO_FORA_DO_MEIO)}
+            >
               <SlidersHorizontal aria-hidden className="size-[18px]" />
             </Link>
           ) : null}
-          {linha.hrefEditor && linha.estado !== "arquivado" ? (
-            <Link href={linha.hrefEditor} aria-label={`${linha.somenteVer ? "Abrir" : "Editar"} “${linha.titulo}”`} className={BOTAO_ICONE}>
+          {abrir ? (
+            <Link href={abrir.href} aria-label={abrir.nome} className={cn(BOTAO_ICONE, SO_FORA_DO_MEIO)}>
               {linha.somenteVer ? <Eye aria-hidden className="size-[18px]" /> : <Pencil aria-hidden className="size-[18px]" />}
             </Link>
           ) : null}
-          {linha.acoes.length > 0 ? (
-            <MenuDeAcoes acoes={linha.acoes} aoPedir={aoPedir}>
-              <button type="button" aria-label={`Mais ações para “${linha.titulo}”`} className={BOTAO_ICONE}>
+          {linha.acoes.length > 0 || extras.length > 0 ? (
+            <MenuDeAcoes acoes={linha.acoes} aoPedir={aoPedir} extras={extras} classeDosExtras={SO_NO_MEIO}>
+              <button
+                type="button"
+                aria-label={`Mais ações para “${linha.titulo}”`}
+                className={cn(BOTAO_ICONE, linha.acoes.length === 0 && SO_NO_MEIO)}
+              >
                 <MoreHorizontal aria-hidden className="size-[18px]" />
               </button>
             </MenuDeAcoes>
