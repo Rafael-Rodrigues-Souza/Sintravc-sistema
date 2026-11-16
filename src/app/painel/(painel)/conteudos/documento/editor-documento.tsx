@@ -1523,10 +1523,11 @@ function EnvioDoPdf({
       <p id="dica-pdf" className={cn("texto-pequeno", erro || falha ? "text-status-perigo-texto" : "text-texto-terciario")}>
         {falha ?? erro ?? dica}
       </p>
+      {/* No toque, a altura da área de toque de verdade (#51). */}
       {pdf && idDoDocumento ? (
         <a
           href={`/painel/documentos/${idDoDocumento}/pdf?modo=baixar`}
-          className="inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring"
+          className="inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-(--alvo-toque)"
         >
           <Download aria-hidden className="size-4" />
           Baixar PDF

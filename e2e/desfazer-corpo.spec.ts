@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import postgres from "postgres";
 
 import { ambienteE2E } from "../playwright.config";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { apertar } from "./entrar";
-import { assentar, entrarComo } from "./responsivo";
+import { assentar, entrarComo, ferramentaDoCorpo, usarFerramentaDoCorpo } from "./responsivo";
 
 /**
  * Desfazer e Refazer do corpo da notícia (#50; E40, E42, E45, E47): o histórico guarda só o que a
@@ -24,19 +24,29 @@ const barra = (page: Page) => page.getByRole("toolbar", { name: "Formatação do
 const botoes = (page: Page) => ({
   topoDesfazer: page.getByRole("button", { name: "Desfazer no corpo (Ctrl+Z)" }),
   topoRefazer: page.getByRole("button", { name: "Refazer no corpo (Ctrl+Shift+Z)" }),
-  barraDesfazer: barra(page).getByRole("button", { name: "Desfazer (Ctrl+Z)" }),
-  barraRefazer: barra(page).getByRole("button", { name: "Refazer (Ctrl+Shift+Z)" }),
 });
+
+/**
+ * Confere o Desfazer ou o Refazer da barra do corpo, à mostra na barra ou no menu “Mais” (E51), e
+ * fecha o menu se ele abriu.
+ */
+async function naBarra(page: Page, nome: "Desfazer (Ctrl+Z)" | "Refazer (Ctrl+Shift+Z)", conferir: (alvo: Locator) => Promise<void>, toque = false) {
+  const ferramenta = await ferramentaDoCorpo(page, nome, toque);
+  await conferir(ferramenta.alvo);
+  await ferramenta.fechar();
+}
+const ligado = (alvo: Locator) => expect(alvo).toBeEnabled();
+const apagado = (alvo: Locator) => expect(alvo).toBeDisabled();
 const aviso = (page: Page) => page.getByText("Há alterações que ainda não estão no site");
 
-/** Desfazer e Refazer apagados no topo e na barra do corpo. */
-async function historicoVazio(page: Page) {
+/** Desfazer e Refazer apagados no topo e na barra do corpo (ou no “Mais” dela). */
+async function historicoVazio(page: Page, toque = false) {
   const b = botoes(page);
   await expect(barra(page)).toBeVisible();
   await assentar(page);
   await expect(b.topoDesfazer).toBeDisabled();
-  await expect(b.barraDesfazer).toBeDisabled();
-  await expect(b.barraRefazer).toBeDisabled();
+  await naBarra(page, "Desfazer (Ctrl+Z)", apagado, toque);
+  await naBarra(page, "Refazer (Ctrl+Shift+Z)", apagado, toque);
 }
 
 /** Põe o cursor no fim do corpo e escreve. */
@@ -79,30 +89,32 @@ const ORIGINAL = "Leve contracheques e documento com foto.";
 
 test("abrir e clicar no corpo não acendem Desfazer; digitar acende, e desfazer e refazer agem só no corpo", { tag: "@responsivo" }, async ({ page, hasTouch }) => {
   await entrarComo(page, pessoas.com, "/painel/conteudos/noticia/nova", { toque: hasTouch });
-  await historicoVazio(page);
+  await historicoVazio(page, hasTouch);
   await escrever(page, "Plantão jurídico às quartas", ORIGINAL, hasTouch);
 
   // Reabre a notícia salva: o corpo vem do banco (jsonb, com as chaves em outra ordem).
   await page.reload();
   await expect(corpo(page)).toContainText(ORIGINAL);
-  await historicoVazio(page);
+  await historicoVazio(page, hasTouch);
 
   // Só clicar no corpo não muda nada.
   await apertar(corpo(page), hasTouch);
-  await historicoVazio(page);
+  await historicoVazio(page, hasTouch);
 
-  // Digitar acende; Refazer continua apagado.
+  // Digitar acende; Refazer continua apagado. (Conferir no “Mais” tira o foco do corpo: volta-se a ele.)
   const b = botoes(page);
+  await apertar(corpo(page), hasTouch);
   await page.keyboard.press("Control+End");
   await page.keyboard.type(" Mais um trecho.");
   await expect(b.topoDesfazer).toBeEnabled();
-  await expect(b.barraDesfazer).toBeEnabled();
-  await expect(b.barraRefazer).toBeDisabled();
+  await naBarra(page, "Desfazer (Ctrl+Z)", ligado, hasTouch);
+  await naBarra(page, "Refazer (Ctrl+Shift+Z)", apagado, hasTouch);
 
-  // Desfazer pela barra; refazer com Ctrl+Shift+Z.
-  await apertar(b.barraDesfazer, hasTouch);
+  // Desfazer pela barra (ou pelo “Mais”, que devolve o cursor ao corpo); refazer com Ctrl+Shift+Z.
+  await usarFerramentaDoCorpo(page, "Desfazer (Ctrl+Z)", hasTouch);
   await expect(corpo(page)).not.toContainText("Mais um trecho.");
-  await expect(b.barraRefazer).toBeEnabled();
+  await naBarra(page, "Refazer (Ctrl+Shift+Z)", ligado, hasTouch);
+  await apertar(corpo(page), hasTouch);
   await expect(b.topoDesfazer).toBeDisabled();
   await page.keyboard.press("Control+Shift+Z");
   await expect(corpo(page)).toContainText("Mais um trecho.");
@@ -303,10 +315,10 @@ test("negrito pela barra acende o Desfazer; Desfazer e Refazer do topo agem no c
 
   const b = botoes(page);
   await selecionarPalavra(page);
-  await barra(page).getByRole("button", { name: "Negrito (Ctrl+B)" }).click();
+  await usarFerramentaDoCorpo(page, "Negrito (Ctrl+B)", false);
   await expect(corpo(page).locator("strong")).toHaveCount(1);
   await expect(b.topoDesfazer).toBeEnabled();
-  await expect(b.barraDesfazer).toBeEnabled();
+  await naBarra(page, "Desfazer (Ctrl+Z)", ligado);
 
   await b.topoDesfazer.click();
   await expect(corpo(page).locator("strong")).toHaveCount(0);

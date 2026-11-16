@@ -6,6 +6,7 @@ import postgres from "postgres";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { codigoTotp } from "../src/lib/acesso/totp";
 import { ambienteE2E } from "../playwright.config";
+import { acaoDaLinha } from "./responsivo";
 
 // Ciclo de vida do conteúdo (#11; US22, CA-US21.9). Este arquivo não envia nada para a Mídia:
 // o e2e da Mídia (que roda depois) começa com ela vazia.
@@ -151,10 +152,11 @@ test("CA-US22.1 · ocultar pede motivo: o botão só libera com o motivo escrito
   const id = await publicar(page, titulo);
 
   await page.goto(`/painel/conteudos?busca=${encodeURIComponent(titulo)}`);
-  // Publicada: o menu só tem ocultar e arquivar (CA-US22.4).
+  // Publicada: do ciclo de vida, o menu só tem ocultar e arquivar (CA-US22.4). Do lg ao 2xl, Edição rápida e
+  // Editar vêm antes, no lugar dos ícones da linha (#51).
   await page.getByRole("button", { name: `Mais ações para “${titulo}”` }).click();
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem")).toHaveText(["Ocultar do site", "Arquivar"]);
+  await expect(menu.getByRole("menuitem").filter({ hasNotText: /^(Edição rápida|Editar|Abrir)$/ })).toHaveText(["Ocultar do site", "Arquivar"]);
   await menu.getByRole("menuitem", { name: "Ocultar do site" }).click();
 
   const modal = page.getByRole("alertdialog", { name: "Ocultar do site?" });
@@ -194,7 +196,7 @@ test("RN09 · Edição rápida: ocultar e mostrar no site pedem confirmação, c
   const id = await publicar(page, titulo);
 
   await page.goto(`/painel/conteudos?busca=${encodeURIComponent(titulo)}`);
-  await page.getByRole("link", { name: `Edição rápida de “${titulo}”` }).click();
+  await acaoDaLinha(page.getByRole("row").filter({ hasText: titulo }), `Edição rápida de “${titulo}”`);
   const painel = page.getByRole("dialog", { name: "Edição rápida" });
   await painel.getByLabel("Título").fill(`${titulo} (revisado)`);
   await painel.getByRole("radio", { name: /^Oculto/ }).click();
@@ -224,7 +226,7 @@ test("RN09 · Edição rápida: ocultar e mostrar no site pedem confirmação, c
   expect((await acoesNaAtividade(id)).slice(-2)).toEqual(["noticia.editar", "noticia.ocultar"]);
 
   // De novo na Edição rápida: o título mudado é alteração que ainda não está no site (E45).
-  await page.getByRole("link", { name: /^Edição rápida de “Mutirão de documentos/ }).click();
+  await acaoDaLinha(page.getByRole("row").filter({ hasText: "Mutirão de documentos" }), /^Edição rápida de “Mutirão de documentos/);
   await expect(painel.getByText("Há alterações que ainda não estão no site")).toBeVisible();
   await expect(painel.getByText("Motivo: Faltou o horário do mutirão")).toBeVisible();
   await painel.getByRole("radio", { name: /^Mostrar no site/ }).click();
