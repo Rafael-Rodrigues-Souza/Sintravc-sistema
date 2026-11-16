@@ -5,7 +5,7 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { RESPONSIVO } from "../playwright.config";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
-import { entrarNoPainel } from "./entrar";
+import { apertar, entrarNoPainel } from "./entrar";
 
 /** Apoio dos e2e @responsivo (E48). Os tamanhos vêm sempre de RESPONSIVO, no playwright.config.ts. */
 
@@ -287,4 +287,48 @@ export async function larguraDaBarra(area: Locator): Promise<number> {
     const bordas = parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth);
     return (el as HTMLElement).offsetWidth - bordas - el.clientWidth;
   });
+}
+
+/** As ferramentas da barra de formatação do corpo, pelo nome acessível (o mesmo na barra e no menu “Mais”). */
+export const FERRAMENTAS_DO_CORPO = [
+  "Negrito (Ctrl+B)",
+  "Itálico (Ctrl+I)",
+  "Sublinhado (Ctrl+U)",
+  "Estilo do parágrafo",
+  "Lista",
+  "Lista numerada",
+  "Citação",
+  "Link",
+  "Imagem da Mídia",
+  "Desfazer (Ctrl+Z)",
+  "Refazer (Ctrl+Shift+Z)",
+] as const;
+
+export const barraDoCorpo = (page: Page) => page.getByRole("toolbar", { name: "Formatação do corpo" });
+
+/**
+ * Uma ferramenta da barra do corpo como a pessoa a acha (#51, E51): o botão, se ele estiver à mostra
+ * na barra; se não, o item do menu “Mais formatação” (⋯), que fica aberto até `fechar()`.
+ */
+export async function ferramentaDoCorpo(page: Page, nome: (typeof FERRAMENTAS_DO_CORPO)[number], toque: boolean) {
+  const barra = barraDoCorpo(page);
+  const naBarra = barra.getByRole(nome === "Estilo do parágrafo" ? "combobox" : "button", { name: nome, exact: true });
+  if (await naBarra.isVisible()) return { alvo: naBarra, noMenu: false, fechar: async () => {} };
+  await apertar(barra.getByRole("button", { name: "Mais formatação" }), toque);
+  const menu = page.getByRole("menu", { name: "Mais formatação" });
+  await expect(menu).toBeVisible();
+  return {
+    alvo: menu.getByLabel(nome, { exact: true }),
+    noMenu: true,
+    fechar: async () => {
+      await page.keyboard.press("Escape");
+      await expect(menu).toBeHidden();
+    },
+  };
+}
+
+/** Aperta a ferramenta da barra do corpo, pela barra ou pelo menu “Mais”. */
+export async function usarFerramentaDoCorpo(page: Page, nome: (typeof FERRAMENTAS_DO_CORPO)[number], toque: boolean) {
+  const { alvo } = await ferramentaDoCorpo(page, nome, toque);
+  await apertar(alvo, toque);
 }

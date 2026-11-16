@@ -14,6 +14,8 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
+  Check,
+  Ellipsis,
   ImagePlus,
   Italic,
   Link2,
@@ -23,7 +25,9 @@ import {
   Redo2,
   Underline,
   Undo2,
+  type LucideIcon,
 } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -183,6 +187,79 @@ export function CorpoRico({
   );
 }
 
+type Ferramenta =
+  | "negrito"
+  | "italico"
+  | "sublinhado"
+  | "estilo"
+  | "lista"
+  | "numerada"
+  | "citacao"
+  | "link"
+  | "imagem"
+  | "desfazer"
+  | "refazer";
+
+/** A barra em grupos, na ordem do E51; cada grupo, menos o 1º, vem depois de um separador. */
+const GRUPOS: { ferramentas: Ferramenta[]; separador: string }[] = [
+  { ferramentas: ["negrito", "italico", "sublinhado"], separador: "" },
+  { ferramentas: ["estilo"], separador: "barra-estreita:hidden" },
+  { ferramentas: ["lista", "numerada", "citacao"], separador: "barra-estreita:hidden" },
+  { ferramentas: ["link", "imagem"], separador: "barra-estreita:hidden" },
+  { ferramentas: ["desfazer", "refazer"], separador: "barra-media:hidden" },
+];
+
+/**
+ * Em que degrau cada ferramenta sai da barra e vai para o ⋯ (E51). Os degraus são container
+ * queries na largura da barra (variantes barra-media e barra-estreita; a conta está em globals.css).
+ */
+const SAI_DA_BARRA: Record<Ferramenta, string> = {
+  negrito: "",
+  italico: "",
+  lista: "",
+  link: "",
+  estilo: "barra-estreita:hidden",
+  imagem: "barra-estreita:hidden",
+  sublinhado: "barra-media:hidden",
+  numerada: "barra-media:hidden",
+  citacao: "barra-media:hidden",
+  desfazer: "barra-media:hidden",
+  refazer: "barra-media:hidden",
+};
+
+/** Uma ferramenta com botão (todas menos o estilo, que é um select na barra e uma escolha no menu). */
+type Acao = {
+  /** Nome acessível, o mesmo na barra e no menu (com o atalho, quando há). */
+  rotulo: string;
+  /** Texto visível no menu. */
+  nome: string;
+  atalho?: string;
+  icone: LucideIcon;
+  /** Liga e desliga: no menu, aparece marcada (✓). */
+  alterna?: boolean;
+  ligado?: boolean;
+  desativado?: boolean;
+  /** Por que está travada, no menu. */
+  motivo?: string;
+  agir: () => void;
+};
+
+type Acoes = Record<Exclude<Ferramenta, "estilo">, Acao>;
+
+/**
+ * O CSS escondeu a ferramenta (degrau da barra)? O Safari do iPad antes da 17.4 não tem o
+ * checkVisibility: lá, o que está com display: none não tem caixas.
+ */
+function escondidoNaBarra(el: Element) {
+  return typeof el.checkVisibility === "function" ? !el.checkVisibility() : el.getClientRects().length === 0;
+}
+
+/** As ferramentas que o CSS escondeu na barra agora. */
+function escondidasNa(barra: HTMLElement | null): ReadonlySet<Ferramenta> {
+  const ferramentas = barra?.querySelectorAll<HTMLElement>("[data-ferramenta]") ?? [];
+  return new Set([...ferramentas].filter(escondidoNaBarra).map((el) => el.dataset.ferramenta as Ferramenta));
+}
+
 /**
  * Só é montada com o editor pronto: o useEditorState guarda o editor que recebe na montagem e só
  * refaz a leitura na próxima transação, então montado com `null` ficaria com o estado antigo (#50).
@@ -217,68 +294,102 @@ function BarraDeFerramentas({
   const [linkAberto, setLinkAberto] = React.useState(false);
   const [seletorAberto, setSeletorAberto] = React.useState(false);
   const [imagem, setImagem] = React.useState<ArquivoParaEscolher | null>(null);
+  const barra = React.useRef<HTMLDivElement>(null);
 
   if (!ativo) return <BarraVazia />;
   const cadeia = () => editor.chain().focus();
+  const estilo = ativo.subtitulo ? "h2" : "p";
+  const mudarEstilo = (valor: string) => (valor === "h2" ? cadeia().setHeading({ level: 2 }).run() : cadeia().setParagraph().run());
+
+  const acoes: Acoes = {
+    negrito: { rotulo: "Negrito (Ctrl+B)", nome: "Negrito", atalho: "Ctrl+B", icone: Bold, alterna: true, ligado: ativo.negrito, agir: () => cadeia().toggleBold().run() },
+    italico: { rotulo: "Itálico (Ctrl+I)", nome: "Itálico", atalho: "Ctrl+I", icone: Italic, alterna: true, ligado: ativo.italico, agir: () => cadeia().toggleItalic().run() },
+    sublinhado: {
+      rotulo: "Sublinhado (Ctrl+U)",
+      nome: "Sublinhado",
+      atalho: "Ctrl+U",
+      icone: Underline,
+      alterna: true,
+      ligado: ativo.sublinhado,
+      agir: () => cadeia().toggleUnderline().run(),
+    },
+    lista: { rotulo: "Lista", nome: "Lista", icone: List, alterna: true, ligado: ativo.lista, agir: () => cadeia().toggleBulletList().run() },
+    numerada: {
+      rotulo: "Lista numerada",
+      nome: "Lista numerada",
+      icone: ListOrdered,
+      alterna: true,
+      ligado: ativo.numerada,
+      agir: () => cadeia().toggleOrderedList().run(),
+    },
+    citacao: { rotulo: "Citação", nome: "Citação", icone: Quote, alterna: true, ligado: ativo.citacao, agir: () => cadeia().toggleBlockquote().run() },
+    link: { rotulo: "Link", nome: "Link", icone: Link2, ligado: ativo.link, agir: () => setLinkAberto(true) },
+    imagem: {
+      rotulo: conectado ? "Imagem da Mídia" : MENSAGEM_SEM_INTERNET_MIDIA,
+      nome: "Imagem da Mídia",
+      icone: ImagePlus,
+      desativado: !conectado,
+      motivo: "Sem internet",
+      agir: () => setSeletorAberto(true),
+    },
+    desfazer: {
+      rotulo: "Desfazer (Ctrl+Z)",
+      nome: "Desfazer",
+      atalho: "Ctrl+Z",
+      icone: Undo2,
+      desativado: !ativo.podeDesfazer,
+      motivo: "Nada para desfazer",
+      agir: () => cadeia().undo().run(),
+    },
+    refazer: {
+      rotulo: "Refazer (Ctrl+Shift+Z)",
+      nome: "Refazer",
+      atalho: "Ctrl+Shift+Z",
+      icone: Redo2,
+      desativado: !ativo.podeRefazer,
+      motivo: "Nada para refazer",
+      agir: () => cadeia().redo().run(),
+    },
+  };
 
   return (
+    // Numa linha só (E51): o que não cabe sai pelos degraus do container “barra” e vai para o ⋯.
     <div
+      ref={barra}
       role="toolbar"
       aria-label="Formatação do corpo"
-      className="flex flex-wrap items-center gap-1 border-b border-borda-padrao bg-fundo-superficie-alt px-2 py-1.5 pointer-coarse:vao-toque-9"
+      className="@container/barra flex flex-nowrap items-center gap-1 border-b border-borda-padrao bg-fundo-superficie-alt px-2 py-1.5 pointer-coarse:vao-toque-9"
     >
-      <Botao rotulo="Desfazer (Ctrl+Z)" desativado={!ativo.podeDesfazer} aoClicar={() => cadeia().undo().run()}>
-        <Undo2 />
-      </Botao>
-      <Botao rotulo="Refazer (Ctrl+Shift+Z)" desativado={!ativo.podeRefazer} aoClicar={() => cadeia().redo().run()}>
-        <Redo2 />
-      </Botao>
-      <Separador />
-      <label className="sr-only" htmlFor="estilo-do-bloco">
-        Estilo do parágrafo
-      </label>
-      <select
-        id="estilo-do-bloco"
-        value={ativo.subtitulo ? "h2" : "p"}
-        onChange={(evento) =>
-          evento.target.value === "h2" ? cadeia().setHeading({ level: 2 }).run() : cadeia().setParagraph().run()
-        }
-        className="h-9 rounded-[8px] border border-borda-padrao bg-fundo-superficie px-2 texto-pequeno pointer-coarse:h-(--alvo-toque) text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
-      >
-        <option value="p">Parágrafo</option>
-        <option value="h2">Subtítulo</option>
-      </select>
-      <Separador />
-      <Botao rotulo="Negrito (Ctrl+B)" ligado={ativo.negrito} aoClicar={() => cadeia().toggleBold().run()}>
-        <Bold />
-      </Botao>
-      <Botao rotulo="Itálico (Ctrl+I)" ligado={ativo.italico} aoClicar={() => cadeia().toggleItalic().run()}>
-        <Italic />
-      </Botao>
-      <Botao rotulo="Sublinhado (Ctrl+U)" ligado={ativo.sublinhado} aoClicar={() => cadeia().toggleUnderline().run()}>
-        <Underline />
-      </Botao>
-      <Separador />
-      <Botao rotulo="Lista" ligado={ativo.lista} aoClicar={() => cadeia().toggleBulletList().run()}>
-        <List />
-      </Botao>
-      <Botao rotulo="Lista numerada" ligado={ativo.numerada} aoClicar={() => cadeia().toggleOrderedList().run()}>
-        <ListOrdered />
-      </Botao>
-      <Botao rotulo="Citação" ligado={ativo.citacao} aoClicar={() => cadeia().toggleBlockquote().run()}>
-        <Quote />
-      </Botao>
-      <Separador />
-      <Botao rotulo="Link" ligado={ativo.link} aoClicar={() => setLinkAberto(true)}>
-        <Link2 />
-      </Botao>
-      <Botao
-        rotulo={conectado ? "Imagem da Mídia" : MENSAGEM_SEM_INTERNET_MIDIA}
-        desativado={!conectado}
-        aoClicar={() => setSeletorAberto(true)}
-      >
-        <ImagePlus />
-      </Botao>
+      {GRUPOS.map((grupo, i) => (
+        <React.Fragment key={grupo.ferramentas[0]}>
+          {i > 0 ? <Separador className={grupo.separador} /> : null}
+          {grupo.ferramentas.map((ferramenta) =>
+            ferramenta === "estilo" ? (
+              <React.Fragment key={ferramenta}>
+                <label className="sr-only" htmlFor="estilo-do-bloco">
+                  Estilo do parágrafo
+                </label>
+                <select
+                  id="estilo-do-bloco"
+                  data-ferramenta={ferramenta}
+                  value={estilo}
+                  onChange={(evento) => mudarEstilo(evento.target.value)}
+                  className={cn(
+                    "h-9 shrink-0 rounded-[8px] border border-borda-padrao bg-fundo-superficie px-2 texto-pequeno pointer-coarse:h-(--alvo-toque) text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                    SAI_DA_BARRA[ferramenta],
+                  )}
+                >
+                  <option value="p">Parágrafo</option>
+                  <option value="h2">Subtítulo</option>
+                </select>
+              </React.Fragment>
+            ) : (
+              <Botao key={ferramenta} ferramenta={ferramenta} acao={acoes[ferramenta]} className={SAI_DA_BARRA[ferramenta]} />
+            ),
+          )}
+        </React.Fragment>
+      ))}
+      <MaisFormatacao barra={barra} acoes={acoes} estilo={estilo} aoMudarEstilo={mudarEstilo} />
 
       <DialogoLink editor={editor} aberto={linkAberto} aoMudarAberto={setLinkAberto} />
       <SeletorDeMidia
@@ -307,41 +418,180 @@ function BarraDeFerramentas({
   );
 }
 
-function Separador() {
-  return <span aria-hidden className="mx-1 h-6 w-px bg-borda-padrao" />;
+const CLASSE_DO_ITEM =
+  "flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2.5 texto-pequeno text-texto-primario outline-none pointer-coarse:min-h-(--alvo-toque) data-[highlighted]:bg-fundo-superficie-alt data-[disabled]:cursor-not-allowed data-[disabled]:text-texto-terciario";
+
+const ESTILOS = [
+  { valor: "p", nome: "Parágrafo" },
+  { valor: "h2", nome: "Subtítulo" },
+] as const;
+
+/**
+ * O ⋯ da barra (E51): aparece só abaixo do degrau largo e lista só as ferramentas que o CSS escondeu
+ * na barra naquele momento. Não mede nada: lê o resultado das container queries ao abrir. A ação
+ * escolhida roda depois de o menu fechar, para o foco voltar ao corpo (ou ir para o diálogo do Link e
+ * da Imagem), e não ao ⋯. Fechar sem escolher (Esc, tocar fora) devolve o foco ao ⋯.
+ */
+function MaisFormatacao({
+  barra,
+  acoes,
+  estilo,
+  aoMudarEstilo,
+}: {
+  barra: React.RefObject<HTMLDivElement | null>;
+  acoes: Acoes;
+  estilo: string;
+  aoMudarEstilo: (valor: string) => void;
+}) {
+  const [aberto, setAberto] = React.useState(false);
+  const [escondidas, setEscondidas] = React.useState<ReadonlySet<Ferramenta>>(() => new Set());
+  const gatilho = React.useRef<HTMLButtonElement>(null);
+  const depoisDeFechar = React.useRef<(() => void) | null>(null);
+
+
+  // Girar o tablet ou mudar a janela com o menu aberto: a barra pode mudar de degrau.
+  React.useEffect(() => {
+    if (!aberto) return;
+    const aoMudarTamanho = () => {
+      if (!gatilho.current || escondidoNaBarra(gatilho.current)) setAberto(false);
+      else setEscondidas(escondidasNa(barra.current));
+    };
+    window.addEventListener("resize", aoMudarTamanho);
+    return () => window.removeEventListener("resize", aoMudarTamanho);
+  }, [aberto, barra]);
+
+  const escolher = (acao: () => void) => () => {
+    depoisDeFechar.current = acao;
+  };
+  const grupos = GRUPOS.map((grupo) => grupo.ferramentas.filter((f) => escondidas.has(f))).filter((grupo) => grupo.length > 0);
+
+  return (
+    <DropdownMenu.Root
+      modal={false}
+      open={aberto}
+      onOpenChange={(abrir) => {
+        if (abrir) setEscondidas(escondidasNa(barra.current));
+        setAberto(abrir);
+      }}
+    >
+      <DropdownMenu.Trigger asChild>
+        <button
+          ref={gatilho}
+          type="button"
+          title="Mais formatação"
+          aria-label="Mais formatação"
+          className="alvo-toque hidden size-9 shrink-0 items-center justify-center rounded-[8px] text-texto-primario outline-none hover:bg-fundo-superficie focus-visible:ring-[3px] focus-visible:ring-ring data-[state=open]:bg-fundo-superficie barra-media:flex [&_svg]:size-[18px]"
+        >
+          <Ellipsis aria-hidden />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={6}
+          collisionPadding={8}
+          onCloseAutoFocus={(evento) => {
+            const acao = depoisDeFechar.current;
+            if (!acao) return;
+            evento.preventDefault();
+            depoisDeFechar.current = null;
+            acao();
+          }}
+          className="z-50 flex max-h-(--radix-dropdown-menu-content-available-height) min-w-[240px] flex-col gap-0.5 overflow-y-auto rounded-[14px] border border-borda-padrao bg-fundo-superficie p-1.5 shadow-[0_12px_32px_rgb(11_20_36/0.16)]"
+        >
+          {grupos.map((grupo, i) => (
+            <React.Fragment key={grupo[0]}>
+              {i > 0 ? <DropdownMenu.Separator className="mx-2 my-1 h-px bg-borda-padrao" /> : null}
+              {grupo.map((ferramenta) =>
+                ferramenta === "estilo" ? (
+                  <DropdownMenu.RadioGroup key={ferramenta} aria-label="Estilo do parágrafo" value={estilo}>
+                    {ESTILOS.map((opcao) => (
+                      <DropdownMenu.RadioItem
+                        key={opcao.valor}
+                        value={opcao.valor}
+                        onSelect={escolher(() => aoMudarEstilo(opcao.valor))}
+                        className={CLASSE_DO_ITEM}
+                      >
+                        <span className="flex size-4 shrink-0 items-center justify-center">
+                          <DropdownMenu.ItemIndicator>
+                            <Check aria-hidden className="size-4" />
+                          </DropdownMenu.ItemIndicator>
+                        </span>
+                        {opcao.nome}
+                      </DropdownMenu.RadioItem>
+                    ))}
+                  </DropdownMenu.RadioGroup>
+                ) : (
+                  <ItemDoMenu key={ferramenta} acao={acoes[ferramenta]} aoEscolher={escolher(acoes[ferramenta].agir)} />
+                ),
+              )}
+            </React.Fragment>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
 }
 
-function Botao({
-  rotulo,
-  ligado,
-  desativado,
-  aoClicar,
-  children,
-}: {
-  rotulo: string;
-  ligado?: boolean;
-  desativado?: boolean;
-  aoClicar: () => void;
-  children: React.ReactNode;
-}) {
+/** Item do ⋯: ícone, nome, o motivo quando travado, o atalho (só com teclado por perto) e o ✓ dos que ligam e desligam. */
+function ItemDoMenu({ acao, aoEscolher }: { acao: Acao; aoEscolher: () => void }) {
+  const conteudo = (
+    <>
+      <acao.icone aria-hidden className="size-4 shrink-0" />
+      <span className="flex min-w-0 flex-col">
+        {acao.nome}
+        {acao.desativado && acao.motivo ? <span className="texto-pequeno text-texto-terciario">{acao.motivo}</span> : null}
+      </span>
+      {acao.atalho ? <span className="ml-auto pl-4 texto-pequeno text-texto-terciario pointer-coarse:hidden">{acao.atalho}</span> : null}
+      {acao.alterna ? (
+        <span className={cn("flex size-4 shrink-0 items-center justify-center", !acao.atalho && "ml-auto", "pointer-coarse:ml-auto")}>
+          <DropdownMenu.ItemIndicator>
+            <Check aria-hidden className="size-4" />
+          </DropdownMenu.ItemIndicator>
+        </span>
+      ) : null}
+    </>
+  );
+  if (acao.alterna) {
+    return (
+      <DropdownMenu.CheckboxItem aria-label={acao.rotulo} checked={!!acao.ligado} disabled={acao.desativado} onSelect={aoEscolher} className={CLASSE_DO_ITEM}>
+        {conteudo}
+      </DropdownMenu.CheckboxItem>
+    );
+  }
+  return (
+    <DropdownMenu.Item aria-label={acao.rotulo} disabled={acao.desativado} onSelect={aoEscolher} className={CLASSE_DO_ITEM}>
+      {conteudo}
+    </DropdownMenu.Item>
+  );
+}
+
+function Separador({ className }: { className?: string }) {
+  return <span aria-hidden className={cn("mx-1 h-6 w-px shrink-0 bg-borda-padrao", className)} />;
+}
+
+function Botao({ ferramenta, acao, className }: { ferramenta: Ferramenta; acao: Acao; className?: string }) {
+  const { rotulo, ligado, desativado, agir, icone: Icone } = acao;
   return (
     <button
       type="button"
+      data-ferramenta={ferramenta}
       title={rotulo}
       aria-label={rotulo}
       aria-pressed={ligado === undefined ? undefined : ligado}
       // aria-disabled (e não disabled) para a dica continuar aparecendo e ser lida.
       aria-disabled={desativado || undefined}
       onClick={() => {
-        if (!desativado) aoClicar();
+        if (!desativado) agir();
       }}
       className={cn(
-        "alvo-toque flex size-9 items-center justify-center rounded-[8px] text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]",
+        "alvo-toque flex size-9 shrink-0 items-center justify-center rounded-[8px] text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:size-[18px]",
         ligado ? "bg-fundo-marinho text-texto-invertido" : "hover:bg-fundo-superficie",
         desativado && "cursor-not-allowed opacity-40 hover:bg-transparent",
+        className,
       )}
     >
-      {children}
+      <Icone />
     </button>
   );
 }

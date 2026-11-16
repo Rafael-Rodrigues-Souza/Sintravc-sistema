@@ -7,11 +7,14 @@ import { apertar } from "./entrar";
 import {
   ALTURA_BAIXA,
   assentar,
+  barraDoCorpo,
   caixasQueSeCruzam,
   contraste,
   CONTRASTE_MINIMO,
   emCadaLargura,
   entrarComoAdm,
+  FERRAMENTAS_DO_CORPO,
+  ferramentaDoCorpo,
   itensEsmagados,
   larguraDaBarra,
   linhasDoTexto,
@@ -19,10 +22,12 @@ import {
   pessoas,
   semAnimacao,
   semRolagemLateral,
+  tabletQueGira,
   telaEstreita,
   textoCortado,
   textoVisivelCruza,
   TOLERANCIA,
+  usarFerramentaDoCorpo,
 } from "./responsivo";
 
 /**
@@ -321,6 +326,102 @@ for (const tema of ["claro", "escuro"] as const) {
       });
     });
 
+    test("editor de notícia: a barra de formatação do corpo fica numa linha (#51)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, NOTICIA.endereco, { toque: hasTouch });
+      const barra = barraDoCorpo(page);
+      await expect(barra).toBeVisible();
+      const conferir = async (onde: string) => {
+        const medida = await barra.evaluate((el, tolerancia) => {
+          const centros = [...el.querySelectorAll("button, select")]
+            .filter((item) => item.getClientRects().length > 0)
+            .map((item) => {
+              const r = item.getBoundingClientRect();
+              return r.top + r.height / 2;
+            });
+          return { numaLinha: Math.max(...centros) - Math.min(...centros) < tolerancia, cabe: el.scrollWidth <= el.clientWidth };
+        }, TOLERANCIA.mesmaLinha);
+        expect.soft(medida.numaLinha, `${onde}, a barra do corpo fica numa linha`).toBe(true);
+        expect.soft(medida.cabe, `${onde}, nada passa da barra do corpo`).toBe(true);
+        if (hasTouch) expect.soft(await alvosPequenos(page, "[role=toolbar]"), `${onde}, alvos de toque pequenos na barra`).toEqual([]);
+      };
+      await emCadaLargura(page, testInfo, (largura) => conferir(`a ${largura} px`));
+
+      // Girar o tablet sem recarregar: a barra muda de degrau e continua numa linha.
+      const giro = tabletQueGira(testInfo.project.name);
+      if (giro) {
+        for (const [posicao, janela] of [["deitado", giro.deitado], ["em pé", giro.emPe]] as const) {
+          await page.setViewportSize(janela);
+          await assentar(page);
+          await conferir(`com o tablet ${posicao}`);
+        }
+      }
+    });
+
+    test("editor de notícia: o “Mais” da barra do corpo lista só o que está escondido e aplica o formato (#51)", async ({ page, hasTouch }, testInfo) => {
+      await entrarComoAdm(page, NOTICIA.endereco, { toque: hasTouch });
+      const barra = barraDoCorpo(page);
+      const mais = barra.getByRole("button", { name: "Mais formatação" });
+      const menu = page.getByRole("menu", { name: "Mais formatação" });
+      await expect(barra).toBeVisible();
+
+      // Em cada largura, o menu tem exatamente as ferramentas que não aparecem na barra; sem nenhuma escondida, não há ⋯.
+      await emCadaLargura(page, testInfo, async (largura) => {
+        const escondidas: string[] = [];
+        for (const nome of FERRAMENTAS_DO_CORPO) {
+          const naBarra = barra.getByRole(nome === "Estilo do parágrafo" ? "combobox" : "button", { name: nome, exact: true });
+          if (!(await naBarra.isVisible())) escondidas.push(nome);
+        }
+        if (escondidas.length === 0) {
+          await expect(mais, `a ${largura} px, tudo cabe e o ⋯ não aparece`).toBeHidden();
+          return;
+        }
+        await apertar(mais, hasTouch);
+        await expect(menu).toBeVisible();
+        const noMenu = await menu.locator("[role=menuitem], [role=menuitemcheckbox], [role=group]").evaluateAll((itens) => itens.map((item) => item.getAttribute("aria-label") ?? ""));
+        expect.soft(noMenu.toSorted(), `a ${largura} px, o ⋯ lista só o que está escondido na barra`).toEqual(escondidas.toSorted());
+        await page.keyboard.press("Escape");
+        await expect(menu).toBeHidden();
+      });
+
+      // Na janela mais estreita da varredura (no desktop) ou no próprio perfil, aplica a citação pelo ⋯ ou pela barra.
+      if (testInfo.project.name === "chromium") {
+        await page.setViewportSize({ width: RESPONSIVO.varredura.de, height: page.viewportSize()!.height });
+        await assentar(page);
+      }
+      const corpo = page.getByRole("textbox", { name: "Corpo da notícia" });
+      await apertar(corpo, hasTouch);
+      await page.keyboard.type("A assembleia aprovou a pauta.");
+      // Na largura de um celular, as ferramentas não cabem todas numa linha com a área de toque: o ⋯ aparece e a citação vai por ele.
+      const comoCelular = page.viewportSize()!.width <= RESPONSIVO.perfis.celular.largura;
+      if (comoCelular) await expect(mais, "na largura de um celular, nem tudo cabe: o ⋯ aparece").toBeVisible();
+      const paraCitar = await ferramentaDoCorpo(page, "Citação", hasTouch);
+      if (comoCelular) expect(paraCitar.noMenu, "na largura de um celular, a citação fica no ⋯").toBe(true);
+      await apertar(paraCitar.alvo, hasTouch);
+      await expect(corpo.locator("blockquote"), "a citação vai para o corpo").toHaveText("A assembleia aprovou a pauta.");
+      await expect(corpo, "o cursor volta para o corpo").toBeFocused();
+      const citacao = await ferramentaDoCorpo(page, "Citação", hasTouch);
+      await expect(citacao.alvo).toHaveAttribute(citacao.noMenu ? "aria-checked" : "aria-pressed", "true");
+      await citacao.fechar();
+
+      // Link pelo ⋯ (ou pela barra) abre o diálogo de sempre.
+      await usarFerramentaDoCorpo(page, "Link", hasTouch);
+      const dialogoLink = page.getByRole("dialog", { name: "Link" });
+      await expect(dialogoLink).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialogoLink).toBeHidden();
+
+      // Com o teclado: Enter abre o ⋯, as setas andam e Esc fecha e devolve o foco ao ⋯.
+      if (!hasTouch && (await mais.isVisible())) {
+        await mais.focus();
+        await page.keyboard.press("Enter");
+        await expect(menu).toBeVisible();
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Escape");
+        await expect(menu).toBeHidden();
+        await expect(mais).toBeFocused();
+      }
+    });
+
     for (const editor of EDITORES) {
       test(`editor de ${editor.nome}: cabeçalho sem nada sobreposto, título legível e “Salvo automaticamente” em até 2 linhas`, async ({ page, hasTouch }, testInfo) => {
         await entrarComoAdm(page, editor.endereco, { toque: hasTouch });
@@ -599,7 +700,7 @@ for (const tema of ["claro", "escuro"] as const) {
       // Diálogos do editor de notícia: o seletor de mídia (com os arquivos acima) e “Adicionar link”.
       await page.goto(noticia);
       await apertar(page.getByRole("textbox", { name: "Corpo da notícia" }), hasTouch);
-      await apertar(page.getByRole("toolbar", { name: "Formatação do corpo" }).getByRole("button", { name: "Imagem da Mídia" }), hasTouch);
+      await usarFerramentaDoCorpo(page, "Imagem da Mídia", hasTouch);
       const seletor = page.getByRole("dialog", { name: "Imagem no corpo da notícia" });
       await expect(seletor.getByRole("button", { name: new RegExp(`logo-toque-${sufixo}`) })).toBeVisible();
       await medir("seletor de mídia");

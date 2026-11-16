@@ -7,6 +7,7 @@ import sharp from "sharp";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { codigoTotp } from "../src/lib/acesso/totp";
 import { ambienteE2E } from "../playwright.config";
+import { usarFerramentaDoCorpo } from "./responsivo";
 
 // Envia arquivo para a Mídia: por isso fica num arquivo que roda depois de midia.spec.ts
 // (que começa com a Mídia vazia), e não em conteudos.spec.ts.
@@ -46,7 +47,7 @@ test("imagem no corpo pela barra: escolhe na Mídia, salva e continua lá ao rec
 
   // Barra do corpo → Imagem da Mídia → envia uma foto nova (já vem selecionada) → usa.
   await page.getByRole("textbox", { name: "Corpo da notícia" }).click();
-  await page.getByRole("toolbar", { name: "Formatação do corpo" }).getByRole("button", { name: "Imagem da Mídia" }).click();
+  await usarFerramentaDoCorpo(page, "Imagem da Mídia", false);
   const seletor = page.getByRole("dialog", { name: "Imagem no corpo da notícia" });
   const foto = await sharp({ create: { width: 800, height: 450, channels: 3, background: "#02488d" } }).png().toBuffer();
   await seletor.getByTestId("entrada-arquivos").setInputFiles({ name: "onibus-frota.png", mimeType: "image/png", buffer: foto });

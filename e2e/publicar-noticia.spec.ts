@@ -7,6 +7,7 @@ import sharp from "sharp";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { codigoTotp } from "../src/lib/acesso/totp";
 import { ambienteE2E } from "../playwright.config";
+import { usarFerramentaDoCorpo } from "./responsivo";
 
 // Envia a capa para a Mídia: por isso roda depois de midia.spec.ts (que começa com a Mídia vazia).
 // Tudo é feito pela tela, como uma pessoa faria; o banco só é lido para conferir o resultado.
@@ -240,7 +241,7 @@ test("CA-US21.3 · imagem do corpo sem texto alternativo: o alerta leva à image
   const idDaFrota = new URL(page.url()).pathname.split("/").at(-1)!;
 
   // Insere uma imagem no corpo sem texto alternativo.
-  await page.getByRole("toolbar", { name: "Formatação do corpo" }).getByRole("button", { name: "Imagem da Mídia" }).click();
+  await usarFerramentaDoCorpo(page, "Imagem da Mídia", false);
   const seletor = page.getByRole("dialog", { name: "Imagem no corpo da notícia" });
   const foto = await sharp({ create: { width: 800, height: 450, channels: 3, background: "#1d6fd8" } }).png().toBuffer();
   await seletor.getByTestId("entrada-arquivos").setInputFiles({ name: "frota-nova.png", mimeType: "image/png", buffer: foto });

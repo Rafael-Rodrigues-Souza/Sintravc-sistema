@@ -28,6 +28,32 @@
   }
 }
 
+/*
+ * Barra de formatação do corpo numa linha só (E51, #51). A barra é o container “barra”
+ * (@container/barra, corpo-rico.tsx). Em três degraus fixos, o que não cabe vai para o menu ⋯ (“Mais
+ * formatação”), pela prioridade B > I > Estilo > Lista > Link > Imagem > U > Numerada > Citação >
+ * Desfazer > Refazer. As classes de cada ferramenta ficam em SAI_DA_BARRA (corpo-rico.tsx). O
+ * limite é a largura do CONTEÚDO DA BARRA (sem o padding), e não de aparelho (os aparelhos ficam no
+ * RESPONSIVO do playwright.config.ts). Calibração no pior caso, o toque (#51): botões de 36 px com
+ * vão de 8 px (pointer-coarse:vao-toque-9, centros a --alvo-toque), o select de 99 px (“Subtítulo”)
+ * e separadores de 9 px (1 px e mx-1).
+ * - Larga (tudo, sem ⋯): 10 botões, o select e 4 separadores, com 14 vãos: 607 px. 39rem (624 px).
+ * - Média (barra-media): B, I | Estilo | Lista | Link, Imagem e ⋯, com 3 separadores e 9 vãos: 414 px.
+ *   Cabe de 28rem (448 px) para cima.
+ * - Estreita (barra-estreita): B, I, Lista, Link e ⋯, sem separadores, com 4 vãos: 212 px. Cabe na
+ *   menor barra da varredura (228 px, janela de 320 px). O select não cabe aqui com a área de toque.
+ */
+@custom-variant barra-media {
+  @container barra (width < 39rem) {
+    @slot;
+  }
+}
+@custom-variant barra-estreita {
+  @container barra (width < 28rem) {
+    @slot;
+  }
+}
+
 :root {
   color-scheme: light;
 
