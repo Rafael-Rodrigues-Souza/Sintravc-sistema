@@ -506,7 +506,7 @@ function ListaDoMes({
                     <Link
                       href={hrefEditar(item.id)}
                       scroll={false}
-                      className={cn("alvo-toque flex gap-2 rounded-[10px] px-3 py-2 texto-pequeno outline-none focus-visible:ring-[3px] focus-visible:ring-ring", COR_DO_ITEM[item.estado])}
+                      className={cn("alvo-toque flex gap-2 rounded-[10px] px-3 py-2 pointer-coarse:min-h-(--alvo-toque) pointer-coarse:py-3 texto-pequeno outline-none focus-visible:ring-[3px] focus-visible:ring-ring", COR_DO_ITEM[item.estado])}
                     >
                       <span className="shrink-0 font-semibold">{horaNaBahia(new Date(item.quando))}</span>
                       <span className="min-w-0">{rotuloDaNoticia(item.titulo)}</span>
