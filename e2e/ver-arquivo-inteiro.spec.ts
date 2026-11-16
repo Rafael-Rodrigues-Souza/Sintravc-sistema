@@ -140,3 +140,93 @@ test("Foto em JPG abre sem o xadrez", async ({ page }) => {
   await expect(imagem).toBeVisible();
   expect(await temFundo(imagem)).toBe(false);
 });
+
+/** A imagem como aparece na tela (já com o zoom). */
+async function naTela(imagem: Locator) {
+  const caixa = (await imagem.boundingBox())!;
+  return { ...caixa, centroX: caixa.x + caixa.width / 2, centroY: caixa.y + caixa.height / 2 };
+}
+
+test("Zoom por botões, roda, duplo clique e teclado; com zoom, arrasta; Esc fecha", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  const nome = `frota-${Date.now()}.jpg`;
+  const detalhes = await enviarEAbrir(page, nome, await fotoJpg(), "image/jpeg");
+  await detalhes.getByRole("button", { name: "Ver a imagem inteira" }).click();
+  const visualizador = page.getByRole("dialog", { name: nome });
+  const imagem = visualizador.locator("img");
+  const nivel = visualizador.getByRole("status");
+  const mais = visualizador.getByRole("button", { name: "Aumentar o zoom" });
+  const menos = visualizador.getByRole("button", { name: "Diminuir o zoom" });
+  const ajustar = visualizador.getByRole("button", { name: "Ajustar à tela" });
+
+  await expect(nivel).toHaveText("100%");
+  await expect(menos).toBeDisabled();
+  await expect(ajustar).toBeDisabled();
+  const base = await naTela(imagem);
+
+  // Botões: + multiplica por 1,5; − divide; “Ajustar à tela” volta a 100%.
+  await mais.click();
+  await expect(nivel).toHaveText("150%");
+  await expect.poll(async () => Math.round((await naTela(imagem)).width)).toBe(Math.round(base.width * 1.5));
+  await mais.click();
+  await expect(nivel).toHaveText("225%");
+  await menos.click();
+  await expect(nivel).toHaveText("150%");
+  await ajustar.click();
+  await expect(nivel).toHaveText("100%");
+  await expect.poll(async () => Math.round((await naTela(imagem)).width)).toBe(Math.round(base.width));
+
+  // Sem zoom, arrastar não move a imagem.
+  await page.mouse.move(base.centroX, base.centroY);
+  await page.mouse.down();
+  await page.mouse.move(base.centroX + 80, base.centroY + 40, { steps: 5 });
+  await page.mouse.up();
+  expect(Math.round((await naTela(imagem)).x)).toBe(Math.round(base.x));
+
+  // Roda do mouse para cima: aproxima.
+  await page.mouse.move(base.centroX, base.centroY);
+  await page.mouse.wheel(0, -200);
+  await expect(nivel).not.toHaveText("100%");
+  await ajustar.click();
+
+  // Duplo clique no centro: 200%; de novo, volta a 100%.
+  await imagem.dblclick();
+  await expect(nivel).toHaveText("200%");
+  await expect.poll(async () => Math.round((await naTela(imagem)).width)).toBe(Math.round(base.width * 2));
+  const ampliada = await naTela(imagem);
+
+  // Com zoom, arrastar move a imagem junto com o mouse.
+  await page.mouse.move(base.centroX, base.centroY);
+  await page.mouse.down();
+  await page.mouse.move(base.centroX + 60, base.centroY + 30, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => Math.round((await naTela(imagem)).x - ampliada.x)).toBe(60);
+  expect(Math.round((await naTela(imagem)).y - ampliada.y)).toBe(30);
+
+  await imagem.dblclick();
+  await expect(nivel).toHaveText("100%");
+
+  // Teclado: +, − e 0; as setas movem a imagem ampliada.
+  await page.keyboard.press("+");
+  await expect(nivel).toHaveText("150%");
+  await page.keyboard.press("+");
+  await expect(nivel).toHaveText("225%");
+  const antesDaSeta = await naTela(imagem);
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => (await naTela(imagem)).x).toBeLessThan(antesDaSeta.x);
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(async () => (await naTela(imagem)).y).toBeLessThan(antesDaSeta.y);
+  await page.keyboard.press("-");
+  await expect(nivel).toHaveText("150%");
+  await page.keyboard.press("0");
+  await expect(nivel).toHaveText("100%");
+
+  // O foco fica preso no visualizador.
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    expect(await visualizador.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(visualizador).toBeHidden();
+});
