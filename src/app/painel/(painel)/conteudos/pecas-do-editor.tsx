@@ -303,12 +303,12 @@ export function StatusCurto({ estado }: { estado: EstadoDaFila<unknown> }) {
 /**
  * Botão do topo que fica só com o ícone abaixo do lg (E49) e no topo sem espaço para os rótulos
  * (variante topo-compacto, globals.css, #48). `botao` vai no botão, `rotulo` no texto (continua para o
- * leitor de tela) e `enfeite` no que some junto com o texto.
+ * leitor de tela) e `someNoCompacto` no que some de vez junto com o texto (o cadeado do BotaoTravado).
  */
 export const ICONE_COMPACTO = {
   botao: "max-lg:size-10 max-lg:px-0 max-lg:has-[>svg]:pl-0 topo-compacto:size-10 topo-compacto:px-0 topo-compacto:has-[>svg]:pl-0",
   rotulo: "max-lg:sr-only topo-compacto:sr-only",
-  enfeite: "max-lg:hidden topo-compacto:hidden",
+  someNoCompacto: "max-lg:hidden topo-compacto:hidden",
 } as const;
 
 /**
@@ -328,14 +328,15 @@ export function RotuloSalvar({ rascunho }: { rascunho: boolean }) {
 }
 
 /**
- * Rótulo do Publicar do topo. No topo sem espaço (#48), “Publicar alterações…” aparece como
- * “Publicar…” (o aviso de alterações e o selo seguem na tela), e o nome acessível continua inteiro.
+ * Rótulo do Publicar do topo. Com `alteracoes` (já está no ar), no topo sem espaço (#48) o rótulo
+ * aparece como “Publicar…” (o aviso de alterações e o selo seguem na tela), e o nome acessível
+ * continua inteiro.
  */
-export function RotuloPublicar({ rotulo }: { rotulo: string }) {
-  if (rotulo !== "Publicar alterações…") return rotulo;
+export function RotuloPublicar({ rotulo, alteracoes }: { rotulo: string; alteracoes: boolean }) {
+  if (!alteracoes) return rotulo;
   return (
     <>
-      <span className="topo-compacto:sr-only">Publicar alterações…</span>
+      <span className="topo-compacto:sr-only">{rotulo}</span>
       <span aria-hidden className="hidden topo-compacto:inline">
         Publicar…
       </span>
@@ -383,7 +384,7 @@ export function BotaoTravado({
       >
         {icone}
         <span className={cn(compacto && ICONE_COMPACTO.rotulo)}>{rotulo}</span>
-        <Lock aria-hidden className={cn("size-3.5", compacto && ICONE_COMPACTO.enfeite)} />
+        <Lock aria-hidden className={cn("size-3.5", compacto && ICONE_COMPACTO.someNoCompacto)} />
       </button>
       <span id={id} className="sr-only">
         {dica}

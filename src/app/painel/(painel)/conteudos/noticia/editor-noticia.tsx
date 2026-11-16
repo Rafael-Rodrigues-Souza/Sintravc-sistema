@@ -771,7 +771,7 @@ export function EditorNoticia({
             <RotuloSalvar rascunho={!jaFoiAoAr(publicacao.estado)} />
           </Button>
           {dicaPublicar ? (
-            <BotaoTravado rotulo={<RotuloPublicar rotulo={rotuloPublicar} />} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
+            <BotaoTravado rotulo={<RotuloPublicar rotulo={rotuloPublicar} alteracoes={noAr} />} dica={dicaPublicar} icone={<Upload aria-hidden />} className="max-lg:hidden" />
           ) : (
             <Button
               ref={botaoPublicar}
@@ -782,7 +782,7 @@ export function EditorNoticia({
               onClick={() => void pedirPublicacao()}
             >
               {vaiAgendar ? <CalendarDays aria-hidden /> : <Upload aria-hidden />}
-              {preparando === "publicar" ? "Conferindo…" : <RotuloPublicar rotulo={rotuloPublicar} />}
+              {preparando === "publicar" ? "Conferindo…" : <RotuloPublicar rotulo={rotuloPublicar} alteracoes={noAr} />}
             </Button>
           )}
           {estado.id ? (

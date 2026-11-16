@@ -152,6 +152,15 @@ async function topoNumaLinha(page: Page, testInfo: TestInfo, cabecalho: Locator)
   });
 }
 
+/**
+ * No topo compacto com toque (ipad e tablet deitados), Desfazer, Refazer, Pré-visualizar, Salvar,
+ * Publicar e ⋯ têm área de toque de RESPONSIVO.alvoDeToque sem um cobrir o vizinho (E48, #48).
+ */
+async function alvosDoTopo(page: Page, toque: boolean, caso: string) {
+  if (!toque) return;
+  expect(await alvosPequenos(page, "main header"), `${caso}: alvos de toque pequenos no topo`).toEqual([]);
+}
+
 /** Quanto os centros dos elementos, na vertical, ficam longe um do outro (perto: estão na mesma linha). */
 async function distanciaDosCentros(...elementos: Locator[]) {
   const centros = await Promise.all(
@@ -176,8 +185,8 @@ async function conferirLinhaDoPdf(page: Page, testInfo: TestInfo, area: Locator,
 }
 
 /** Alvos da tela com área de toque menor que RESPONSIVO.alvoDeToque, como “alvo · tamanho”. */
-async function alvosPequenos(page: Page) {
-  const pequenos = await page.evaluate(alvosDeToquePequenos, RESPONSIVO.alvoDeToque);
+async function alvosPequenos(page: Page, dentro = "body") {
+  const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro });
   return pequenos.map((p) => `${p.alvo} · ${p.tamanho}`);
 }
 
@@ -325,6 +334,7 @@ for (const tema of ["claro", "escuro"] as const) {
         await expect(cabecalho.getByRole("button", { name: "Publicar…" })).toBeVisible();
         await expect(cabecalho.getByRole("button", { name: "Mais ações" })).toBeVisible();
         await topoNumaLinha(page, testInfo, cabecalho);
+        await alvosDoTopo(page, hasTouch, "rascunho");
 
         // O pior caso: já publicado e com alterações, com “Publicar alterações…” e o ⋯ no topo.
         await editor.publicar(page, hasTouch);
@@ -336,6 +346,7 @@ for (const tema of ["claro", "escuro"] as const) {
         await expect(cabecalho.getByRole("button", { name: "Salvar", exact: true })).toBeVisible();
         await expect(cabecalho.getByRole("button", { name: "Mais ações" })).toBeVisible();
         await topoNumaLinha(page, testInfo, cabecalho);
+        await alvosDoTopo(page, hasTouch, "publicado com alterações");
       });
     }
 
