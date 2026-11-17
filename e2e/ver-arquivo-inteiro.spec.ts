@@ -86,6 +86,24 @@ test("“Baixar” baixa o documento com o nome original", async ({ page }) => {
   }
 });
 
+test("“Baixar” depois de renomear no painel: o download sai com o nome do envio (E53)", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  const nome = `escala-original-${Date.now()}.xlsx`;
+  const detalhes = await enviarEAbrir(
+    page,
+    nome,
+    Buffer.from(office("xlsx")),
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  await detalhes.getByLabel("Nome do arquivo").fill("escala renomeada.xlsx");
+  await detalhes.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText("Alterações salvas.")).toBeVisible();
+  await expect(detalhes.getByLabel("Nome do arquivo")).toHaveValue("escala renomeada.xlsx");
+
+  const [download] = await Promise.all([page.waitForEvent("download"), detalhes.getByRole("link", { name: "Baixar" }).click()]);
+  expect(download.suggestedFilename()).toBe(nome);
+});
+
 /** Logo com fundo transparente (PNG) e foto (JPG), como os que a Comunicação envia. */
 const logoPng = () =>
   sharp({ create: { width: 900, height: 300, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0 } } })

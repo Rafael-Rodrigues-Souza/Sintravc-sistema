@@ -122,8 +122,9 @@ export function DetalhesArquivo({
           Abrir PDF
         </a>
       ) : (
-        // O objeto é gravado com attachment e o nome do envio (E39): o navegador baixa com esse nome.
-        <a href={arquivo.url} download={arquivo.nomeArquivo} className={LINK_DA_PREVIA}>
+        // O objeto é gravado com attachment e o nome do envio (E39): o navegador baixa com esse nome,
+        // mesmo depois de a pessoa renomear o arquivo aqui (E53). Por isso o download vai sem valor.
+        <a href={arquivo.url} download className={LINK_DA_PREVIA}>
           <Download aria-hidden />
           Baixar
         </a>
