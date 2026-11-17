@@ -158,20 +158,23 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
     setVista((v) => zoomNoPonto(v, escala(v.escala), ponto, medidas()));
   const mover = (dx: number, dy: number) =>
     setVista((v) => limitarDeslocamento({ ...v, x: v.x + dx, y: v.y + dy }, medidas()));
+  // As ações dos botões e do teclado, escritas uma vez só.
+  const aumentar = () => zoom((e) => e * ZOOM.passo);
+  const diminuir = () => zoom((e) => e / ZOOM.passo);
+  const ajustarATela = () => setVista(VISTA_INICIAL);
 
   // A roda do mouse dá zoom no ponto do cursor. O ouvinte não pode ser passivo, para a página
   // não rolar nem dar zoom junto; por isso é registrado aqui, e não no onWheel do React.
+  const naRoda = React.useEffectEvent((evento: WheelEvent) => {
+    evento.preventDefault();
+    const caixa = moldura.current;
+    if (!caixa) return;
+    const fator = Math.exp(-evento.deltaY * SENSIBILIDADE_DA_RODA);
+    zoom((e) => e * fator, pontoNaArea(caixa, evento.clientX, evento.clientY));
+  });
   React.useEffect(() => {
     const no = area.current;
     if (!no) return;
-    const naRoda = (evento: WheelEvent) => {
-      evento.preventDefault();
-      const caixa = moldura.current;
-      if (!caixa) return;
-      const ponto = pontoNaArea(caixa, evento.clientX, evento.clientY);
-      const fator = Math.exp(-evento.deltaY * SENSIBILIDADE_DA_RODA);
-      setVista((v) => zoomNoPonto(v, v.escala * fator, ponto, medir(foto.current, caixa)));
-    };
     no.addEventListener("wheel", naRoda, { passive: false });
     return () => no.removeEventListener("wheel", naRoda);
   }, []);
@@ -262,11 +265,11 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
   // aberto, as teclas são ouvidas no documento.
   const aoTeclar = React.useEffectEvent((evento: KeyboardEvent) => {
     const acoes: Record<string, () => void> = {
-      "+": () => zoom((e) => e * ZOOM.passo),
-      "=": () => zoom((e) => e * ZOOM.passo),
-      "-": () => zoom((e) => e / ZOOM.passo),
-      _: () => zoom((e) => e / ZOOM.passo),
-      "0": () => setVista(VISTA_INICIAL),
+      "+": aumentar,
+      "=": aumentar,
+      "-": diminuir,
+      _: diminuir,
+      "0": ajustarATela,
       // A seta mostra mais daquele lado: a imagem anda para o lado oposto.
       ArrowRight: () => mover(-PASSO_DA_SETA, 0),
       ArrowLeft: () => mover(PASSO_DA_SETA, 0),
@@ -357,7 +360,7 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
           aria-label="Zoom"
           className="pointer-events-auto flex items-center gap-1 rounded-full bg-fundo-marinho-profundo p-1.5 ring-1 ring-sobre-escuro-borda"
         >
-          <BotaoDoZoom rotulo="Diminuir o zoom" disabled={!ampliada} onClick={() => zoom((e) => e / ZOOM.passo)}>
+          <BotaoDoZoom rotulo="Diminuir o zoom" disabled={!ampliada} onClick={diminuir}>
             <ZoomOut aria-hidden />
           </BotaoDoZoom>
           <span role="status" className="w-14 text-center texto-pequeno tabular-nums">
@@ -366,11 +369,11 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
           <BotaoDoZoom
             rotulo="Aumentar o zoom"
             disabled={vista.escala >= ZOOM.maximo}
-            onClick={() => zoom((e) => e * ZOOM.passo)}
+            onClick={aumentar}
           >
             <ZoomIn aria-hidden />
           </BotaoDoZoom>
-          <BotaoDoZoom rotulo="Ajustar à tela" disabled={!ampliada} onClick={() => setVista(VISTA_INICIAL)}>
+          <BotaoDoZoom rotulo="Ajustar à tela" disabled={!ampliada} onClick={ajustarATela}>
             <Scan aria-hidden />
           </BotaoDoZoom>
         </div>
