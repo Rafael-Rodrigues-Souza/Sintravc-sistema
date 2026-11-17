@@ -66,6 +66,9 @@
   --fundo-marinho: #021f4b;
   --fundo-marinho-profundo: #011633;
   --fundo-sobreposicao: #0b14248f;
+  /* Fundo do visualizador de imagem da Mídia (E53): o marinho profundo a 80%, mais escuro que a
+     sobreposição dos diálogos, para a foto se destacar, e ainda deixando a Mídia aparecer atrás. */
+  --fundo-visualizador: #011633cc;
 
   /* borda */
   --borda-padrao: #e1e6ee;
@@ -126,6 +129,7 @@
   --fundo-marinho: #0b2550;
   --fundo-marinho-profundo: #040b17;
   --fundo-sobreposicao: #000000a8;
+  --fundo-visualizador: #040b17cc;
 
   --borda-padrao: #1c2b45;
   --borda-forte: #2a3b58;
@@ -220,6 +224,7 @@
   --color-fundo-marinho: var(--fundo-marinho);
   --color-fundo-marinho-profundo: var(--fundo-marinho-profundo);
   --color-fundo-sobreposicao: var(--fundo-sobreposicao);
+  --color-fundo-visualizador: var(--fundo-visualizador);
   --color-borda-padrao: var(--borda-padrao);
   --color-borda-forte: var(--borda-forte);
   --color-texto-primario: var(--texto-primario);

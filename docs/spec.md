@@ -141,7 +141,7 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
 - **Home:** só a área Página inicial controla os destaques, com rascunho e “Publicar alterações” (E13). No editor, o link “Destacar na Home” só vale para notícia publicada; no rascunho fica travado (E43).
 - **Notícia fixada:** uma por vez no topo da página Notícias (RN58).
 - **Parceiro:** período com “Começa em” e “Válido até”; ao vencer, é arquivado sozinho (RN57).
-- **Imagens:** JPG, PNG, WebP e HEIC (convertido); o texto alternativo é obrigatório para publicar (RN15). Só pode excluir mídia sem uso (RN16). A Mídia também aceita PDF, DOCX, XLSX, ODT e ODS; SVG, GIF e Office com macro ficam de fora (E39).
+- **Imagens:** JPG, PNG, WebP e HEIC (convertido); o texto alternativo é obrigatório para publicar (RN15). Só pode excluir mídia sem uso (RN16). A Mídia também aceita PDF, DOCX, XLSX, ODT e ODS; SVG, GIF e Office com macro ficam de fora (E39). Nos detalhes, a imagem abre inteira numa janela por cima da Mídia, com zoom por botões, roda, pinça, duplo clique, toque duplo e teclado, e fecha pelo X, pelo Esc, pelo voltar do celular e por um clique no fundo, fora da imagem; o PDF abre no leitor do navegador pela rota do painel (`inline`), e o documento tem “Baixar” com o nome original. O “Copiar link” continua baixando (E53).
 - **Sem internet:** só o rascunho do editor fica guardado no navegador (E02).
 
 ### 3.3 Agendamentos (Fase 2)
@@ -201,7 +201,7 @@ Tudo é conferido **no servidor**, em toda ação (RNF01); esconder o botão nã
 | Comunicados | ✔ | ✔ | — | — | — |
 | Rádio Chofer (episódios e programa ao vivo) | ✔ | ✔ | — | — | — |
 | Página inicial (destaques) | ✔ | ✔ | — | — | — |
-| Mídia: enviar, editar texto alternativo, excluir sem uso | ✔ | ✔ | — | — | — |
+| Mídia: ver (e abrir o PDF pelo painel, E53), enviar, editar texto alternativo, excluir sem uso | ✔ | ✔ | — | — | — |
 | Benefícios (parceiros) | ✔ | — | — | — | — |
 | Categorias | ✔ | — | — | — | — |
 | Configurações › Site | ✔ | — | — | — | — |

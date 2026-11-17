@@ -1,5 +1,6 @@
 "use client";
 
+import { Download, FileText, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -22,6 +23,11 @@ import type { UsoDaMidia } from "@/lib/midia/erros";
 import { cn } from "@/lib/utils";
 
 import { acaoExcluirMidia, acaoSalvarDetalhes, type EstadoDetalhes } from "./acoes";
+import { VisualizadorImagem } from "./visualizador-imagem";
+
+/** Link de texto com ícone, como o “Baixar PDF” do editor de documento; no toque, com a área mínima. */
+const LINK_DA_PREVIA =
+  "-mt-2 inline-flex items-center gap-2 self-start rounded-sm texto-botao text-destaque-azul outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring pointer-coarse:min-h-(--alvo-toque) [&_svg]:size-4";
 
 export type ArquivoDetalhado = {
   id: string;
@@ -64,6 +70,14 @@ export function DetalhesArquivo({
     if (window.matchMedia("(max-width: 1023px)").matches) painel.current?.scrollIntoView({ block: "start" });
   }, [arquivo.id]);
 
+  // Visualizador da imagem (E53): o foco volta para quem abriu (a prévia ou “Ver inteira”).
+  const [vendo, setVendo] = React.useState(false);
+  const abridor = React.useRef<HTMLElement | null>(null);
+  const verInteira = (evento: React.MouseEvent<HTMLElement>) => {
+    abridor.current = evento.currentTarget;
+    setVendo(true);
+  };
+
   async function copiarLink() {
     try {
       await navigator.clipboard.writeText(arquivo.url);
@@ -93,7 +107,36 @@ export function DetalhesArquivo({
         </Link>
       </div>
 
-      <Previa arquivo={arquivo} />
+      <Previa arquivo={arquivo} aoVer={verInteira} />
+      {/* Ver o arquivo inteiro (E53): um link logo abaixo da prévia, para a fileira de baixo continuar
+          com Copiar link e Salvar numa linha, como no Figma (116:2727). */}
+      {arquivo.tipo === "imagem" ? (
+        <button type="button" onClick={verInteira} className={LINK_DA_PREVIA}>
+          <Maximize2 aria-hidden />
+          Ver inteira
+        </button>
+      ) : arquivo.tipo === "pdf" ? (
+        // A rota do painel responde inline: o endereço público baixa, por causa do attachment (E39).
+        <a href={`/painel/midia/${arquivo.id}/pdf?modo=abrir`} target="_blank" rel="noopener noreferrer" className={LINK_DA_PREVIA}>
+          <FileText aria-hidden />
+          Abrir PDF
+        </a>
+      ) : (
+        // O objeto é gravado com attachment e o nome do envio (E39): o navegador baixa com esse nome,
+        // mesmo depois de a pessoa renomear o arquivo aqui (E53). Por isso o download vai sem valor.
+        <a href={arquivo.url} download className={LINK_DA_PREVIA}>
+          <Download aria-hidden />
+          Baixar
+        </a>
+      )}
+      {arquivo.tipo === "imagem" ? (
+        <VisualizadorImagem
+          imagem={arquivo}
+          aberto={vendo}
+          aoMudar={setVendo}
+          aoDevolverFoco={() => abridor.current?.focus()}
+        />
+      ) : null}
 
       <form action={salvar} className="flex flex-col gap-4" key={arquivo.id}>
         <input type="hidden" name="id" value={arquivo.id} />
@@ -180,17 +223,25 @@ export function DetalhesArquivo({
   );
 }
 
-function Previa({ arquivo }: { arquivo: ArquivoDetalhado }) {
+function Previa({ arquivo, aoVer }: { arquivo: ArquivoDetalhado; aoVer: (evento: React.MouseEvent<HTMLElement>) => void }) {
   if (arquivo.tipo === "imagem") {
     const { fundo, imagem } = enquadramentoDaImagem(arquivo.mostrarInteira);
     return (
-      // A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={arquivo.url}
-        alt={arquivo.alt ?? ""}
-        className={cn("h-[170px] w-full rounded-[14px]", fundo, imagem)}
-      />
+      // Tocar na prévia abre a imagem inteira (E53).
+      <button
+        type="button"
+        aria-label="Ver a imagem inteira"
+        onClick={aoVer}
+        className="block w-full cursor-zoom-in rounded-[14px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+      >
+        {/* A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={arquivo.url}
+          alt={arquivo.alt ?? ""}
+          className={cn("h-[170px] w-full rounded-[14px]", fundo, imagem)}
+        />
+      </button>
     );
   }
   return <MiniaturaDeArquivo sigla={arquivo.sigla} tipo={arquivo.tipo} className="h-[170px] rounded-[14px]" />;
