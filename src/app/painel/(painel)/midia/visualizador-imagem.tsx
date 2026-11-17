@@ -60,7 +60,9 @@ function pontoNaArea(caixa: HTMLElement, clienteX: number, clienteY: number): Po
 /**
  * Visualizador de imagem da Mídia (E53): a imagem inteira em tela cheia, sobre o painel, com zoom.
  * Não tem frame no Figma: segue o Dialog do E23 e, no celular, o padrão do E50 (topo compacto, ações
- * ao alcance do polegar). O fundo é escuro nos dois temas, como em todo visualizador de fotos.
+ * ao alcance do polegar). É uma janela por cima da Mídia, como o visualizador de imagens do Gmail: o
+ * fundo escurece a tela, mas deixa a Mídia aparecer atrás, e as barras têm fundo próprio, opaco, para o
+ * contraste AA não depender do que está atrás. Um clique simples no fundo, fora da imagem, fecha.
  * O cálculo do zoom fica em `@/lib/midia/zoom` (funções puras, testadas).
  */
 export function VisualizadorImagem({
@@ -114,10 +116,10 @@ export function VisualizadorImagem({
             evento.preventDefault();
             aoDevolverFoco();
           }}
-          className="fixed inset-0 z-50 flex flex-col bg-fundo-marinho-profundo text-texto-invertido outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none"
+          className="fixed inset-0 z-50 flex flex-col bg-fundo-visualizador text-texto-invertido outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none"
         >
           {/* Só existe com o diálogo aberto: cada abertura começa ajustada à tela. */}
-          <ImagemComZoom imagem={imagem} />
+          <ImagemComZoom imagem={imagem} aoFecharPeloFundo={() => mudar(false)} />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
@@ -128,7 +130,7 @@ type Gesto =
   | { tipo: "arraste"; id: number; inicio: Ponto; vista: Vista }
   | { tipo: "pinca"; distancia: number; centro: Ponto; vista: Vista };
 
-function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
+function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; aoFecharPeloFundo: () => void }) {
   const { fundo } = enquadramentoDaImagem(imagem.mostrarInteira);
   const [vista, setVista] = React.useState<Vista>(VISTA_INICIAL);
   const [arrastando, setArrastando] = React.useState(false);
@@ -140,7 +142,10 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
   const dedos = React.useRef(new Map<number, Ponto>());
   const gesto = React.useRef<Gesto | null>(null);
   // O toque duplo é feito aqui: com touch-action: none, o navegador não gera dblclick confiável no toque.
-  const toque = React.useRef<{ inicio: Ponto; moveu: boolean } | null>(null);
+  const toque = React.useRef<{ inicio: Ponto; moveu: boolean; foraDaImagem: boolean } | null>(null);
+  // Clique simples no fundo: começou fora da imagem, não andou e não virou pinça. Quem fecha é o click
+  // (depois do pointerup), para o toque não chegar à Mídia por baixo depois que o visualizador some.
+  const cliqueNoFundo = React.useRef(false);
   const ultimoToque = React.useRef<{ tempo: number; x: number; y: number } | null>(null);
   const ultimoPonteiro = React.useRef("mouse");
 
@@ -179,7 +184,7 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
     const ponto = { x: evento.clientX, y: evento.clientY };
     dedos.current.set(evento.pointerId, ponto);
     if (dedos.current.size === 1) {
-      toque.current = { inicio: ponto, moveu: false };
+      toque.current = { inicio: ponto, moveu: false, foraDaImagem: evento.target !== foto.current };
       comecarArraste(evento.pointerId, ponto, vista);
     } else if (dedos.current.size === 2) {
       toque.current = null;
@@ -230,8 +235,9 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
       setArrastando(false);
     }
 
-    const foiToque =
-      evento.type === "pointerup" && evento.pointerType === "touch" && !restante && toque.current?.moveu === false;
+    const simples = evento.type === "pointerup" && !restante && toque.current?.moveu === false;
+    cliqueNoFundo.current = simples && toque.current?.foraDaImagem === true;
+    const foiToque = simples && evento.pointerType === "touch" && !cliqueNoFundo.current;
     if (foiToque) {
       const agora = { tempo: evento.timeStamp, x: evento.clientX, y: evento.clientY };
       if (ehToqueDuplo(ultimoToque.current, agora)) {
@@ -276,7 +282,7 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
 
   return (
     <>
-      <div className="relative z-10 flex items-center gap-3 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="relative z-10 flex items-center gap-3 bg-fundo-marinho-profundo px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <DialogPrimitive.Title title={imagem.nomeArquivo} className="min-w-0 flex-1 truncate texto-titulo-card-pequeno">
           {imagem.nomeArquivo}
         </DialogPrimitive.Title>
@@ -297,6 +303,11 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
         onPointerMove={aoMover}
         onPointerUp={aoSoltar}
         onPointerCancel={aoSoltar}
+        onClick={() => {
+          if (!cliqueNoFundo.current) return;
+          cliqueNoFundo.current = false;
+          aoFecharPeloFundo();
+        }}
         onDoubleClick={(evento) => {
           // No toque, quem cuida é o toque duplo acima (o dblclick do toque contaria em dobro).
           if (ultimoPonteiro.current === "touch") return;
@@ -329,7 +340,7 @@ function ImagemComZoom({ imagem }: { imagem: ImagemParaVer }) {
         <div
           role="group"
           aria-label="Zoom"
-          className="pointer-events-auto flex items-center gap-1 rounded-full bg-fundo-marinho-profundo/85 p-1.5 ring-1 ring-sobre-escuro-borda backdrop-blur"
+          className="pointer-events-auto flex items-center gap-1 rounded-full bg-fundo-marinho-profundo p-1.5 ring-1 ring-sobre-escuro-borda"
         >
           <BotaoDoZoom rotulo="Diminuir o zoom" disabled={!ampliada} onClick={() => zoom((e) => e / ZOOM.passo)}>
             <ZoomOut aria-hidden />

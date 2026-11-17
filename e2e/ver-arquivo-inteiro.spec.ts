@@ -8,7 +8,7 @@ import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { office, openDocument } from "../src/testes/arquivos/gerar";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { apertar, entrarNoPainel } from "./entrar";
-import { entrarComo, pdfComTexto, semAnimacao, TOLERANCIA } from "./responsivo";
+import { contraste, CONTRASTE_MINIMO, entrarComo, pdfComTexto, semAnimacao, TOLERANCIA } from "./responsivo";
 
 /** Ver o arquivo inteiro na Mídia (issue #54, E53): imagem em tela cheia, “Abrir PDF” e “Baixar”. */
 
@@ -102,6 +102,25 @@ async function descrever(detalhes: Locator, alt: string) {
 
 const temFundo = (img: Locator) => img.evaluate((el) => getComputedStyle(el).backgroundImage !== "none");
 
+/** Opacidade da cor de fundo do próprio elemento, como o navegador calcula (0 = transparente, 1 = opaco). */
+const opacidadeDoFundo = (el: Locator) =>
+  el.evaluate((no) => {
+    const cor = getComputedStyle(no).backgroundColor;
+    if (cor === "transparent") return 0;
+    // rgba(r, g, b, a) ou oklab(l a b / a) e afins.
+    const alfa = cor.match(/\/\s*([\d.]+%?)\s*\)$/)?.[1] ?? cor.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/)?.[1];
+    if (!alfa) return 1;
+    return alfa.endsWith("%") ? Number(alfa.slice(0, -1)) / 100 : Number(alfa);
+  });
+
+/** Um ponto do fundo do visualizador, fora da imagem: ao lado dela ou, sem espaço ao lado, acima. */
+async function pontoFora(visualizador: Locator) {
+  const img = (await visualizador.locator("img").boundingBox())!;
+  if (img.x > 40) return { x: img.x / 2, y: img.y + img.height / 2 };
+  const barra = (await visualizador.getByRole("heading").locator("..").boundingBox())!;
+  return { x: img.x + img.width / 2, y: (barra.y + barra.height + img.y) / 2 };
+}
+
 test("A imagem abre em tela cheia pela prévia e por “Ver inteira”; Esc e X fecham e o foco volta", async ({ page }) => {
   await entrar(page, pessoas.com);
   const nome = `logo-parceiro-${Date.now()}.png`;
@@ -122,6 +141,20 @@ test("A imagem abre em tela cheia pela prévia e por “Ver inteira”; Esc e X 
   const caixa = (await visualizador.boundingBox())!;
   const janela = page.viewportSize()!;
   expect([Math.round(caixa.width), Math.round(caixa.height)]).toEqual([janela.width, janela.height]);
+  // Uma janela por cima da Mídia: o fundo é escurecido, mas semitransparente (a Mídia aparece atrás).
+  // As barras têm fundo próprio, opaco, para o texto e os botões manterem o contraste AA.
+  await semAnimacao(page);
+  for (const tema of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: tema });
+    const fundo = await opacidadeDoFundo(visualizador);
+    expect(fundo, `${tema}: o fundo escurece a Mídia`).toBeGreaterThan(0.5);
+    expect(fundo, `${tema}: o fundo deixa a Mídia aparecer`).toBeLessThan(1);
+    expect(await opacidadeDoFundo(visualizador.getByRole("heading").locator("..")), `${tema}: barra de cima opaca`).toBe(1);
+    expect(await opacidadeDoFundo(visualizador.getByRole("group", { name: "Zoom" })), `${tema}: barra do zoom opaca`).toBe(1);
+    expect(await contraste(visualizador.getByRole("heading"))).toBeGreaterThanOrEqual(CONTRASTE_MINIMO);
+    expect(await contraste(visualizador.getByRole("status"))).toBeGreaterThanOrEqual(CONTRASTE_MINIMO);
+  }
+  await page.emulateMedia({ colorScheme: "light" });
   await page.keyboard.press("Escape");
   await expect(visualizador).toBeHidden();
   await expect(previa).toBeFocused();
@@ -133,6 +166,46 @@ test("A imagem abre em tela cheia pela prévia e por “Ver inteira”; Esc e X 
   await visualizador.getByRole("button", { name: "Fechar a imagem" }).click();
   await expect(visualizador).toBeHidden();
   await expect(verInteira).toBeFocused();
+});
+
+test("Com zoom, arrastar e soltar fora da imagem não fecha; um clique simples no fundo fecha", async ({ page }) => {
+  await entrar(page, pessoas.com);
+  // Logo largo: com 150%, ainda sobra fundo acima e abaixo dele.
+  const nome = `logo-largo-${Date.now()}.png`;
+  const detalhes = await enviarEAbrir(page, nome, await logoPng(), "image/png");
+  const previa = detalhes.getByRole("button", { name: "Ver a imagem inteira" });
+  await previa.click();
+  const visualizador = page.getByRole("dialog", { name: nome });
+  const imagem = visualizador.locator("img");
+  await visualizador.getByRole("button", { name: "Aumentar o zoom" }).click();
+  await expect(visualizador.getByRole("status")).toHaveText("150%");
+  await semAnimacao(page);
+
+  // Começa na imagem e solta no fundo, abaixo dela: é um arraste, não fecha.
+  const caixa = (await imagem.boundingBox())!;
+  const centro = { x: caixa.x + caixa.width / 2, y: caixa.y + caixa.height / 2 };
+  await page.mouse.move(centro.x, centro.y);
+  await page.mouse.down();
+  await page.mouse.move(centro.x - 40, caixa.y + caixa.height + 30, { steps: 6 });
+  await page.mouse.up();
+  await expect(visualizador).toBeVisible();
+
+  // Começa no fundo e arrasta: também não fecha.
+  const fora = await pontoFora(visualizador);
+  await page.mouse.move(fora.x, fora.y);
+  await page.mouse.down();
+  await page.mouse.move(fora.x + 60, fora.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(visualizador).toBeVisible();
+  await expect(visualizador.getByRole("status")).toHaveText("150%");
+
+  // Clique na imagem não fecha; clique simples no fundo fecha, e o foco volta para a prévia.
+  await page.mouse.click(centro.x, centro.y);
+  await expect(visualizador).toBeVisible();
+  const ponto = await pontoFora(visualizador);
+  await page.mouse.click(ponto.x, ponto.y);
+  await expect(visualizador).toBeHidden();
+  await expect(previa).toBeFocused();
 });
 
 test("Foto em JPG abre sem o xadrez", async ({ page }) => {
@@ -257,6 +330,11 @@ async function dedos(page: Page) {
       }
       await enviar("touchEnd", []);
     },
+    /** Um toque. */
+    async tocar(ponto: Ponto) {
+      await enviar("touchStart", [ponto]);
+      await enviar("touchEnd", []);
+    },
     /** Dois toques rápidos no mesmo ponto. */
     async toqueDuplo(ponto: Ponto) {
       for (let i = 0; i < 2; i++) {
@@ -348,6 +426,17 @@ test.describe("visualizador no celular, no tablet e no computador", { tag: "@res
     await expect(visualizador).toBeHidden();
     expect(page.url()).toBe(enderecoDosDetalhes);
     await expect(detalhes.getByLabel("Nome do arquivo")).toHaveValue(nome);
+
+    // Tocar (ou clicar) no fundo, fora da imagem, fecha, e o toque não chega à Mídia por baixo.
+    await apertar(detalhes.getByRole("button", { name: "Ver a imagem inteira" }), hasTouch);
+    await expect(visualizador).toBeVisible();
+    await semAnimacao(page);
+    const fora = await pontoFora(visualizador);
+    if (hasTouch) await (await dedos(page)).tocar(fora);
+    else await page.mouse.click(fora.x, fora.y);
+    await expect(visualizador).toBeHidden();
+    await page.waitForLoadState("networkidle");
+    expect(page.url()).toBe(enderecoDosDetalhes);
   });
 });
 
@@ -369,17 +458,23 @@ test.describe("voltar depois de fechar", () => {
     await page.getByRole("button", { name: "Ver a imagem inteira" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
   };
-  const fechar = async (page: Page, como: "X" | "Esc") => {
+  const fechar = async (page: Page, como: "X" | "Esc" | "clique fora da imagem") => {
     if (como === "X") await page.getByRole("button", { name: "Fechar a imagem" }).click();
-    else await page.keyboard.press("Escape");
+    else if (como === "Esc") await page.keyboard.press("Escape");
+    else {
+      await semAnimacao(page);
+      const ponto = await pontoFora(page.getByRole("dialog"));
+      await page.mouse.click(ponto.x, ponto.y);
+    }
     await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page.getByRole("button", { name: "Ver a imagem inteira" })).toBeFocused();
   };
   const voltarSaiDaMidia = async (page: Page) => {
     await page.goBack();
     await expect(page).toHaveURL((url) => url.pathname === "/painel");
   };
 
-  for (const como of ["X", "Esc"] as const) {
+  for (const como of ["X", "Esc", "clique fora da imagem"] as const) {
     test(`fechar pelo ${como} não deixa um “voltar” que não faz nada`, async ({ page }) => {
       await abrir(page);
       await fechar(page, como);
