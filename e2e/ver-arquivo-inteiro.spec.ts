@@ -43,7 +43,8 @@ test("“Abrir PDF” abre o PDF numa aba nova, no leitor do navegador (inline)"
 
   const abrir = detalhes.getByRole("link", { name: "Abrir PDF" });
   await expect(abrir).toHaveAttribute("target", "_blank");
-  await expect(abrir).toHaveAttribute("rel", /noopener/);
+  await expect(abrir).toHaveAttribute("rel", /\bnoopener\b/);
+  await expect(abrir).toHaveAttribute("rel", /\bnoreferrer\b/);
 
   // O Chromium sem janela dos testes não tem leitor de PDF: a conferência é pela resposta.
   const [aba, resposta] = await Promise.all([
