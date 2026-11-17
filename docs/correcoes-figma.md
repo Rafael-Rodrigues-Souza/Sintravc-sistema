@@ -81,7 +81,7 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | N14 | Editor · Histórico de versões (painel lateral, com restaurar como rascunho) | E31 | 1 | ☑ |
 | N15 | E-mail “Seu acesso será excluído” (conta inativa há 2 anos) | E25 | 2 | ☐ |
 | N16 | Mídia (116:2727) · arrastando arquivos: camada sobre a área de conteúdo, com borda tracejada e “Solte os arquivos para enviar”. O código já tem a camada (borda `destaque/azul`, ícone de enviar); falta o desenho, no claro e no escuro. | US27, RF48 | 1 | ☐ |
-| N17 | Mídia (116:2727) · visualizador de imagem em tela cheia: nome e X no topo, imagem ajustada à tela, barra de zoom embaixo (−, porcentagem, +, “Ajustar à tela”), fundo escuro nos dois temas, no desktop e no celular. O código já tem o visualizador; falta o desenho | E53 | 1 | ☐ |
+| N17 | Mídia (116:2727) · visualizador de imagem, uma janela por cima da Mídia (como o do Gmail): fundo escurecido e semitransparente (`fundo-visualizador`, a Mídia aparece atrás), imagem centralizada, barra de cima com nome e X e barra de zoom embaixo (−, porcentagem, +, “Ajustar à tela”), as duas com fundo opaco. Clique no fundo fecha. Nos dois temas, no desktop e no celular. O código já tem o visualizador; falta o desenho | E53 | 1 | ☐ |
 
 ## Ignorados (dados de exemplo)
 | E46 | Editor · Documento oficial (114:1972) | “Dentro do limite de 20 MB”. | Limite de 10 MB (R7, E39). | R7 | ☐ |
