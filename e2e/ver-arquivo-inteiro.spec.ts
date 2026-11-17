@@ -383,6 +383,11 @@ test.describe("visualizador no celular, no tablet e no computador", { tag: "@res
     expect(inicial.y).toBeGreaterThanOrEqual(0);
     expect(inicial.x + inicial.width).toBeLessThanOrEqual(janela.width);
     expect(inicial.y + inicial.height).toBeLessThanOrEqual(janela.height);
+    // Em 100%, nenhuma barra cobre a imagem: ela fica entre a barra de cima e a do zoom.
+    const barraDeCima = (await visualizador.getByRole("heading").locator("..").boundingBox())!;
+    const barraDoZoom = (await visualizador.getByRole("group", { name: "Zoom" }).boundingBox())!;
+    expect(inicial.y, "a barra de cima não cobre a imagem").toBeGreaterThanOrEqual(barraDeCima.y + barraDeCima.height);
+    expect(inicial.y + inicial.height, "a barra do zoom não cobre a imagem").toBeLessThanOrEqual(barraDoZoom.y);
     const nivel = visualizador.getByRole("status");
     await expect(nivel).toHaveText("100%");
 

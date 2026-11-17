@@ -134,7 +134,11 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
   const { fundo } = enquadramentoDaImagem(imagem.mostrarInteira);
   const [vista, setVista] = React.useState<Vista>(VISTA_INICIAL);
   const [arrastando, setArrastando] = React.useState(false);
+  // A área recebe os gestos e corta a imagem ampliada nas bordas da tela. A moldura, dentro dela, é
+  // onde a imagem fica centralizada em 100%: reserva embaixo o espaço da barra do zoom, para ela não
+  // cobrir a imagem. As medidas do zoom são da moldura.
   const area = React.useRef<HTMLDivElement>(null);
+  const moldura = React.useRef<HTMLDivElement>(null);
   const foto = React.useRef<HTMLImageElement>(null);
 
   // Gestos por Pointer Events (mouse, caneta e dedos): um ponteiro arrasta a imagem ampliada, dois
@@ -149,7 +153,7 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
   const ultimoToque = React.useRef<{ tempo: number; x: number; y: number } | null>(null);
   const ultimoPonteiro = React.useRef("mouse");
 
-  const medidas = () => medir(foto.current, area.current);
+  const medidas = () => medir(foto.current, moldura.current);
   const zoom = (escala: (atual: number) => number, ponto: Ponto = CENTRO) =>
     setVista((v) => zoomNoPonto(v, escala(v.escala), ponto, medidas()));
   const mover = (dx: number, dy: number) =>
@@ -162,9 +166,11 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
     if (!no) return;
     const naRoda = (evento: WheelEvent) => {
       evento.preventDefault();
-      const ponto = pontoNaArea(no, evento.clientX, evento.clientY);
+      const caixa = moldura.current;
+      if (!caixa) return;
+      const ponto = pontoNaArea(caixa, evento.clientX, evento.clientY);
       const fator = Math.exp(-evento.deltaY * SENSIBILIDADE_DA_RODA);
-      setVista((v) => zoomNoPonto(v, v.escala * fator, ponto, medir(foto.current, no)));
+      setVista((v) => zoomNoPonto(v, v.escala * fator, ponto, medir(foto.current, caixa)));
     };
     no.addEventListener("wheel", naRoda, { passive: false });
     return () => no.removeEventListener("wheel", naRoda);
@@ -206,7 +212,7 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
       const centro = meio(a, b);
       const escala = escalaDaPinca(atual.vista.escala, atual.distancia, distancia(a, b));
       // Zoom no ponto onde a pinça começou e, junto, o quanto os dedos andaram.
-      const inicio = pontoNaArea(evento.currentTarget, atual.centro.x, atual.centro.y);
+      const inicio = pontoNaArea(moldura.current!, atual.centro.x, atual.centro.y);
       const ampliada = zoomNoPonto(atual.vista, escala, inicio, medidas());
       const dx = centro.x - atual.centro.x;
       const dy = centro.y - atual.centro.y;
@@ -242,7 +248,7 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
       const agora = { tempo: evento.timeStamp, x: evento.clientX, y: evento.clientY };
       if (ehToqueDuplo(ultimoToque.current, agora)) {
         ultimoToque.current = null;
-        const ponto = pontoNaArea(evento.currentTarget, agora.x, agora.y);
+        const ponto = pontoNaArea(moldura.current!, agora.x, agora.y);
         setVista((v) => alternarZoom(v, ponto, medidas()));
       } else {
         ultimoToque.current = agora;
@@ -311,28 +317,37 @@ function ImagemComZoom({ imagem, aoFecharPeloFundo }: { imagem: ImagemParaVer; a
         onDoubleClick={(evento) => {
           // No toque, quem cuida é o toque duplo acima (o dblclick do toque contaria em dobro).
           if (ultimoPonteiro.current === "touch") return;
-          const ponto = pontoNaArea(evento.currentTarget, evento.clientX, evento.clientY);
+          const ponto = pontoNaArea(moldura.current!, evento.clientX, evento.clientY);
           setVista((v) => alternarZoom(v, ponto, medidas()));
         }}
         className={cn(
-          "relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden p-4 select-none",
-          ampliada ? (arrastando ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in",
+          "relative min-h-0 flex-1 touch-none overflow-hidden select-none",
+          // No fundo, o cursor normal: um clique ali fecha. A lupa e a mão ficam na imagem.
+          arrastando && "cursor-grabbing",
         )}
       >
-        {/* A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={foto}
-          src={imagem.url}
-          alt={imagem.alt ?? ""}
-          draggable={false}
-          style={{ transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.escala})` }}
-          className={cn(
-            "max-h-full max-w-full object-contain will-change-transform",
-            !arrastando && "transition-transform duration-150 ease-out motion-reduce:transition-none",
-            fundo,
-          )}
-        />
+        {/* Embaixo, a altura da barra do zoom (botões de 2,5rem + 0,375rem de cada lado = 3,25rem), o
+            espaço dela até a borda e uma folga. Fora da imagem, os toques passam para a área (fundo). */}
+        <div
+          ref={moldura}
+          className="pointer-events-none absolute inset-x-4 top-4 bottom-[calc(3.25rem+max(1rem,env(safe-area-inset-bottom))+0.5rem)] flex items-center justify-center"
+        >
+          {/* A URL vem do armazenamento (R2/MinIO), fora do otimizador de imagens do Next. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={foto}
+            src={imagem.url}
+            alt={imagem.alt ?? ""}
+            draggable={false}
+            style={{ transform: `translate(${vista.x}px, ${vista.y}px) scale(${vista.escala})` }}
+            className={cn(
+              "pointer-events-auto max-h-full max-w-full object-contain will-change-transform",
+              ampliada ? (arrastando ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in",
+              !arrastando && "transition-transform duration-150 ease-out motion-reduce:transition-none",
+              fundo,
+            )}
+          />
+        </div>
       </div>
 
       {/* Zoom embaixo, ao alcance do polegar (E50). */}
