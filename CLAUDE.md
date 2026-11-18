@@ -28,7 +28,7 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
    - AlertDialog nas confirmações;
    - Sonner nos avisos.
 4. Os critérios de aceitação da história (`docs/criterios-de-aceitacao.md`) são o teste de pronto.
-5. No celular e no tablet em pé, a tela segue o frame mobile do Figma (E49) ou, sem ele, o padrão mobile do E50. Toda tela nova passa pela skill `conferir-responsivo` (E48) e tem pelo menos um e2e marcado com `@responsivo`, que roda nos projetos do `playwright.config.ts`. Os tamanhos ficam só no objeto `RESPONSIVO` desse arquivo: não repita os números.
+5. No celular e no tablet em pé, a tela segue o frame mobile do Figma (E49) ou, sem ele, o padrão mobile do E50. A skill `conferir-responsivo` (E48) roda em toda issue que cria ou muda layout, nos perfis `celular`, `ipad-deitado` e `computador` e nos dois temas. A varredura completa (todos os perfis do `RESPONSIVO`) roda no fim do bloco do site público e antes do deploy. Toda tela nova tem pelo menos um e2e marcado com `@responsivo`, e o CI roda esses e2e em todos os perfis do `playwright.config.ts`. Os tamanhos ficam só no objeto `RESPONSIVO` desse arquivo: não repita os números.
 
 ## Conteúdo institucional e jurídico
 
@@ -61,9 +61,13 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
 - Testes que leem várias linhas do banco e conferem a ordem sempre usam `ORDER BY` (na Atividade, por `id`, que é uuidv7). Sem isso o CI pode falhar por sorte.
 - Antes de criar um arquivo novo, confira se ele já existe para não sobrescrever.
 - Cada fluxo principal tem pelo menos um e2e que usa a tela como uma pessoa usaria (clicando nos botões e escolhendo nos seletores), e não só dados montados à mão no teste.
+- Localmente, rodam só os e2e da issue (`--workers=1`). A suíte completa roda no CI.
+- Em correção de defeito e em regra de negócio, o teste novo tem de falhar antes da correção.
 - Só diga que terminou com o CI verde (`gh pr checks --watch`).
 
 ## Agent skills
+
+Para implementar uma issue, use o comando `/implementar <número>` (`.claude/commands/implementar.md`). Ele segue o fluxo deste arquivo, do plano ao PR.
 
 ### Issue tracker
 
