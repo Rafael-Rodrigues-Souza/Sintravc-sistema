@@ -43,6 +43,7 @@ export const CATALOGO = {
   "api.ultima_consulta_valida_horas": inteiro,
   "aviso.duracao_segundos": inteiro,
   "site.atualizacao_config_segundos": inteiro,
+  "site.consentimento_cookies_dias": z.number().int().positive(),
   "alerta.vigencia_documento_dias": inteiro,
   "alerta.rascunho_parado_dias": inteiro,
   "midia.tamanho_maximo_bytes": inteiro,

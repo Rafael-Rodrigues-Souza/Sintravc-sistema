@@ -55,6 +55,7 @@ describe("Parametro: valores iniciais do regras-de-negocio.md §3", () => {
     ["api.ultima_consulta_valida_horas", 24], // E22
     ["aviso.duracao_segundos", 6], // RN42
     ["site.atualizacao_config_segundos", 60], // RN43: até 1 minuto
+    ["site.consentimento_cookies_dias", 365], // E56: validade da escolha no aviso de cookies
     ["alerta.vigencia_documento_dias", 2], // RN44
     ["alerta.rascunho_parado_dias", 7], // RN44
     ["editor.salvamento_automatico_segundos", 2], // RF38, E40
