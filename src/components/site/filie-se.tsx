@@ -30,7 +30,7 @@ export function FilieSe({ linkFiliacao }: { linkFiliacao: string }) {
           </Button>
           <Link
             href={beneficios.href}
-            className="texto-botao alvo-toque inline-flex items-center justify-center gap-1.5 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
+            className="texto-botao alvo-toque inline-flex items-center justify-center gap-1.5 rounded-md whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
           >
             Conhecer os benefícios
             <IconeFigma src="/site/icone-seta-direita.svg" tamanho={18} />

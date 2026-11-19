@@ -154,3 +154,56 @@ test.describe("menu mobile do visitante", { tag: "@responsivo" }, () => {
     await expect(menu).toBeHidden();
   });
 });
+
+test.describe("Sindicato: Instituição e Diretoria (US07)", { tag: "@responsivo" }, () => {
+  test("chegar pelo menu, usar a linha do tempo como índice da história e trocar de aba", async ({ page, hasTouch, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/");
+
+    // Pelo menu, como a pessoa faria: submenu no desktop, menu mobile no celular.
+    if (telaEstreita(page)) {
+      await apertar(page.getByRole("button", { name: "Abrir menu" }), hasTouch);
+      const menu = page.getByRole("dialog", { name: "Menu" });
+      await apertar(menu.getByRole("button", { name: "Sindicato" }), hasTouch);
+      await apertar(menu.getByRole("link", { name: "Instituição" }), hasTouch);
+    } else {
+      await apertar(menuPrincipal(page).getByRole("button", { name: "Sindicato" }), hasTouch);
+      await apertar(menuPrincipal(page).getByRole("link", { name: "Instituição" }), hasTouch);
+    }
+    await expect(page).toHaveURL(/\/sindicato\/instituicao$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Juntos, somos mais fortes." })).toBeVisible();
+    await semRolagemLateral(page);
+
+    // Ano de fundação confirmado (1993) e o que falta como marcador visível.
+    await expect(page.getByRole("region", { name: "O SINTRAVC em números" })).toContainText("1993");
+    await expect(page.getByRole("main").locator("[data-marcador]").first()).toBeVisible();
+
+    // A linha do tempo leva ao subtítulo do texto da história.
+    const linha = page.getByRole("navigation", { name: "Linha do tempo" });
+    await apertar(linha.getByRole("link", { name: /Marco de crescimento/ }), hasTouch);
+    await expect(page).toHaveURL(/#marco-de-crescimento$/);
+    await expect(page.locator("h3#marco-de-crescimento")).toBeInViewport();
+
+    // Aba Diretoria.
+    const abas = page.getByRole("navigation", { name: "Sindicato" });
+    await expect(abas.getByRole("link", { name: "Instituição" })).toHaveAttribute("aria-current", "page");
+    await apertar(abas.getByRole("link", { name: "Diretoria" }), hasTouch);
+    await expect(page).toHaveURL(/\/sindicato\/diretoria$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Diretoria" })).toBeVisible();
+    await semRolagemLateral(page);
+  });
+
+  test("Diretoria: presidente e vice em destaque, os outros 7 em cartões e o WhatsApp da recepção", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/sindicato/diretoria");
+    await expect(page.getByRole("article", { name: "Presidente" }).getByRole("heading", { name: "Álvaro Silva Souza" })).toBeVisible();
+    await expect(page.getByRole("article", { name: "Vice-presidente" }).getByRole("heading", { name: "Eduardo Cesar Dutra de Oliveira" })).toBeVisible();
+
+    const grade = page.getByRole("region", { name: "Nossa diretoria" }).getByRole("listitem");
+    await expect(grade).toHaveCount(8); // 7 pessoas e o cartão “Quer falar com a diretoria?”
+    await expect(grade.filter({ hasText: "José Evaristo Pereira Neto" })).toContainText("Diretor Jurídico");
+    await expect(page.getByRole("link", { name: "Fale no WhatsApp" })).toHaveAttribute("href", WHATSAPP);
+    await expect(page.getByText("9", { exact: true })).toBeVisible();
+    await semRolagemLateral(page);
+  });
+});
