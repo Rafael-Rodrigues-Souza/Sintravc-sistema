@@ -94,9 +94,10 @@ export default defineConfig({
   ],
   webServer: {
     // Apaga o banco da rodada anterior antes de subir: a fila de tarefas (E44) só liga depois que
-    // e2e/preparar.ts recria o banco. A página inicial não usa o banco: o servidor pode subir antes.
+    // e2e/preparar.ts recria o banco. O servidor sobe antes do banco existir, então a prontidão é
+    // conferida num arquivo estático (a logo): as páginas do site leem a ConfigSite no banco (#13).
     command: `pnpm -s tsx e2e/apagar-banco.ts && pnpm build && pnpm start --port ${PORTA}`,
-    url: `${URL_BASE}/`,
+    url: `${URL_BASE}/marca/sintravc-preta.png`,
     timeout: 240_000,
     reuseExistingServer: false,
     // DATABASE_URL_E2E: aqui o DATABASE_URL já é o do e2e; sem ela, o apagar-banco.ts calcularia

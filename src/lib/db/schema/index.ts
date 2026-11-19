@@ -6,3 +6,4 @@ export * from "./parametro";
 export * from "./midia";
 export * from "./conteudo";
 export * from "./notificacao";
+export * from "./config-site";

@@ -377,7 +377,7 @@ Os campos vêm dos rótulos e dados de exemplo das telas. Onde a tela não diz s
 |---|---|---|
 | **Sem permissão (403)** | O menu esconde as áreas, mas quem abre uma URL direta (ex.: COM em `/painel/equipe`) precisa de resposta. | [NÃO CONFIRMADO] |
 | **API do sindicato fora do ar** | O RNF11 exige uma mensagem clara no login, no primeiro acesso, no balcão e na confirmação de agendamento. Nenhuma tela mostra isso. | [FATO] (doc) · tela [NÃO CONFIRMADO] |
-| **Erro 500 e manutenção** | Não há página. | [NÃO CONFIRMADO] |
+| **Erro 500 e manutenção** | Desenhada depois (N2: 295:58454 / 295:58768) e feita na #13. | [FATO] |
 | **Sessão expirada** | Painel e Área do associado. O que acontece com um rascunho aberto? | [NÃO CONFIRMADO] |
 | **Conta da equipe bloqueada (5 tentativas)** | A regra existe; a mensagem não. | [NÃO CONFIRMADO] |
 | **Código 2FA ou de recuperação inválido** | Só o caminho feliz está desenhado. | [NÃO CONFIRMADO] |
