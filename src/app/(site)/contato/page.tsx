@@ -186,7 +186,7 @@ export default async function PaginaContato() {
             </h2>
             <p className="texto-corpo text-texto-invertido-sec">{textoRedes.texto}</p>
           </div>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))] lg:gap-4">
             {redesSociais.map((rede) => {
               const conteudo = (
                 <>
@@ -206,7 +206,7 @@ export default async function PaginaContato() {
               );
               const caixa = "flex min-h-[76px] items-center gap-4 rounded-[16px] border border-sobre-escuro-borda bg-sobre-escuro-superficie p-4";
               return (
-                <li key={rede.nome}>
+                <li key={rede.nome} className="min-w-0">
                   {rede.href ? (
                     <a href={rede.href} target="_blank" rel="noopener noreferrer" className={cn(caixa, "outline-none hover:bg-sobre-escuro-chip focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo")}>
                       {conteudo}
