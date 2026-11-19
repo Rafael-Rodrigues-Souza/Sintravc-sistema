@@ -31,9 +31,12 @@ const etiqueta = {
 };
 const valorDestaque = { fontFamily: fonte, fontSize: "16px", fontWeight: 600, color: cor.primario, margin: "0 0 4px" };
 
-/** Cabeçalho marinho com a logo, o miolo branco e o rodapé do sindicato. */
+/**
+ * Cabeçalho marinho com a logo, o miolo branco e o rodapé do sindicato. A logo é a versão branca
+ * (#61), por endereço absoluto e em PNG: vários programas de e-mail não mostram WebP.
+ */
 export function MolduraEmail({ previa, urlSite, children }: { previa: string; urlSite: string; children: ReactNode }) {
-  const logo = `${urlSite.replace(/\/+$/, "")}/painel/logo-sempre-branca.png`;
+  const logo = enderecoDoSite(urlSite, "/marca/sintravc-escura.png");
   return (
     <Html lang="pt-BR">
       <Head />
@@ -49,7 +52,8 @@ export function MolduraEmail({ previa, urlSite, children }: { previa: string; ur
           }}
         >
           <Section style={{ backgroundColor: cor.marinho, padding: "22px 28px" }}>
-            <Img src={logo} alt="SINTRAVC" width="121" height="45" />
+            {/* 283×192 na origem: 48 px de altura. */}
+            <Img src={logo} alt="SINTRAVC, Sindicato dos Rodoviários de Vitória da Conquista" width="71" height="48" />
           </Section>
 
           <Section style={{ padding: "28px" }}>{children}</Section>
