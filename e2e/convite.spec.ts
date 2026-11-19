@@ -45,6 +45,7 @@ async function sair(page: Page) {
 /** O link do convite no e-mail que chegou no Mailpit para este endereço. */
 async function linkDoEmail(para: string): Promise<string> {
   let link: string | undefined;
+  let logo: string | undefined;
   await expect
     .poll(
       async () => {
@@ -54,14 +55,21 @@ async function linkDoEmail(para: string): Promise<string> {
         const mensagem = (await (await fetch(`${URL_MAILPIT}/api/v1/message/${messages[0].ID}`)).json()) as {
           Subject: string;
           Text: string;
+          HTML: string;
         };
         expect(mensagem.Subject).toBe("Você foi convidado para o painel do SINTRAVC");
+        logo = mensagem.HTML.match(/<img[^>]+src="([^"]+)"/)?.[1];
         link = mensagem.Text.match(/https?:\/\/\S+\/painel\/convite\/[\w-]+/)?.[0];
         return link;
       },
       { message: `e-mail do convite para ${para}`, timeout: 15_000 },
     )
     .toBeDefined();
+  // A logo nova (#61), branca e em PNG, por endereço absoluto do site, que responde.
+  expect(logo).toMatch(/^https?:\/\/.+\/marca\/sintravc-escura\.png$/);
+  const imagem = await fetch(logo!);
+  expect(imagem.status).toBe(200);
+  expect(imagem.headers.get("content-type")).toBe("image/png");
   return link!;
 }
 
