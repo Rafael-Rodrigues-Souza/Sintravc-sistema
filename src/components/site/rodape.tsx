@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IconeFigma } from "@/components/icone-figma";
 import type { ConfigSite } from "@/lib/config-site";
 import { formatarTelefone, linkTelefone } from "@/lib/config-site/links";
+import { anoNaBahia } from "@/lib/datas";
 
 import { BotaoCookies } from "./aviso-cookies";
 import { Logo } from "./logo";
@@ -38,7 +39,7 @@ function Coluna({ titulo, itens, extra }: { titulo: string; itens: ItemDeMenu[];
 export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFiliacao: string }) {
   const { contato } = config;
   const redes = redesComLink(config.redes);
-  const ano = new Date().getFullYear();
+  const ano = anoNaBahia(new Date());
 
   return (
     <footer className="bg-fundo-marinho-profundo text-texto-invertido-sec print:hidden">

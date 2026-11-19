@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bahiaParaUtc, camposEmTexto, dataHoraNaBahia } from "./datas";
+import { anoNaBahia, bahiaParaUtc, camposEmTexto, dataHoraNaBahia } from "./datas";
 
 describe("dataHoraNaBahia", () => {
   it("escreve a data no horário da Bahia (RNF06)", () => {
@@ -43,5 +43,15 @@ describe("bahiaParaUtc: data e hora escolhidas na tela são do horário da Bahia
 describe("camposEmTexto", () => {
   it("escreve a data e a hora escolhidas como a tela mostra", () => {
     expect(camposEmTexto({ data: "2026-11-03", hora: "08:00" })).toBe("03/11/2026 às 08h00");
+  });
+});
+
+describe("anoNaBahia (ano do rodapé, RNF06)", () => {
+  it("em 31/12 às 21h na Bahia (já 1º/1 em UTC), ainda é o ano que termina", () => {
+    expect(anoNaBahia(new Date("2027-01-01T00:00:00Z"))).toBe(2026);
+  });
+
+  it("à meia-noite de 1º/1 na Bahia, já é o ano novo", () => {
+    expect(anoNaBahia(new Date("2027-01-01T03:00:00Z"))).toBe(2027);
   });
 });

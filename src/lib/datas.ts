@@ -89,3 +89,8 @@ export function camposEmTexto({ data, hora }: { data: string; hora: string }): s
   const [h, m] = hora.split(":");
   return `${dia}/${mes}/${ano} às ${h}h${m}`;
 }
+
+/** Ano no horário da Bahia (ex.: o “© 2026” do rodapé). */
+export function anoNaBahia(data: Date): number {
+  return Number(partesNaBahia(data, { year: "numeric" })("year"));
+}
