@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { AlternarTemaRedondo } from "./alternar-tema-redondo";
-import { Logo } from "./logo";
+import { Logo } from "@/components/marca/logo";
 import { ehGrupo, estaAtivo, MENU_PRINCIPAL, type GrupoDeMenu, type ItemDeMenu } from "./navegacao";
 import { useSite } from "./provedor-site";
 import { TextoDoSite } from "./texto-do-site";

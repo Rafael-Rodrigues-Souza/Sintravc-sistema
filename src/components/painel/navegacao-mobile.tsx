@@ -1,13 +1,13 @@
 "use client";
 
 import { Bell, Ellipsis, Lock, Plus, Search } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { Logo } from "@/components/marca/logo";
 import { FolhaCriar } from "@/components/painel/menu-criar";
 import { BotaoSair, ICONES, iniciais } from "@/components/painel/navegacao-lateral";
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@/components/ui/drawer";
@@ -94,9 +94,7 @@ export function TopoMobile({ pessoa }: { pessoa: Pessoa }) {
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-3 bg-fundo-marinho-profundo px-4 lg:hidden">
-      <Link href="/painel" className="alvo-toque">
-        <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-9 w-auto" />
-      </Link>
+      <Logo sempreBranca href="/painel" alt="SINTRAVC · Painel" className="alvo-toque h-12" />
       <div className="flex items-center gap-2 pointer-coarse:vao-toque-10">
         {/* Busca e sino chegam com a #23 (E49): até lá, travados, como os botões “Disponível em breve” (E40). */}
         <BotaoRedondoTravado rotulo="Buscar" aviso="A busca do painel está disponível em breve.">

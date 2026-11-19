@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { Logo } from "@/components/marca/logo";
 import { MenuCriar } from "@/components/painel/menu-criar";
 import { armazemDoNavegador, limparAoSair } from "@/lib/conteudos/fila-rascunho";
 import { cn } from "@/lib/utils";
@@ -85,9 +85,7 @@ export function NavegacaoLateral({
         "lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[264px]",
       )}
     >
-      <Link href="/painel" className="alvo-toque self-start">
-        <Image src="/painel/logo-sempre-branca.png" alt="SINTRAVC · Painel" width={400} height={148} className="h-11 w-auto" />
-      </Link>
+      <Logo sempreBranca href="/painel" alt="SINTRAVC · Painel" className="alvo-toque h-16 self-start" />
 
       {podeCriarConteudo ? (
         <MenuCriar podeCriarDocumento={podeCriarDocumento} alinhar="start">

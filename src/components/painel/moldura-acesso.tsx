@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Moldura das telas de acesso da equipe (Figma 169:18816 desktop, 169:18946 mobile):
- * coluna da marca à esquerda (no celular, faixa no topo) e o formulário à direita.
+ * coluna da marca à esquerda (no celular, faixa no topo) e o formulário à direita. A coluna é marinha
+ * nos dois temas: a logo é sempre a versão branca (#61).
  */
 const GARANTIAS = [
   "Cada pessoa entra com o próprio e-mail",
@@ -18,12 +19,12 @@ export function MolduraAcesso({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-dvh flex-col bg-fundo-pagina lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-5 bg-fundo-marinho-profundo px-5 pt-10 pb-8 lg:min-h-dvh lg:w-[560px] lg:justify-between lg:p-14">
         <Image
-          src="/painel/logo-sempre-branca.png"
+          src="/marca/sintravc-escura.webp"
           alt="SINTRAVC"
-          width={400}
-          height={148}
+          width={283}
+          height={192}
           priority
-          className="h-12 w-auto self-start lg:h-16"
+          className="h-16 w-auto self-start lg:h-24"
         />
         <div className="flex flex-col gap-5">
           <Eyebrow cor="amarelo">Painel de gestão</Eyebrow>

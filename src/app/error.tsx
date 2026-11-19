@@ -1,7 +1,7 @@
 "use client";
 
 import { Conteudo500 } from "@/components/site/conteudo-500";
-import { Logo } from "@/components/site/logo";
+import { Logo } from "@/components/marca/logo";
 
 /**
  * Erro fora de uma página do site, inclusive quando a própria moldura falha (por exemplo, o banco fora

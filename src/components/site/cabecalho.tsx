@@ -4,7 +4,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
 
 import { AlternarTemaSite } from "./alternar-tema-site";
-import { Logo } from "./logo";
+import { Logo } from "@/components/marca/logo";
 import { MenuMobile } from "./menu-mobile";
 import { NavegacaoPrincipal } from "./navegacao-principal";
 import { LINKS } from "./navegacao";
