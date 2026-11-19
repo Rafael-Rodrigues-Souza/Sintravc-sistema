@@ -39,7 +39,7 @@ function Coluna({ titulo, itens, extra }: { titulo: string; itens: ItemDeMenu[];
  */
 export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFiliacao: string }) {
   const { contato } = config;
-  const redes = redesComLink(config.redes);
+  const redes = redesComLink(config);
   const ano = anoNaBahia(new Date());
 
   return (
