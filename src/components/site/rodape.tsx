@@ -5,9 +5,9 @@ import type { ConfigSite } from "@/lib/config-site";
 import { formatarTelefone, linkTelefone } from "@/lib/config-site/links";
 import { RODAPE } from "@/conteudo/site";
 import { anoNaBahia } from "@/lib/datas";
+import { Logo } from "@/components/marca/logo";
 
 import { BotaoCookies } from "./aviso-cookies";
-import { Logo } from "@/components/marca/logo";
 import { DOCUMENTOS, LINKS, SINDICATO, type ItemDeMenu } from "./navegacao";
 import { redesComLink } from "./redes";
 import { TextoDoSite } from "./texto-do-site";

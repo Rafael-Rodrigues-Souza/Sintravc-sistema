@@ -56,7 +56,7 @@ async function gerar(arquivo: string, nome: string) {
  * nenhum pixel de desenho; o desenho termina na penúltima faixa. (A primeira faixa não serve: há um
  * vão de poucas linhas entre a cabeça do meio e o corpo.)
  */
-async function desenho(): Promise<Buffer> {
+async function recortarDesenho(): Promise<Buffer> {
   const recortada = await recortar(ORIGEM_ICONE);
   const { data, info } = await sharp(recortada).raw().toBuffer({ resolveWithObject: true });
   const linhaVazia = (y: number) => {
@@ -72,15 +72,15 @@ async function desenho(): Promise<Buffer> {
   return sharp(parte).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: LIMIAR_ALFA }).toBuffer();
 }
 
-async function gerarIcone(simbolo: Buffer, arquivo: string, lado: number, arredondado: boolean) {
+async function gerarIcone(desenho: Buffer, arquivo: string, lado: number, arredondado: boolean) {
   const interno = Math.round(lado * (1 - 2 * MARGEM_ICONE));
-  const desenhado = await sharp(simbolo).resize({ width: interno, height: interno, fit: "inside" }).toBuffer();
+  const reduzido = await sharp(desenho).resize({ width: interno, height: interno, fit: "inside" }).toBuffer();
   const raio = arredondado ? Math.round(lado * 0.2) : 0;
   const fundo = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${lado}" height="${lado}"><rect width="${lado}" height="${lado}" rx="${raio}" fill="#ffffff"/></svg>`,
   );
   const saida = await sharp(fundo)
-    .composite([{ input: desenhado, gravity: "center" }])
+    .composite([{ input: reduzido, gravity: "center" }])
     .png({ compressionLevel: 9 })
     .toFile(arquivo);
   console.log(`${arquivo}: ${saida.width}×${saida.height} · ${saida.size} B`);
@@ -89,8 +89,8 @@ async function gerarIcone(simbolo: Buffer, arquivo: string, lado: number, arredo
 mkdirSync(destino, { recursive: true });
 async function main() {
   for (const v of versoes) await gerar(v.arquivo, v.nome);
-  const simbolo = await desenho();
-  for (const i of icones) await gerarIcone(simbolo, i.arquivo, i.lado, i.arredondado);
+  const desenho = await recortarDesenho();
+  for (const i of icones) await gerarIcone(desenho, i.arquivo, i.lado, i.arredondado);
 }
 
 void main();

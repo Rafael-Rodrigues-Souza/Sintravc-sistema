@@ -2,9 +2,9 @@ import Link from "next/link";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/marca/logo";
 
 import { AlternarTemaSite } from "./alternar-tema-site";
-import { Logo } from "@/components/marca/logo";
 import { MenuMobile } from "./menu-mobile";
 import { NavegacaoPrincipal } from "./navegacao-principal";
 import { LINKS } from "./navegacao";

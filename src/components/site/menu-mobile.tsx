@@ -8,9 +8,9 @@ import { useState } from "react";
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/marca/logo";
 
 import { AlternarTemaRedondo } from "./alternar-tema-redondo";
-import { Logo } from "@/components/marca/logo";
 import { ehGrupo, estaAtivo, MENU_PRINCIPAL, type GrupoDeMenu, type ItemDeMenu } from "./navegacao";
 import { useSite } from "./provedor-site";
 import { TextoDoSite } from "./texto-do-site";

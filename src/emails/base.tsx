@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Body, Button, Container, Head, Html, Img, Preview, Section, Text } from "@react-email/components";
 
+import { larguraNaAltura, LOGO } from "@/components/marca/arquivos";
+
 /**
  * Peças comuns dos e-mails da equipe (Figma 265:40803, 265:40830, 265:40852 e N6).
  * Cores fixas dos tokens do Figma: os programas de e-mail não entendem variáveis CSS.
@@ -31,12 +33,15 @@ const etiqueta = {
 };
 const valorDestaque = { fontFamily: fonte, fontSize: "16px", fontWeight: 600, color: cor.primario, margin: "0 0 4px" };
 
+/** Altura da logo no cabeçalho do e-mail, em px; a largura sai da proporção da versão branca. */
+const ALTURA_LOGO_EMAIL = 48;
+
 /**
  * Cabeçalho marinho com a logo, o miolo branco e o rodapé do sindicato. A logo é a versão branca
  * (#61), por endereço absoluto e em PNG: vários programas de e-mail não mostram WebP.
  */
 export function MolduraEmail({ previa, urlSite, children }: { previa: string; urlSite: string; children: ReactNode }) {
-  const logo = enderecoDoSite(urlSite, "/marca/sintravc-escura.png");
+  const logo = enderecoDoSite(urlSite, `${LOGO.branca.caminho}.png`);
   return (
     <Html lang="pt-BR">
       <Head />
@@ -52,8 +57,12 @@ export function MolduraEmail({ previa, urlSite, children }: { previa: string; ur
           }}
         >
           <Section style={{ backgroundColor: cor.marinho, padding: "22px 28px" }}>
-            {/* 283×192 na origem: 48 px de altura. */}
-            <Img src={logo} alt="SINTRAVC, Sindicato dos Rodoviários de Vitória da Conquista" width="71" height="48" />
+            <Img
+              src={logo}
+              alt="SINTRAVC, Sindicato dos Rodoviários de Vitória da Conquista"
+              width={String(larguraNaAltura(LOGO.branca, ALTURA_LOGO_EMAIL))}
+              height={String(ALTURA_LOGO_EMAIL)}
+            />
           </Section>
 
           <Section style={{ padding: "28px" }}>{children}</Section>
