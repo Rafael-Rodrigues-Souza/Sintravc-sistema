@@ -143,6 +143,7 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Tempo de bloqueio após tentativas | 15 minutos | RN05 |
 | Tempo de aviso rápido na tela | 6 segundos | RN42 |
 | Atualização do site após Configurações | até 1 minuto | RN43 |
+| Validade da escolha no aviso de cookies | 365 dias | RN45, E56 |
 | Alerta de vigência de documento | 2 dias antes | RN44 |
 | Alerta de rascunho parado | mais de 7 dias | RN44 |
 | Tamanho máximo de arquivo na Mídia | 10 MB | R7 |
