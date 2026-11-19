@@ -5,7 +5,7 @@ import type { TextoJuridico } from "@/conteudo/juridico";
 import { PAGINA_LEGAL } from "@/conteudo/site";
 import { cn } from "@/lib/utils";
 
-import { POLITICA, TERMOS } from "./navegacao";
+import { LINKS } from "./navegacao";
 import { Eyebrow, Migalhas } from "./partes-da-pagina";
 import { Marcador, TextoDoSite } from "./texto-do-site";
 
@@ -29,7 +29,7 @@ export function PaginaLegal({ titulo, href, texto }: { titulo: string; href: str
           </p>
           <nav aria-label="Documentos legais" className="mt-2">
             <ul className="flex gap-6">
-              {[POLITICA, TERMOS].map((item) => {
+              {[LINKS.politica, LINKS.termos].map((item) => {
                 const ativo = item.href === href;
                 return (
                   <li key={item.href}>

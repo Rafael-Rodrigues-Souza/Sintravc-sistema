@@ -50,23 +50,21 @@ export function CabecalhoDeSecao({
   eyebrow,
   titulo,
   texto,
-  sobreEscuro = false,
 }: {
   id: string;
   eyebrow: React.ReactNode;
   titulo: React.ReactNode;
   texto?: React.ReactNode;
-  sobreEscuro?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
       <div className="flex max-w-[640px] flex-col gap-3">
-        <Eyebrow sobreEscuro={sobreEscuro}>{eyebrow}</Eyebrow>
-        <h2 id={id} className={cn("texto-titulo-secao-mobile scroll-mt-28 lg:texto-titulo-secao", sobreEscuro ? "text-texto-invertido" : "text-texto-primario")}>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <h2 id={id} className={"texto-titulo-secao-mobile scroll-mt-28 text-texto-primario lg:texto-titulo-secao"}>
           {titulo}
         </h2>
       </div>
-      {texto ? <p className={cn("texto-corpo max-w-[360px]", sobreEscuro ? "text-texto-invertido-sec" : "text-texto-secundario")}>{texto}</p> : null}
+      {texto ? <p className={"texto-corpo max-w-[360px] text-texto-secundario"}>{texto}</p> : null}
     </div>
   );
 }

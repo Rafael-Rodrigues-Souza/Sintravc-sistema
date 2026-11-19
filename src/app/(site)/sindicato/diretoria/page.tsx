@@ -3,13 +3,13 @@ import type { Metadata } from "next";
 import { IconeFigma } from "@/components/icone-figma";
 import { AbasSindicato } from "@/components/site/abas-sindicato";
 import { FilieSe } from "@/components/site/filie-se";
-import { SINDICATO } from "@/components/site/navegacao";
+import { LINKS } from "@/components/site/navegacao";
 import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas } from "@/components/site/partes-da-pagina";
 import { TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { DIRETORIA, FALAR_COM_A_DIRETORIA, iniciais, type MembroDaDiretoria } from "@/conteudo/site";
 import { lerConfigSite } from "@/lib/config-site";
-import { linkWhatsApp } from "@/lib/config-site/links";
+import { linkFiliacao, linkWhatsApp } from "@/lib/config-site/links";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -87,7 +87,7 @@ export default async function PaginaDiretoria() {
         </div>
       </section>
 
-      <AbasSindicato atual={SINDICATO.itens[1]!.href} />
+      <AbasSindicato atual={LINKS.diretoria.href} />
 
       <div className="conteudo-site flex flex-col gap-6 pt-10 lg:gap-8 lg:pt-14">
         <Destaque membro={presidente!} mensagem={DIRETORIA.mensagemDoPresidente} tamanho="grande" />
@@ -129,7 +129,7 @@ export default async function PaginaDiretoria() {
         </ul>
       </section>
 
-      <FilieSe linkFiliacao={linkWhatsApp(config.contato.whatsappRecepcao, config.mensagemFiliacao)} />
+      <FilieSe linkFiliacao={linkFiliacao(config)} />
     </>
   );
 }

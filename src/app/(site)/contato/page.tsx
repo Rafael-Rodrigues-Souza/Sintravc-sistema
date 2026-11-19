@@ -9,7 +9,7 @@ import { Marcador, TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { CONTATO_PAGINA } from "@/conteudo/site";
 import { lerConfigSite } from "@/lib/config-site";
-import { formatarTelefone, linkEmail, linkMapaEmbutido, linkRota, linkTelefone, linkWhatsApp } from "@/lib/config-site/links";
+import { formatarTelefone, formatarWhatsApp, linkEmail, linkFiliacao, linkMapaEmbutido, linkRota, linkTelefone, linkWhatsApp } from "@/lib/config-site/links";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -27,7 +27,7 @@ export default async function PaginaContato() {
   const enderecoCompleto = `${contato.endereco}, ${contato.cidade}`;
   const whatsapp = linkWhatsApp(contato.whatsappRecepcao);
   const telefone = formatarTelefone(contato.telefone);
-  const numeroDoWhatsapp = formatarTelefone(contato.whatsappRecepcao.slice(2));
+  const numeroDoWhatsapp = formatarWhatsApp(contato.whatsappRecepcao);
 
   const redesSociais = redesDoSite(redes);
   const { hero, canais, sede, redes: textoRedes } = CONTATO_PAGINA;
@@ -222,7 +222,7 @@ export default async function PaginaContato() {
       </section>
 
       <div className="pt-14 lg:pt-20">
-        <FilieSe linkFiliacao={linkWhatsApp(contato.whatsappRecepcao, config.mensagemFiliacao)} />
+        <FilieSe linkFiliacao={linkFiliacao(config)} />
       </div>
     </>
   );

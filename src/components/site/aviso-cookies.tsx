@@ -7,7 +7,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
 import { AVISO_COOKIES } from "@/conteudo/site";
 
-import { POLITICA } from "./navegacao";
+import { LINKS } from "./navegacao";
 import { useSite } from "./provedor-site";
 
 /**
@@ -41,7 +41,7 @@ export function AvisoCookies() {
             <IconeFigma src="/site/icone-escudo-check.svg" tamanho={22} className="text-destaque-amarelo" />
             <p className="texto-pequeno">
               {AVISO_COOKIES.texto}{" "}
-              <Link href={POLITICA.href} className="rounded-sm text-destaque-amarelo underline outline-none focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
+              <Link href={LINKS.politica.href} className="rounded-sm text-destaque-amarelo underline outline-none focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
                 Política de privacidade
               </Link>
               .

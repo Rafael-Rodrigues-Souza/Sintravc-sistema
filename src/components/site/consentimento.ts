@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { lerParametro } from "@/lib/parametros";
 
-import { COOKIE_CONSENTIMENTO } from "./consentimento-comum";
+import { COOKIE_CONSENTIMENTO, ESCOLHAS_COOKIES } from "./consentimento-comum";
 
 /**
  * Guarda a escolha do aviso de cookies (RN45, E56). A validade vem do Parametro. Devolve se gravou:
@@ -13,7 +13,7 @@ import { COOKIE_CONSENTIMENTO } from "./consentimento-comum";
  * sistema, só um cookie no navegador de quem escolheu (E56).
  */
 export async function escolherCookies(escolha: unknown): Promise<{ ok: boolean }> {
-  const valor = z.enum(["essenciais", "todos"]).safeParse(escolha);
+  const valor = z.enum(ESCOLHAS_COOKIES).safeParse(escolha);
   if (!valor.success) return { ok: false };
   try {
     const dias = await lerParametro("site.consentimento_cookies_dias");

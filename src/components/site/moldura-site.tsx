@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import { lerConfigSite } from "@/lib/config-site";
-import { linkWhatsApp } from "@/lib/config-site/links";
+import { linkFiliacao, linkWhatsApp } from "@/lib/config-site/links";
 
 import { AvisoCookies } from "./aviso-cookies";
 import { BarraSuperior } from "./barra-superior";
@@ -20,11 +20,11 @@ export async function MolduraSite({ children }: { children: React.ReactNode }) {
   const loja = await cookies();
   const config = await lerConfigSite();
   const { contato } = config;
-  const linkFiliacao = linkWhatsApp(contato.whatsappRecepcao, config.mensagemFiliacao);
+  const filiacao = linkFiliacao(config);
 
   return (
     <ProvedorSite
-      contato={{ linkFiliacao, linkWhatsApp: linkWhatsApp(contato.whatsappRecepcao), horario: contato.horario }}
+      contato={{ linkFiliacao: filiacao, linkWhatsApp: linkWhatsApp(contato.whatsappRecepcao), horario: contato.horario }}
       escolhaInicial={lerEscolha(loja.get(COOKIE_CONSENTIMENTO)?.value)}
     >
       <div id="topo" className="flex min-h-dvh flex-col bg-fundo-pagina">
@@ -35,11 +35,11 @@ export async function MolduraSite({ children }: { children: React.ReactNode }) {
           Pular para o conteúdo
         </a>
         <BarraSuperior config={config} />
-        <Cabecalho linkFiliacao={linkFiliacao} />
+        <Cabecalho linkFiliacao={filiacao} />
         <main id="conteudo" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
-        <Rodape config={config} linkFiliacao={linkFiliacao} />
+        <Rodape config={config} linkFiliacao={filiacao} />
         <AvisoCookies />
       </div>
     </ProvedorSite>

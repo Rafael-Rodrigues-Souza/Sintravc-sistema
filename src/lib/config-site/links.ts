@@ -1,9 +1,20 @@
 /** Links do site a partir dos dados da ConfigSite (RN03, RN43). */
+import type { ConfigSite } from "./esquema";
 
 /** Conversa no WhatsApp; com `mensagem`, ela já vem escrita (RN03). */
 export function linkWhatsApp(numero: string, mensagem?: string): string {
   const base = `https://wa.me/${numero}`;
   return mensagem ? `${base}?text=${encodeURIComponent(mensagem)}` : base;
+}
+
+/** “Filiar-se pelo WhatsApp”: conversa com a recepção já com a mensagem pronta (RN03). */
+export function linkFiliacao(config: Pick<ConfigSite, "contato" | "mensagemFiliacao">): string {
+  return linkWhatsApp(config.contato.whatsappRecepcao, config.mensagemFiliacao);
+}
+
+/** O número do WhatsApp (55 + DDD + número) para mostrar na tela: (77) 3423-4959. */
+export function formatarWhatsApp(numero: string): string {
+  return formatarTelefone(numero.replace(/^55/, ""));
 }
 
 /** `tel:` com o código do Brasil. `telefone` vem só com dígitos e DDD. */

@@ -7,7 +7,7 @@ import { AlternarTemaSite } from "./alternar-tema-site";
 import { Logo } from "./logo";
 import { MenuMobile } from "./menu-mobile";
 import { NavegacaoPrincipal } from "./navegacao-principal";
-import { NOTICIAS } from "./navegacao";
+import { LINKS } from "./navegacao";
 
 const botaoRedondo =
   "alvo-toque flex size-11 shrink-0 items-center justify-center rounded-full border border-borda-padrao bg-fundo-superficie text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring";
@@ -24,7 +24,7 @@ export function Cabecalho({ linkFiliacao }: { linkFiliacao: string }) {
         <NavegacaoPrincipal />
         <div className="flex items-center gap-2 lg:gap-3 print:hidden">
           {/* A busca de notícias chega com a #15. */}
-          <Link href={NOTICIAS.href} aria-label="Buscar notícias" className={`${botaoRedondo} hidden lg:flex`}>
+          <Link href={LINKS.noticias.href} aria-label="Buscar notícias" className={`${botaoRedondo} hidden lg:flex`}>
             <IconeFigma src="/site/icone-busca.svg" tamanho={20} />
           </Link>
           <div className="hidden lg:block">

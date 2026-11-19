@@ -8,7 +8,7 @@ import { anoNaBahia } from "@/lib/datas";
 
 import { BotaoCookies } from "./aviso-cookies";
 import { Logo } from "./logo";
-import { CONTATO, DOCUMENTOS, INICIO, NOTICIAS, POLITICA, RADIO, SINDICATO, TERMOS, type ItemDeMenu } from "./navegacao";
+import { DOCUMENTOS, LINKS, SINDICATO, type ItemDeMenu } from "./navegacao";
 import { redesComLink } from "./redes";
 import { TextoDoSite } from "./texto-do-site";
 
@@ -68,7 +68,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
         </div>
 
         <nav aria-label="Rodapé" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:flex lg:gap-12 xl:gap-16">
-          <Coluna titulo="Navegação" itens={[INICIO, NOTICIAS, RADIO, CONTATO]} />
+          <Coluna titulo="Navegação" itens={[LINKS.inicio, LINKS.noticias, LINKS.radio, LINKS.contato]} />
           <Coluna titulo="Sindicato" itens={SINDICATO.itens} />
           <Coluna titulo="Documentos" itens={DOCUMENTOS.itens} />
           <Coluna
@@ -113,7 +113,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
             © {ano} {RODAPE.nomeCompleto}
           </p>
           <ul className="flex flex-wrap gap-x-6 gap-y-1 text-texto-invertido pointer-coarse:vao-y-toque-8">
-            {[POLITICA, TERMOS].map((item) => (
+            {[LINKS.politica, LINKS.termos].map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className={`${link} alvo-toque inline-flex min-h-8 items-center whitespace-nowrap`}>
                   {item.rotulo}

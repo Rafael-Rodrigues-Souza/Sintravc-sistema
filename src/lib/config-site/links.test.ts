@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatarTelefone, linkMapaEmbutido, linkRota, linkTelefone, linkWhatsApp } from "./links";
+import { formatarTelefone, formatarWhatsApp, linkFiliacao, linkMapaEmbutido, linkRota, linkTelefone, linkWhatsApp } from "./links";
 
 describe("links do site", () => {
   it("WhatsApp sem mensagem abre só a conversa", () => {
@@ -28,5 +28,21 @@ describe("links do site", () => {
     const endereco = "Rua Laudicéia Gusmão, 586 - Centro, Vitória da Conquista - BA";
     expect(linkMapaEmbutido(endereco)).toContain("output=embed");
     expect(linkRota(endereco)).toContain(encodeURIComponent(endereco));
+  });
+});
+
+describe("Filiar-se e número do WhatsApp", () => {
+  const config = {
+    contato: { whatsappRecepcao: "557734234959" },
+    mensagemFiliacao: "Olá! Quero me filiar ao SINTRAVC.",
+  } as Parameters<typeof linkFiliacao>[0];
+
+  it("o link do Filiar-se leva a mensagem pronta da ConfigSite (RN03)", () => {
+    expect(linkFiliacao(config)).toBe(linkWhatsApp("557734234959", "Olá! Quero me filiar ao SINTRAVC."));
+  });
+
+  it("o número do WhatsApp aparece sem o 55", () => {
+    expect(formatarWhatsApp("557734234959")).toBe("(77) 3423-4959");
+    expect(formatarWhatsApp("5577991234567")).toBe("(77) 99123-4567");
   });
 });

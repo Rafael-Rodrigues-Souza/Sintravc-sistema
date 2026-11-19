@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { MolduraSite } from "@/components/site/moldura-site";
-import { CONTATO, DOCUMENTOS, NOTICIAS, SINDICATO } from "@/components/site/navegacao";
+import { LINKS } from "@/components/site/navegacao";
 import { PaginaDeErro } from "@/components/site/pagina-de-erro";
 import { Button } from "@/components/ui/button";
 import { ERRO_404 } from "@/conteudo/site";
@@ -11,10 +11,10 @@ import { ERRO_404 } from "@/conteudo/site";
 export const metadata: Metadata = { title: ERRO_404.titulo };
 
 const ATALHOS = [
-  { ...DOCUMENTOS.itens.find((i) => i.rotulo === "Editais")!, icone: "/site/icone-documento.svg" },
-  { ...DOCUMENTOS.itens.find((i) => i.rotulo === "Acordos coletivos")!, icone: "/site/icone-balanca.svg" },
-  { ...SINDICATO.itens.find((i) => i.rotulo === "Benefícios")!, icone: "/site/icone-estrela.svg" },
-  { ...CONTATO, icone: "/site/icone-telefone.svg" },
+  { ...LINKS.editais, icone: "/site/icone-documento.svg" },
+  { ...LINKS.acordos, icone: "/site/icone-balanca.svg" },
+  { ...LINKS.beneficios, icone: "/site/icone-estrela.svg" },
+  { ...LINKS.contato, icone: "/site/icone-telefone.svg" },
 ];
 
 /** Página 404 do site (Figma 159:8590 / 159:8788; RF09), com a moldura do site. */
@@ -31,7 +31,7 @@ export default function NaoEncontrada() {
             <Link href="/">Voltar ao início</Link>
           </Button>
           <Button asChild variant="secundario">
-            <Link href={NOTICIAS.href}>
+            <Link href={LINKS.noticias.href}>
               <IconeFigma src="/site/icone-busca.svg" tamanho={18} />
               Buscar notícias
             </Link>

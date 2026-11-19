@@ -4,13 +4,13 @@ import Link from "next/link";
 import { IconeFigma } from "@/components/icone-figma";
 import { AbasSindicato } from "@/components/site/abas-sindicato";
 import { FilieSe } from "@/components/site/filie-se";
-import { CONTATO, SINDICATO } from "@/components/site/navegacao";
+import { LINKS } from "@/components/site/navegacao";
 import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas } from "@/components/site/partes-da-pagina";
 import { TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { INSTITUICAO } from "@/conteudo/site";
 import { lerConfigSite } from "@/lib/config-site";
-import { linkWhatsApp } from "@/lib/config-site/links";
+import { linkFiliacao, linkWhatsApp } from "@/lib/config-site/links";
 
 export const metadata: Metadata = {
   title: "Instituição",
@@ -55,7 +55,7 @@ export default async function PaginaInstituicao() {
                 </a>
               </Button>
               <Button asChild variant="sobre-escuro">
-                <Link href={CONTATO.href}>Fale com o sindicato</Link>
+                <Link href={LINKS.contato.href}>Fale com o sindicato</Link>
               </Button>
             </div>
           </div>
@@ -69,7 +69,7 @@ export default async function PaginaInstituicao() {
         </div>
       </section>
 
-      <AbasSindicato atual={SINDICATO.itens[0]!.href} />
+      <AbasSindicato atual={LINKS.instituicao.href} />
 
       {/* Números */}
       <section aria-label="O SINTRAVC em números" className="conteudo-site pt-10 lg:pt-12">
@@ -203,7 +203,7 @@ export default async function PaginaInstituicao() {
         </div>
       </section>
 
-      <FilieSe linkFiliacao={linkWhatsApp(config.contato.whatsappRecepcao, config.mensagemFiliacao)} />
+      <FilieSe linkFiliacao={linkFiliacao(config)} />
     </>
   );
 }

@@ -1,39 +1,39 @@
 /**
- * Mapa do site (Fase 1, sem “Entrar”: E01, N13). Uma só fonte para o cabeçalho, o menu mobile
- * e o rodapé. Notícias, Benefícios, Documentos e Rádio Chofer chegam nas issues #15 a #18.
+ * Mapa do site (Fase 1, sem “Entrar”: E01, N13). Uma só fonte para o cabeçalho, o menu mobile,
+ * o rodapé e os atalhos: cada página tem uma chave em LINKS, e os menus são montados a partir dela.
+ * Notícias, Benefícios, Documentos e Rádio Chofer chegam nas issues #15 a #18.
  */
 export type ItemDeMenu = { rotulo: string; href: string };
 export type GrupoDeMenu = { rotulo: string; itens: ItemDeMenu[]; base: string };
 export type EntradaDoMenu = ItemDeMenu | GrupoDeMenu;
 
+export const LINKS = {
+  inicio: { rotulo: "Início", href: "/" },
+  noticias: { rotulo: "Notícias", href: "/noticias" },
+  instituicao: { rotulo: "Instituição", href: "/sindicato/instituicao" },
+  diretoria: { rotulo: "Diretoria", href: "/sindicato/diretoria" },
+  beneficios: { rotulo: "Benefícios", href: "/sindicato/beneficios" },
+  acordos: { rotulo: "Acordos coletivos", href: "/documentos/acordos-coletivos" },
+  editais: { rotulo: "Editais", href: "/documentos/editais" },
+  radio: { rotulo: "Rádio Chofer", href: "/radio-chofer" },
+  contato: { rotulo: "Contato", href: "/contato" },
+  politica: { rotulo: "Política de privacidade", href: "/politica-de-privacidade" },
+  termos: { rotulo: "Termos de uso", href: "/termos-de-uso" },
+} as const satisfies Record<string, ItemDeMenu>;
+
 export const SINDICATO: GrupoDeMenu = {
   rotulo: "Sindicato",
   base: "/sindicato",
-  itens: [
-    { rotulo: "Instituição", href: "/sindicato/instituicao" },
-    { rotulo: "Diretoria", href: "/sindicato/diretoria" },
-    { rotulo: "Benefícios", href: "/sindicato/beneficios" },
-  ],
+  itens: [LINKS.instituicao, LINKS.diretoria, LINKS.beneficios],
 };
 
 export const DOCUMENTOS: GrupoDeMenu = {
   rotulo: "Documentos",
   base: "/documentos",
-  itens: [
-    { rotulo: "Acordos coletivos", href: "/documentos/acordos-coletivos" },
-    { rotulo: "Editais", href: "/documentos/editais" },
-  ],
+  itens: [LINKS.acordos, LINKS.editais],
 };
 
-export const INICIO: ItemDeMenu = { rotulo: "Início", href: "/" };
-export const NOTICIAS: ItemDeMenu = { rotulo: "Notícias", href: "/noticias" };
-export const RADIO: ItemDeMenu = { rotulo: "Rádio Chofer", href: "/radio-chofer" };
-export const CONTATO: ItemDeMenu = { rotulo: "Contato", href: "/contato" };
-
-export const MENU_PRINCIPAL: EntradaDoMenu[] = [INICIO, NOTICIAS, SINDICATO, DOCUMENTOS, RADIO, CONTATO];
-
-export const POLITICA: ItemDeMenu = { rotulo: "Política de privacidade", href: "/politica-de-privacidade" };
-export const TERMOS: ItemDeMenu = { rotulo: "Termos de uso", href: "/termos-de-uso" };
+export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, LINKS.noticias, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
 
 export function ehGrupo(entrada: EntradaDoMenu): entrada is GrupoDeMenu {
   return "itens" in entrada;
