@@ -99,6 +99,13 @@
       "when": 1795043868350,
       "tag": "0013_config_site",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795123655179,
+      "tag": "0014_redes_do_sindicato",
+      "breakpoints": true
     }
   ]
 }
