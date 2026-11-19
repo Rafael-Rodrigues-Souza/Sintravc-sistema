@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { RESPONSIVO } from "../playwright.config";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
+import { FACEBOOK_DE_TESTE } from "./dados-do-site";
 import { apertar } from "./entrar";
 import { janelaEstreitaNoDesktop, semAnimacao, semRolagemLateral, telaEstreita } from "./responsivo";
 
@@ -289,5 +290,19 @@ test.describe("alvos de toque do site (RNF10, E48)", { tag: "@responsivo" }, () 
       expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`), `${caminho}: alvos de toque pequenos`).toEqual([]);
       await semRolagemLateral(page);
     }
+  });
+});
+
+test.describe("redes sociais da ConfigSite (RN43)", () => {
+  test("com link do Facebook na ConfigSite, ele aparece na barra superior, no rodapé e no Contato", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const barra = page.getByTestId("barra-superior");
+    await expect(barra.getByRole("link", { name: "Facebook" })).toHaveAttribute("href", FACEBOOK_DE_TESTE);
+    await expect(rodape(page).getByRole("link", { name: "Facebook" })).toHaveAttribute("href", FACEBOOK_DE_TESTE);
+    await expect(page.getByRole("region", { name: "Acompanhe o SINTRAVC nas redes sociais" }).getByRole("link", { name: /Facebook/ })).toHaveAttribute(
+      "href",
+      FACEBOOK_DE_TESTE,
+    );
   });
 });

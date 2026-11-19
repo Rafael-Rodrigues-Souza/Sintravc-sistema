@@ -11,6 +11,7 @@ import postgres from "postgres";
 
 import { ambienteE2E } from "../playwright.config";
 import { apagarBancoE2E } from "./apagar-banco";
+import { FACEBOOK_DE_TESTE } from "./dados-do-site";
 
 /**
  * Recria o banco sintravc_e2e, aplica as migrações e cria as pessoas de teste (pelas funções
@@ -35,6 +36,17 @@ export default async function preparar() {
   const env = { ...process.env, ...ambienteE2E };
   execSync("pnpm -s db:migrar", { env, stdio: "inherit" });
   execSync("pnpm -s tsx scripts/e2e-pessoas.ts", { env, stdio: "inherit" });
+  await dadosDoSite(ambienteE2E.DATABASE_URL);
+}
+
+/** Link de teste do Facebook na ConfigSite (e2e/dados-do-site.ts). */
+async function dadosDoSite(urlDoBanco: string) {
+  const banco = postgres(urlDoBanco, { max: 1, onnotice: () => {} });
+  try {
+    await banco`UPDATE config_site SET dados = jsonb_set(dados, '{redes,facebook}', ${banco.json(FACEBOOK_DE_TESTE)}) WHERE id = 'site'`;
+  } finally {
+    await banco.end();
+  }
 }
 
 async function prepararBucket() {

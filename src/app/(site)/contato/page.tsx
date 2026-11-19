@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { IconeFigma } from "@/components/icone-figma";
 import { FilieSe } from "@/components/site/filie-se";
 import { MapaComConsentimento } from "@/components/site/mapa-com-consentimento";
+import { redesDoSite } from "@/components/site/redes";
 import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas } from "@/components/site/partes-da-pagina";
 import { Marcador, TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
@@ -27,12 +28,7 @@ export default async function PaginaContato() {
   const telefone = formatarTelefone(contato.telefone);
   const numeroDoWhatsapp = formatarTelefone(contato.whatsappRecepcao.slice(2));
 
-  const redesSociais = [
-    { nome: "Instagram", href: redes.instagram, icone: "/site/icone-instagram.svg" },
-    { nome: "Facebook", href: redes.facebook, icone: "/site/icone-facebook.svg" },
-    { nome: "YouTube", href: redes.youtube, icone: "/site/icone-youtube.svg" },
-    { nome: "Canal no WhatsApp", href: redes.canalWhatsapp, icone: "/site/icone-whatsapp.svg" },
-  ];
+  const redesSociais = redesDoSite(redes);
 
   return (
     <>
