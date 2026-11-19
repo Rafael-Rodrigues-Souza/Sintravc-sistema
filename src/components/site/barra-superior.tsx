@@ -33,10 +33,10 @@ export function BarraSuperior({ config }: { config: ConfigSite }) {
           </p>
         </div>
         {redes.length > 0 ? (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 pointer-coarse:gap-[26px]">
             <span>Siga o sindicato</span>
             {redes.map((r) => (
-              <a key={r.nome} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.nome} className="rounded-sm text-texto-invertido outline-none hover:text-destaque-amarelo focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
+              <a key={r.nome} href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.nome} className="alvo-toque rounded-sm text-texto-invertido outline-none hover:text-destaque-amarelo focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
                 <IconeFigma src={r.icone} tamanho={18} />
               </a>
             ))}
