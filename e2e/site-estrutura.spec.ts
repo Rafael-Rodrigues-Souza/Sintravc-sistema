@@ -207,3 +207,68 @@ test.describe("Sindicato: Instituição e Diretoria (US07)", { tag: "@responsivo
     await semRolagemLateral(page);
   });
 });
+
+test.describe("Contato (US05)", { tag: "@responsivo" }, () => {
+  test("canais da ConfigSite e o mapa do Google só depois do clique em Carregar mapa (CA-US05.1, CA-US05.2)", async ({ page, hasTouch, baseURL }) => {
+    await semAviso(page, baseURL);
+    const pedidosAoGoogle: string[] = [];
+    page.on("request", (r) => {
+      if (/google\./.test(new URL(r.url()).hostname)) pedidosAoGoogle.push(r.url());
+    });
+
+    await page.goto("/contato");
+    await expect(page.getByRole("heading", { level: 1, name: "Entre em contato" })).toBeVisible();
+    await expect(page.getByTestId("contato-telefone")).toHaveText(TELEFONE);
+    await expect(page.getByRole("link", { name: "Abrir conversa" })).toHaveAttribute("href", WHATSAPP);
+    await expect(page.getByRole("link", { name: "Ligar agora" })).toHaveAttribute("href", "tel:+557734234959");
+    await expect(page.getByRole("link", { name: "Enviar e-mail" })).toHaveAttribute("href", "mailto:sintravcrodoviarios@gmail.com");
+    await expect(page.getByRole("link", { name: "Abrir rota no Google Maps" })).toHaveAttribute("href", /google\.com\/maps\/dir\/.*Laudic/);
+    await semRolagemLateral(page);
+
+    // “Só essenciais”: nada do Google até a pessoa pedir.
+    const mapa = page.locator('iframe[title="Mapa da sede do SINTRAVC"]');
+    await expect(mapa).toHaveCount(0);
+    expect(pedidosAoGoogle).toEqual([]);
+    await apertar(page.getByRole("button", { name: "Carregar mapa" }), hasTouch);
+    await expect(mapa).toHaveAttribute("src", /google\.com\/maps\?q=.*output=embed/);
+  });
+
+  test("com “Aceitar todos”, o mapa já vem carregado", async ({ page, baseURL }) => {
+    await page.context().addCookies([{ name: "sintravc_cookies", value: "todos", url: baseURL! }]);
+    await page.goto("/contato");
+    await expect(page.locator('iframe[title="Mapa da sede do SINTRAVC"]')).toBeAttached();
+    await expect(page.getByRole("button", { name: "Carregar mapa" })).toHaveCount(0);
+  });
+});
+
+test.describe("páginas de apoio: 404, Política de privacidade e Termos de uso (RF09)", { tag: "@responsivo" }, () => {
+  test("endereço que não existe mostra a 404 com a moldura e os atalhos", async ({ page, hasTouch, baseURL }) => {
+    await semAviso(page, baseURL);
+    const resposta = await page.goto("/pagina-que-nao-existe");
+    expect(resposta?.status()).toBe(404);
+    await expect(page.getByRole("heading", { level: 1, name: "Página não encontrada" })).toBeVisible();
+    await expect(page.getByRole("contentinfo")).toBeVisible();
+    const atalhos = page.getByRole("navigation", { name: "Atalhos" });
+    await expect(atalhos.getByRole("link")).toHaveCount(4);
+    await semRolagemLateral(page);
+    await apertar(page.getByRole("link", { name: "Voltar ao início" }), hasTouch);
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("Política e Termos no mesmo modelo, com o texto do advogado como marcador (D6)", async ({ page, hasTouch, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/");
+    await apertar(rodape(page).getByRole("link", { name: "Política de privacidade" }), hasTouch);
+    await expect(page).toHaveURL(/\/politica-de-privacidade$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Política de privacidade" })).toBeVisible();
+    await expect(page.getByRole("main").getByText("[Texto a definir pelo advogado do sindicato]")).toBeVisible();
+    await semRolagemLateral(page);
+
+    const abas = page.getByRole("navigation", { name: "Documentos legais" });
+    await apertar(abas.getByRole("link", { name: "Termos de uso" }), hasTouch);
+    await expect(page).toHaveURL(/\/termos-de-uso$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Termos de uso" })).toBeVisible();
+    await expect(abas.getByRole("link", { name: "Termos de uso" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("main").getByText("[Texto a definir pelo advogado do sindicato]")).toBeVisible();
+  });
+});
