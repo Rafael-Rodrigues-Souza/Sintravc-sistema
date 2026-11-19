@@ -1,4 +1,4 @@
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -32,7 +32,11 @@ describe("Conteudo500", () => {
       horario: "Segunda a sexta",
     };
     const html = renderToStaticMarkup(
-      createElement(ProvedorSite, { contato, escolhaInicial: "essenciais", children: createElement(Conteudo500, { tentarDeNovo: nada }) }),
+      createElement(
+        ProvedorSite,
+        { contato, escolhaInicial: "essenciais" } as ComponentProps<typeof ProvedorSite>,
+        createElement(Conteudo500, { tentarDeNovo: nada }),
+      ),
     );
     expect(html).toContain(ERRO_500.seForUrgente);
     expect(html).toContain('href="https://wa.me/557734234959"');
