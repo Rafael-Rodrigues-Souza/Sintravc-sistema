@@ -476,3 +476,17 @@ body:has([data-barra-de-baixo]) [data-sonner-toaster][data-y-position="bottom"] 
     @apply bg-background text-foreground font-sans texto-corpo antialiased;
   }
 }
+
+/*
+ * Site público (#13): largura do conteúdo. No Figma desktop, 1200 px dentro de 1440 (120 px de
+ * cada lado); no celular, 16 px de margem; no tablet, 24 px.
+ */
+@utility conteudo-site {
+  width: 100%;
+  max-width: calc(1200px + 2 * 24px);
+  margin-inline: auto;
+  padding-inline: 16px;
+  @variant sm {
+    padding-inline: 24px;
+  }
+}

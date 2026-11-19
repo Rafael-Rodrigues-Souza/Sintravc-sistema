@@ -10,7 +10,7 @@ import { Campo } from "@/components/ui/campo";
  */
 export function VitrineBase({ titulo }: { titulo: string }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-10 px-6 py-12">
+    <div className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-10 px-6 py-12">
       <header className="flex items-center justify-between gap-4">
         <div>
           <p className="texto-eyebrow text-destaque-azul">SINTRAVC 2.0</p>
@@ -60,6 +60,6 @@ export function VitrineBase({ titulo }: { titulo: string }) {
           />
         </div>
       </section>
-    </main>
+    </div>
   );
 }
