@@ -115,6 +115,32 @@ test.describe("aviso de cookies (CA-US08.2, E56)", () => {
   });
 });
 
+test.describe("aviso de cookies quando o servidor não grava a escolha (E56, E23)", () => {
+  test("o aviso continua na tela e um aviso rápido pede para tentar de novo; depois, a escolha é gravada", async ({ page, context }) => {
+    // A escolha é gravada por uma server action (POST com o cabeçalho next-action): aqui ela falha.
+    let falhar = true;
+    await page.route("**/*", async (rota) => {
+      const pedido = rota.request();
+      if (falhar && pedido.method() === "POST" && (await pedido.headerValue("next-action"))) {
+        await rota.fulfill({ status: 500, body: "erro" });
+        return;
+      }
+      await rota.fallback();
+    });
+
+    await page.goto("/");
+    await avisoCookies(page).getByRole("button", { name: "Aceitar todos" }).click();
+    await expect(page.getByText("Não conseguimos guardar a sua escolha. Tente de novo.")).toBeVisible();
+    await expect(avisoCookies(page)).toBeVisible();
+    expect((await context.cookies()).find((c) => c.name === "sintravc_cookies")).toBeUndefined();
+
+    falhar = false;
+    await avisoCookies(page).getByRole("button", { name: "Aceitar todos" }).click();
+    await expect(avisoCookies(page)).toBeHidden();
+    await expect.poll(async () => (await context.cookies()).find((c) => c.name === "sintravc_cookies")?.value).toBe("todos");
+  });
+});
+
 test.describe("menu mobile do visitante", { tag: "@responsivo" }, () => {
   test("abre com as seções e Filiar-se pelo WhatsApp, sem Entrar, e fecha pelo X e pelo Esc (CA-US08.1)", async ({ page, hasTouch, baseURL }, testInfo) => {
     await semAviso(page, baseURL);

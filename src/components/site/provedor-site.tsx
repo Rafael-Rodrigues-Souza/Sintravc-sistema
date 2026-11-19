@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { escolherCookies } from "./consentimento";
 import type { EscolhaCookies } from "./consentimento-comum";
@@ -39,10 +40,18 @@ export function ProvedorSite({
   const [reaberto, setReaberto] = useState(false);
   const [salvando, iniciar] = useTransition();
 
+  // O aviso só fecha depois que o servidor confirma a gravação; se falhar, fica na tela e um aviso
+  // rápido pede para tentar de novo (E56, E23).
   const escolher = useCallback((nova: EscolhaCookies) => {
-    setEscolha(nova);
-    setReaberto(false);
-    iniciar(() => escolherCookies(nova));
+    iniciar(async () => {
+      const resultado = await escolherCookies(nova).catch(() => ({ ok: false }));
+      if (!resultado.ok) {
+        toast.error("Não conseguimos guardar a sua escolha. Tente de novo.");
+        return;
+      }
+      setEscolha(nova);
+      setReaberto(false);
+    });
   }, []);
   const abrirAviso = useCallback(() => setReaberto(true), []);
 

@@ -15,7 +15,7 @@ import { useSite } from "./provedor-site";
  * O link “Cookies” do rodapé reabre o aviso; nesse caso o foco vai para ele.
  */
 export function AvisoCookies() {
-  const { avisoAberto, escolha, escolher } = useSite();
+  const { avisoAberto, escolha, escolher, salvando } = useSite();
   const regiao = useRef<HTMLDivElement>(null);
   const reaberto = avisoAberto && escolha !== null;
 
@@ -33,6 +33,7 @@ export function AvisoCookies() {
           role="region"
           aria-label="Aviso de cookies"
           tabIndex={-1}
+          aria-busy={salvando}
           className="pointer-events-auto flex flex-col gap-4 rounded-[16px] bg-fundo-marinho-profundo px-5 py-5 text-texto-invertido shadow-[0_12px_16px_rgba(10,20,36,0.25)] outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo md:flex-row md:items-center md:gap-8 md:px-6 dark:border dark:border-sobre-escuro-borda"
         >
           <div className="flex flex-1 items-start gap-3">
@@ -47,10 +48,10 @@ export function AvisoCookies() {
             </p>
           </div>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
-            <Button variant="sobre-escuro" onClick={() => escolher("essenciais")} aria-pressed={escolha === "essenciais"}>
+            <Button variant="sobre-escuro" onClick={() => escolher("essenciais")} aria-pressed={escolha === "essenciais"} disabled={salvando}>
               Só essenciais
             </Button>
-            <Button onClick={() => escolher("todos")} aria-pressed={escolha === "todos"}>
+            <Button onClick={() => escolher("todos")} aria-pressed={escolha === "todos"} disabled={salvando}>
               Aceitar todos
             </Button>
           </div>
