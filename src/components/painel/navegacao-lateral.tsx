@@ -85,7 +85,8 @@ export function NavegacaoLateral({
         "lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[264px]",
       )}
     >
-      <Logo sempreBranca href="/painel" alt="SINTRAVC · Painel" className="alvo-toque h-16 self-start" />
+      {/* Centralizada, no eixo do “Criar conteúdo”: a logo nova é compacta e ficava solta no canto (#61). */}
+      <Logo sempreBranca href="/painel" alt="SINTRAVC · Painel" className="alvo-toque h-16 self-center" />
 
       {podeCriarConteudo ? (
         <MenuCriar podeCriarDocumento={podeCriarDocumento} alinhar="start">

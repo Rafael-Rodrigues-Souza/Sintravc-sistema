@@ -43,6 +43,16 @@ for (const tema of ["claro", "escuro"] as const) {
       // Só a versão branca aparece: a clara (do site) não entra no painel.
       await expect(page.locator('img[src*="sintravc-clara"]')).toHaveCount(0);
 
+      if (!telaEstreita(page)) {
+        // No menu lateral, a logo fica centralizada, no mesmo eixo do “Criar conteúdo”.
+        const meio = async (el: Locator) => {
+          const caixa = (await el.boundingBox())!;
+          return caixa.x + caixa.width / 2;
+        };
+        const criar = area.getByRole("button", { name: "Criar conteúdo" });
+        expect(Math.abs((await meio(link)) - (await meio(criar))), "logo no eixo do “Criar conteúdo”").toBeLessThanOrEqual(1);
+      }
+
       if (hasTouch) {
         const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: seletor });
         expect(pequenos.filter((p) => p.alvo.includes("SINTRAVC")), "a logo tem área de toque mínima").toEqual([]);
