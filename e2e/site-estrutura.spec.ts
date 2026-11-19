@@ -11,6 +11,7 @@ import { janelaEstreitaNoDesktop, semAnimacao, semRolagemLateral, telaEstreita }
  */
 
 const TELEFONE = "(77) 3423-4959";
+const HORARIO = "Segunda a sexta, das 8h às 11h e das 14h às 17h";
 const WHATSAPP = "https://wa.me/557734234959";
 const FILIACAO = `${WHATSAPP}?text=${encodeURIComponent("Olá! Quero me filiar ao SINTRAVC.")}`;
 
@@ -33,6 +34,9 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     await expect(page.getByTestId("barra-telefone")).toHaveText(TELEFONE);
     await expect(rodape(page).getByTestId("rodape-telefone")).toHaveText(TELEFONE);
     await expect(rodape(page)).toContainText("Rua Laudicéia Gusmão, 586 - Centro, Vitória da Conquista - BA");
+    await expect(rodape(page)).toContainText("CEP 45000-705");
+    await expect(rodape(page)).toContainText(HORARIO);
+    await expect(page.getByText(`Atendimento: ${HORARIO}`)).toBeVisible();
 
     const filiar = page.getByRole("link", { name: "Filiar-se pelo WhatsApp" });
     await expect(filiar).toHaveCount(2); // cabeçalho e rodapé

@@ -43,6 +43,8 @@ describe("ConfigSite: dados de exemplo (seed)", () => {
       telefone: "7734234959",
       whatsappRecepcao: "557734234959",
       email: "sintravcrodoviarios@gmail.com",
+      cep: "45000-705",
+      horario: "Segunda a sexta, das 8h às 11h e das 14h às 17h",
     });
     expect(config.mensagemFiliacao).toBe("Olá! Quero me filiar ao SINTRAVC.");
     expect(config.historia.marcos[0]).toMatchObject({ id: "fundacao", ano: "1993" });
@@ -79,5 +81,21 @@ describe("ConfigSite: atualização em até 1 minuto (RN43)", () => {
     expect((await lerConfigSite()).contato.telefone).toBe("7734234959");
     expect(erro).toHaveBeenCalled();
     erro.mockRestore();
+  });
+});
+
+describe("ConfigSite: CEP", () => {
+  it.each(["45000-705", "[CEP a definir pelo sindicato]"])("aceita %s", async (cep) => {
+    const dados = structuredClone(original) as ConfigSite;
+    dados.contato.cep = cep;
+    await gravar(dados);
+    expect((await lerConfigSite()).contato.cep).toBe(cep);
+  });
+
+  it("recusa CEP fora do formato 00000-000", async () => {
+    const dados = structuredClone(original) as ConfigSite;
+    dados.contato.cep = "45000705";
+    await gravar(dados);
+    await expect(lerConfigSite()).rejects.toThrow(/contato\.cep/);
   });
 });

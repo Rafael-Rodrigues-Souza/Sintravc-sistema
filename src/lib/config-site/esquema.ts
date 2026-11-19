@@ -11,7 +11,8 @@ export const esquemaConfigSite = z.object({
   contato: z.object({
     endereco: texto,
     cidade: texto,
-    cep: texto,
+    /** 00000-000, ou um marcador entre colchetes enquanto não houver. */
+    cep: z.string().trim().regex(/^(\d{5}-\d{3}|\[.+\])$/, "CEP: no formato 00000-000"),
     /** Só dígitos, com DDD: 7734234959. */
     telefone: z.string().regex(/^\d{10,11}$/, "Telefone: só dígitos, com DDD"),
     /** Só dígitos, com o 55 do Brasil e o DDD: 557734234959. É o número do wa.me. */

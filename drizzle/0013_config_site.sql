@@ -6,17 +6,18 @@ CREATE TABLE "config_site" (
 	CONSTRAINT "config_site_registro_unico" CHECK ("config_site"."id" = 'site')
 );
 --> statement-breakpoint
--- Dados do site (#13; RN43). Contato confirmado pelo sindicato em 18/11/2026 (comentário da issue #13).
+-- Dados do site (#13; RN43). Contato confirmado pelo sindicato em 18/11/2026 (comentário da issue #13);
+-- CEP e horário de atendimento informados pelo Rafael em 19/11/2026.
 -- Entre colchetes, o que ainda falta (D5): o site mostra esses textos como marcador visível.
 INSERT INTO config_site (id, dados) VALUES ('site', '{
   "contato": {
     "endereco": "Rua Laudicéia Gusmão, 586 - Centro",
     "cidade": "Vitória da Conquista - BA",
-    "cep": "[CEP a definir pelo sindicato]",
+    "cep": "45000-705",
     "telefone": "7734234959",
     "whatsappRecepcao": "557734234959",
     "email": "sintravcrodoviarios@gmail.com",
-    "horario": "[Horário de atendimento a definir pelo sindicato]"
+    "horario": "Segunda a sexta, das 8h às 11h e das 14h às 17h"
   },
   "mensagemFiliacao": "Olá! Quero me filiar ao SINTRAVC.",
   "redes": { "instagram": null, "youtube": null, "facebook": null, "canalWhatsapp": null },

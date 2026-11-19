@@ -156,7 +156,7 @@ export default async function PaginaContato() {
                 <br />
                 {contato.cidade}
                 <br />
-                <TextoDoSite texto={contato.cep} />
+                <TextoDoSite texto={contato.cep} prefixo="CEP" />
               </span>
             </p>
             <p className="texto-corpo flex gap-2.5 border-t border-borda-padrao pt-4 text-texto-secundario">

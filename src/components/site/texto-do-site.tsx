@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
  * Texto que pode estar pendente (D5): entre colchetes, aparece como marcador visível, fácil de achar
  * e de trocar quando o sindicato mandar o conteúdo.
  */
-export function TextoDoSite({ texto, className }: { texto: string; className?: string }) {
-  if (!ehMarcador(texto)) return <span className={className}>{texto}</span>;
+export function TextoDoSite({ texto, prefixo, className }: { texto: string; prefixo?: string; className?: string }) {
+  if (!ehMarcador(texto)) return <span className={className}>{prefixo ? `${prefixo} ${texto}` : texto}</span>;
   return <Marcador className={className}>{texto}</Marcador>;
 }
 

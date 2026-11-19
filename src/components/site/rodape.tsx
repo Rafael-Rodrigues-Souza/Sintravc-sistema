@@ -89,7 +89,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
             <span>
               {contato.endereco}, {contato.cidade}
               <br />
-              <TextoDoSite texto={contato.cep} />
+              <TextoDoSite texto={contato.cep} prefixo="CEP" />
             </span>
           </p>
           <p className="texto-corpo flex gap-2.5">
