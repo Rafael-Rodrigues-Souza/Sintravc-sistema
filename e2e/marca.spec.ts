@@ -36,14 +36,15 @@ for (const tema of ["claro", "escuro"] as const) {
 
       await entrarComoAdm(page, "/painel/conteudos", { toque: hasTouch });
       // Abaixo do menu lateral, a logo fica no topo do celular; acima, no menu lateral (E49).
-      const area = telaEstreita(page) ? page.locator("header").first() : page.getByRole("navigation", { name: "Menu do painel" });
+      const seletor = telaEstreita(page) ? "header" : "#menu-do-painel";
+      const area = page.locator(seletor).first();
       const link = area.getByRole("link", { name: "SINTRAVC · Painel" });
       await logoCarregada(link.getByRole("img"));
       // Só a versão branca aparece: a clara (do site) não entra no painel.
       await expect(page.locator('img[src*="sintravc-clara"]')).toHaveCount(0);
 
       if (hasTouch) {
-        const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "header" });
+        const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: seletor });
         expect(pequenos.filter((p) => p.alvo.includes("SINTRAVC")), "a logo tem área de toque mínima").toEqual([]);
         await apertar(link, true);
       } else {
