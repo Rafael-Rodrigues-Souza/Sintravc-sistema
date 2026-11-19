@@ -17,7 +17,7 @@ export function AlternarTemaSite() {
   const montado = useSyncExternalStore(semInscricao, () => true, () => false);
   const escuro = montado && resolvedTheme === "dark";
   const opcao =
-    "alvo-toque flex size-[34px] items-center justify-center rounded-full text-texto-secundario outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
+    "flex size-[34px] items-center pointer-coarse:size-11 justify-center rounded-full text-texto-secundario outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
 
   return (
     <div role="group" aria-label="Tema" className="flex items-center gap-0.5 rounded-full border border-borda-padrao bg-fundo-superficie-alt p-1">

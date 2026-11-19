@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { RESPONSIVO } from "../playwright.config";
+import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { apertar } from "./entrar";
 import { janelaEstreitaNoDesktop, semAnimacao, semRolagemLateral, telaEstreita } from "./responsivo";
 
@@ -270,5 +272,18 @@ test.describe("páginas de apoio: 404, Política de privacidade e Termos de uso 
     await expect(page.getByRole("heading", { level: 1, name: "Termos de uso" })).toBeVisible();
     await expect(abas.getByRole("link", { name: "Termos de uso" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("main").getByText("[Texto a definir pelo advogado do sindicato]")).toBeVisible();
+  });
+});
+
+test.describe("alvos de toque do site (RNF10, E48)", { tag: "@responsivo" }, () => {
+  test("no toque, nenhum link ou botão do site fica menor que o mínimo", async ({ page, hasTouch, baseURL }) => {
+    test.skip(!hasTouch, "só no toque");
+    await semAviso(page, baseURL);
+    for (const caminho of ["/sindicato/instituicao", "/sindicato/diretoria", "/contato", "/politica-de-privacidade", "/pagina-que-nao-existe"]) {
+      await page.goto(caminho);
+      const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "body" });
+      expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`), `${caminho}: alvos de toque pequenos`).toEqual([]);
+      await semRolagemLateral(page);
+    }
   });
 });

@@ -37,7 +37,7 @@ export default function NaoEncontrada() {
           </Button>
         </div>
         <nav aria-label="Atalhos">
-          <ul className="flex flex-wrap gap-x-5 gap-y-1 pt-3">
+          <ul className="flex flex-wrap gap-x-5 gap-y-1 pt-3 pointer-coarse:vao-y-toque-8">
             {ATALHOS.map((a) => (
               <li key={a.href}>
                 <Link

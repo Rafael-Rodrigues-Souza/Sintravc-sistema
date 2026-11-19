@@ -143,7 +143,7 @@ export default async function PaginaContato() {
       {/* Sede */}
       <section aria-labelledby="sede" className="conteudo-site flex flex-col gap-8 pb-14 lg:gap-10 lg:pb-20">
         <CabecalhoDeSecao id="sede" eyebrow="Onde estamos" titulo="Visite nossa sede" />
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-6">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-6">
           <address className="flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-6 not-italic">
             <span className="flex size-11 items-center justify-center rounded-[12px] bg-fundo-marinho text-destaque-amarelo">
               <IconeFigma src="/site/icone-predio.svg" tamanho={22} />
@@ -167,7 +167,7 @@ export default async function PaginaContato() {
               <IconeFigma src="/site/icone-info.svg" tamanho={16} className="text-destaque-azul" />
               Confirme o horário antes de se deslocar.
             </p>
-            <Button asChild className="mt-auto">
+            <Button asChild className="mt-auto h-auto min-h-12 py-3 whitespace-normal">
               <a href={linkRota(enderecoCompleto)} target="_blank" rel="noopener noreferrer">
                 <IconeFigma src="/site/icone-seta-diagonal.svg" tamanho={18} />
                 Abrir rota no Google Maps

@@ -13,7 +13,7 @@ export function BarraSuperior({ config }: { config: ConfigSite }) {
   const redes = redesComLink(config.redes);
   return (
     <div className="hidden bg-fundo-marinho-profundo lg:block print:hidden">
-      <div className="conteudo-site texto-pequeno flex items-center justify-between gap-6 py-2.5 text-texto-invertido-sec">
+      <div className="conteudo-site texto-pequeno flex items-center justify-between gap-6 py-2.5 text-texto-invertido-sec pointer-coarse:py-[13px]">
         <div className="flex items-center gap-7">
           <p className="flex items-center gap-2">
             <IconeFigma src="/site/icone-local.svg" tamanho={16} />
@@ -21,7 +21,7 @@ export function BarraSuperior({ config }: { config: ConfigSite }) {
           </p>
           <p className="flex items-center gap-2">
             <IconeFigma src="/site/icone-telefone.svg" tamanho={16} />
-            <a href={linkTelefone(config.contato.telefone)} data-testid="barra-telefone" className="rounded-sm outline-none hover:text-texto-invertido focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
+            <a href={linkTelefone(config.contato.telefone)} data-testid="barra-telefone" className="alvo-toque rounded-sm outline-none hover:text-texto-invertido focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
               {formatarTelefone(config.contato.telefone)}
             </a>
           </p>

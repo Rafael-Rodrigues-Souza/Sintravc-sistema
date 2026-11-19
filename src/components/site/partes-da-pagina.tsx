@@ -16,7 +16,7 @@ export function Migalhas({ itens, sobreEscuro = false }: { itens: { rotulo: stri
               <Link
                 href={item.href}
                 className={cn(
-                  "rounded-sm outline-none focus-visible:ring-2",
+                  "alvo-toque rounded-sm outline-none focus-visible:ring-2",
                   sobreEscuro ? "hover:text-texto-invertido focus-visible:ring-destaque-amarelo" : "hover:text-texto-primario focus-visible:ring-ring",
                 )}
               >

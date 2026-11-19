@@ -17,7 +17,7 @@ function Coluna({ titulo, itens, extra }: { titulo: string; itens: ItemDeMenu[];
   return (
     <div className="flex flex-col gap-3.5">
       <h2 className="texto-eyebrow text-destaque-amarelo">{titulo}</h2>
-      <ul className="texto-corpo flex flex-col gap-1 text-texto-invertido-sec">
+      <ul className="texto-corpo flex flex-col gap-[7px] text-texto-invertido-sec pointer-coarse:vao-y-toque-8 pointer-coarse:py-1.5">
         {itens.map((item) => (
           <li key={item.href}>
             <Link href={item.href} className={`${link} alvo-toque inline-flex min-h-8 items-center whitespace-nowrap`}>
@@ -94,7 +94,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
           </p>
           <p className="texto-corpo flex gap-2.5">
             <IconeFigma src="/site/icone-telefone.svg" tamanho={16} className="mt-1" />
-            <a href={linkTelefone(contato.telefone)} className={link} data-testid="rodape-telefone">
+            <a href={linkTelefone(contato.telefone)} className={`${link} alvo-toque`} data-testid="rodape-telefone">
               {formatarTelefone(contato.telefone)}
             </a>
           </p>
@@ -108,7 +108,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
       <div className="conteudo-site">
         <div className="texto-pequeno flex flex-col gap-3 border-t border-sobre-escuro-divisor pt-6 pb-7 lg:flex-row lg:items-center lg:justify-between">
           <p>© {ano} SINTRAVC — Sindicato dos Rodoviários de Vitória da Conquista</p>
-          <ul className="flex flex-wrap gap-x-6 gap-y-1 text-texto-invertido">
+          <ul className="flex flex-wrap gap-x-6 gap-y-1 text-texto-invertido pointer-coarse:vao-y-toque-8">
             {[POLITICA, TERMOS].map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className={`${link} alvo-toque inline-flex min-h-8 items-center whitespace-nowrap`}>
