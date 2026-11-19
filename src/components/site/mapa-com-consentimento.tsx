@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
+import { MAPA } from "@/conteudo/site";
 import { cn } from "@/lib/utils";
 
 import { useSite } from "./provedor-site";
@@ -33,7 +34,7 @@ export function MapaComConsentimento({ src, className }: { src: string; classNam
             <IconeFigma src="/site/icone-local.svg" tamanho={24} />
           </span>
           <p className="texto-corpo max-w-[360px] text-texto-secundario">
-            O mapa é do Google e só carrega com a sua permissão. Ao carregar, o Google pode guardar cookies.
+            {MAPA.semPermissao}
           </p>
           <Button variant="secundario" onClick={() => setCarregarAqui(true)}>
             Carregar mapa

@@ -6,8 +6,9 @@ import { MolduraSite } from "@/components/site/moldura-site";
 import { CONTATO, DOCUMENTOS, NOTICIAS, SINDICATO } from "@/components/site/navegacao";
 import { PaginaDeErro } from "@/components/site/pagina-de-erro";
 import { Button } from "@/components/ui/button";
+import { ERRO_404 } from "@/conteudo/site";
 
-export const metadata: Metadata = { title: "Página não encontrada" };
+export const metadata: Metadata = { title: ERRO_404.titulo };
 
 const ATALHOS = [
   { ...DOCUMENTOS.itens.find((i) => i.rotulo === "Editais")!, icone: "/site/icone-documento.svg" },
@@ -22,8 +23,8 @@ export default function NaoEncontrada() {
     <MolduraSite>
       <PaginaDeErro
         codigo="404"
-        titulo="Página não encontrada"
-        texto="O endereço pode ter mudado ou o conteúdo saiu do ar. Volte ao início ou use um dos atalhos abaixo."
+        titulo={ERRO_404.titulo}
+        texto={ERRO_404.texto}
       >
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild>

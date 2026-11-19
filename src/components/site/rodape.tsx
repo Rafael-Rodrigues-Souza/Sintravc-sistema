@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IconeFigma } from "@/components/icone-figma";
 import type { ConfigSite } from "@/lib/config-site";
 import { formatarTelefone, linkTelefone } from "@/lib/config-site/links";
+import { RODAPE } from "@/conteudo/site";
 import { anoNaBahia } from "@/lib/datas";
 
 import { BotaoCookies } from "./aviso-cookies";
@@ -46,7 +47,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
       <div className="conteudo-site flex flex-col gap-10 pt-12 pb-10 lg:flex-row lg:justify-between lg:gap-12 lg:pt-[72px] lg:pb-14">
         <div className="flex flex-col gap-5 lg:max-w-[300px]">
           <Logo sempreBranca className="h-16" />
-          <p className="texto-corpo">Sindicato dos Rodoviários de Vitória da Conquista. Representando quem move a cidade.</p>
+          <p className="texto-corpo">{RODAPE.descricao}</p>
           {redes.length > 0 ? (
             <ul className="flex gap-2.5" aria-label="Redes sociais">
               {redes.map((r) => (
@@ -108,7 +109,9 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
 
       <div className="conteudo-site">
         <div className="texto-pequeno flex flex-col gap-3 border-t border-sobre-escuro-divisor pt-6 pb-7 lg:flex-row lg:items-center lg:justify-between">
-          <p>© {ano} SINTRAVC — Sindicato dos Rodoviários de Vitória da Conquista</p>
+          <p>
+            © {ano} {RODAPE.nomeCompleto}
+          </p>
           <ul className="flex flex-wrap gap-x-6 gap-y-1 text-texto-invertido pointer-coarse:vao-y-toque-8">
             {[POLITICA, TERMOS].map((item) => (
               <li key={item.href}>

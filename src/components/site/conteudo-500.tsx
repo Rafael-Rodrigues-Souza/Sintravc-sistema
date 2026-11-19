@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
+import { ERRO_500 } from "@/conteudo/site";
 
 import { PaginaDeErro } from "./pagina-de-erro";
 import { useSiteOpcional } from "./provedor-site";
@@ -22,8 +23,8 @@ export function Conteudo500({ tentarDeNovo }: { tentarDeNovo: () => void }) {
   return (
     <PaginaDeErro
       codigo="500"
-      titulo="O site está fora do ar por um momento"
-      texto="Pode ser um erro nosso ou uma manutenção programada. Não foi nada que você fez. Tente de novo em alguns minutos. Se precisar falar com o sindicato agora, chame no WhatsApp."
+      titulo={ERRO_500.titulo}
+      texto={site ? `${ERRO_500.texto} ${ERRO_500.seForUrgente}` : ERRO_500.texto}
     >
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button onClick={tentarDeNovo}>Tentar de novo</Button>

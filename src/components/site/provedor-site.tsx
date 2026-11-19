@@ -3,6 +3,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { AVISO_COOKIES } from "@/conteudo/site";
+
 import { escolherCookies } from "./consentimento";
 import type { EscolhaCookies } from "./consentimento-comum";
 
@@ -46,7 +48,7 @@ export function ProvedorSite({
     iniciar(async () => {
       const resultado = await escolherCookies(nova).catch(() => ({ ok: false }));
       if (!resultado.ok) {
-        toast.error("Não conseguimos guardar a sua escolha. Tente de novo.");
+        toast.error(AVISO_COOKIES.falhaAoGravar);
         return;
       }
       setEscolha(nova);

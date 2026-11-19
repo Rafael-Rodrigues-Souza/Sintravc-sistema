@@ -1,5 +1,7 @@
 "use client";
 
+import { ERRO_500 } from "@/conteudo/site";
+
 import "./globals.css";
 
 /**
@@ -12,10 +14,8 @@ export default function ErroGlobal({ reset }: { error: Error & { digest?: string
       <body className="flex min-h-dvh items-center bg-fundo-pagina font-sans">
         <main className="conteudo-site flex flex-col gap-4 py-14">
           <p className="texto-eyebrow text-destaque-azul">Erro 500</p>
-          <h1 className="texto-titulo-secao-mobile text-texto-primario">O site está fora do ar por um momento</h1>
-          <p className="texto-corpo text-texto-secundario">
-            Pode ser um erro nosso ou uma manutenção programada. Não foi nada que você fez. Tente de novo em alguns minutos.
-          </p>
+          <h1 className="texto-titulo-secao-mobile text-texto-primario">{ERRO_500.titulo}</h1>
+          <p className="texto-corpo text-texto-secundario">{ERRO_500.texto}</p>
           <button
             type="button"
             onClick={reset}

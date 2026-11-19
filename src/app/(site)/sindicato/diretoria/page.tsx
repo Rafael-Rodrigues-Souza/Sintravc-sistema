@@ -7,7 +7,7 @@ import { SINDICATO } from "@/components/site/navegacao";
 import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas } from "@/components/site/partes-da-pagina";
 import { TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
-import { DIRETORIA, iniciais, type MembroDaDiretoria } from "@/conteudo/site";
+import { DIRETORIA, FALAR_COM_A_DIRETORIA, iniciais, type MembroDaDiretoria } from "@/conteudo/site";
 import { lerConfigSite } from "@/lib/config-site";
 import { linkWhatsApp } from "@/lib/config-site/links";
 import { cn } from "@/lib/utils";
@@ -117,10 +117,8 @@ export default async function PaginaDiretoria() {
           ))}
           <li className="flex flex-col gap-3 rounded-[20px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto lg:p-6">
             <IconeFigma src="/site/icone-whatsapp.svg" tamanho={24} />
-            <h3 className="texto-titulo-card">Quer falar com a diretoria?</h3>
-            <p className="texto-pequeno flex-1 opacity-85">
-              Fale com a recepção pelo WhatsApp ou na sede para levar uma demanda ou marcar uma conversa com a diretoria.
-            </p>
+            <h3 className="texto-titulo-card">{FALAR_COM_A_DIRETORIA.titulo}</h3>
+            <p className="texto-pequeno flex-1 opacity-85">{FALAR_COM_A_DIRETORIA.texto}</p>
             <Button asChild variant="marinho" className="h-auto min-h-12 w-full py-3 whitespace-normal">
               <a href={whatsapp} target="_blank" rel="noopener noreferrer">
                 <IconeFigma src="/site/icone-whatsapp.svg" tamanho={18} />

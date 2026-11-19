@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Alerta } from "@/components/ui/alerta";
 import type { TextoJuridico } from "@/conteudo/juridico";
+import { PAGINA_LEGAL } from "@/conteudo/site";
 import { cn } from "@/lib/utils";
 
 import { POLITICA, TERMOS } from "./navegacao";
@@ -19,7 +20,7 @@ export function PaginaLegal({ titulo, href, texto }: { titulo: string; href: str
       <section aria-labelledby="titulo-pagina" className="bg-fundo-superficie-alt">
         <div className="conteudo-site flex flex-col gap-4 pt-8 lg:pt-12">
           <Migalhas itens={[{ rotulo: "Início", href: "/" }, { rotulo: titulo }]} />
-          <Eyebrow className="mt-2">Transparência</Eyebrow>
+          <Eyebrow className="mt-2">{PAGINA_LEGAL.eyebrow}</Eyebrow>
           <h1 id="titulo-pagina" className="texto-titulo-secao-mobile text-texto-primario lg:texto-titulo-secao">
             {titulo}
           </h1>
@@ -66,8 +67,8 @@ export function PaginaLegal({ titulo, href, texto }: { titulo: string; href: str
           </nav>
         ) : null}
         <div className="flex max-w-[760px] flex-col gap-8">
-          <Alerta tipo="informacao" titulo="Texto em validação">
-            O texto final é escrito e aprovado pelo advogado do sindicato antes da publicação.
+          <Alerta tipo="informacao" titulo={PAGINA_LEGAL.alertaTitulo}>
+            {PAGINA_LEGAL.alertaTexto}
           </Alerta>
           {secoes.length > 0 ? (
             secoes.map((s, i) => (

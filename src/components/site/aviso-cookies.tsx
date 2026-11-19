@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
+import { AVISO_COOKIES } from "@/conteudo/site";
 
 import { POLITICA } from "./navegacao";
 import { useSite } from "./provedor-site";
@@ -39,8 +40,7 @@ export function AvisoCookies() {
           <div className="flex flex-1 items-start gap-3">
             <IconeFigma src="/site/icone-escudo-check.svg" tamanho={22} className="text-destaque-amarelo" />
             <p className="texto-pequeno">
-              Usamos só os cookies essenciais para o site funcionar. Vídeos do YouTube e o mapa do Google só carregam com
-              a sua permissão. Saiba mais na{" "}
+              {AVISO_COOKIES.texto}{" "}
               <Link href={POLITICA.href} className="rounded-sm text-destaque-amarelo underline outline-none focus-visible:ring-2 focus-visible:ring-destaque-amarelo">
                 Política de privacidade
               </Link>

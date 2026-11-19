@@ -88,3 +88,84 @@ export function iniciais(nome: string): string {
   const ultima = partes.length > 1 ? partes[partes.length - 1]![0] : "";
   return (primeira + ultima).toUpperCase();
 }
+
+/** Seção Filie-se (Figma 54:907 / 54:918). */
+export const FILIE_SE = {
+  eyebrow: "Filie-se",
+  titulo: "Juntos, a categoria é mais forte.",
+  texto:
+    "Associados contam com assistência jurídica, convênios e benefícios exclusivos. A filiação é feita pela recepção do sindicato, direto pelo WhatsApp.",
+};
+
+/** Rodapé (Figma 295:51171 / 295:51234). */
+export const RODAPE = {
+  descricao: "Sindicato dos Rodoviários de Vitória da Conquista. Representando quem move a cidade.",
+  nomeCompleto: "SINTRAVC — Sindicato dos Rodoviários de Vitória da Conquista",
+};
+
+/** Aviso de cookies (Figma 158:9425 / 159:9442; E56). O link para a Política vem depois de `texto`. */
+export const AVISO_COOKIES = {
+  texto:
+    "Usamos só os cookies essenciais para o site funcionar. Vídeos do YouTube e o mapa do Google só carregam com a sua permissão. Saiba mais na",
+  falhaAoGravar: "Não conseguimos guardar a sua escolha. Tente de novo.",
+};
+
+/** Mapa do Google antes da permissão (E56). */
+export const MAPA = {
+  semPermissao: "O mapa é do Google e só carrega com a sua permissão. Ao carregar, o Google pode guardar cookies.",
+};
+
+/** Página 404 (Figma 159:8590 / 159:8788). */
+export const ERRO_404 = {
+  titulo: "Página não encontrada",
+  texto: "O endereço pode ter mudado ou o conteúdo saiu do ar. Volte ao início ou use um dos atalhos abaixo.",
+};
+
+/** Página 500 (N2; Figma 295:58454 / 295:58768). `seForUrgente` só aparece quando há WhatsApp. */
+export const ERRO_500 = {
+  titulo: "O site está fora do ar por um momento",
+  texto: "Pode ser um erro nosso ou uma manutenção programada. Não foi nada que você fez. Tente de novo em alguns minutos.",
+  seForUrgente: "Se precisar falar com o sindicato agora, chame no WhatsApp.",
+};
+
+/** Contato (Figma 87:629 / 89:964). Os dados (telefone, e-mail, endereço…) vêm da ConfigSite. */
+export const CONTATO_PAGINA = {
+  hero: {
+    eyebrow: "Fale com a gente",
+    titulo: "Entre em contato",
+    texto: "Estamos aqui para ouvir você. Fale com o SINTRAVC para tirar dúvidas, buscar orientação ou conversar com nossa equipe.",
+    presencial: "Atendimento presencial",
+  },
+  canais: {
+    eyebrow: "Canais de atendimento",
+    titulo: "Como podemos ajudar?",
+    texto: "Escolha o canal mais conveniente para falar com o sindicato.",
+    telefone: "Ligue para falar diretamente com nossa equipe.",
+    whatsapp: "Envie uma mensagem e receba orientação pelo celular.",
+    email: "Mande sua dúvida por escrito, com documentos se precisar.",
+  },
+  sede: {
+    eyebrow: "Onde estamos",
+    titulo: "Visite nossa sede",
+    nome: "SINTRAVC — Sede",
+    confirmeOHorario: "Confirme o horário antes de se deslocar.",
+  },
+  redes: {
+    eyebrow: "Siga o sindicato",
+    titulo: "Acompanhe o SINTRAVC nas redes sociais",
+    texto: "Fique por dentro de notícias, comunicados, campanhas e atividades do sindicato.",
+  },
+};
+
+/** Cartão amarelo da Diretoria. */
+export const FALAR_COM_A_DIRETORIA = {
+  titulo: "Quer falar com a diretoria?",
+  texto: "Fale com a recepção pelo WhatsApp ou na sede para levar uma demanda ou marcar uma conversa com a diretoria.",
+};
+
+/** Política de privacidade e Termos de uso (D6): o alerta enquanto o texto não é o aprovado. */
+export const PAGINA_LEGAL = {
+  eyebrow: "Transparência",
+  alertaTitulo: "Texto em validação",
+  alertaTexto: "O texto final é escrito e aprovado pelo advogado do sindicato antes da publicação.",
+};
