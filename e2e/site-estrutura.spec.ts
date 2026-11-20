@@ -253,6 +253,10 @@ test.describe("Sindicato: Instituição e Diretoria (US07)", { tag: "@responsivo
 
     expect(vice, `vice (${vice}) maior que o cartão (${cartao})`).toBeGreaterThan(cartao);
     expect(presidente, `presidente (${presidente}) maior que o vice (${vice})`).toBeGreaterThan(vice);
+
+    // Os números do topo: no celular e no tablet em pé, numa faixa de 3 colunas (58:1384); no desktop, em lista (58:996).
+    const topos = await page.getByRole("region", { name: "Diretoria" }).locator("dl > div").evaluateAll((itens) => itens.map((i) => Math.round(i.getBoundingClientRect().top)));
+    expect(new Set(topos).size, `topos dos números: ${topos.join(", ")}`).toBe(telaEstreita(page) ? 1 : 3);
   });
 });
 

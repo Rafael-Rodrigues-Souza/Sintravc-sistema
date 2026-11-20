@@ -74,15 +74,16 @@ export default async function PaginaDiretoria() {
             </h1>
             <p className="texto-corpo max-w-[520px] text-texto-invertido-sec lg:texto-corpo-grande">{DIRETORIA.descricao}</p>
           </div>
-          <dl className="flex flex-col divide-y divide-sobre-escuro-divisor rounded-[20px] border border-sobre-escuro-borda bg-sobre-escuro-superficie px-5 lg:min-w-[340px]">
+          {/* No celular e no tablet em pé, uma faixa de 3 colunas sem ícones (58:1384); no desktop, a lista com ícones (58:996). */}
+          <dl className="grid grid-cols-3 divide-x divide-sobre-escuro-divisor rounded-[16px] border border-sobre-escuro-borda bg-sobre-escuro-superficie lg:flex lg:min-w-[340px] lg:flex-col lg:divide-x-0 lg:divide-y lg:rounded-[20px] lg:px-5">
             {numeros.map((n) => (
-              <div key={n.rotulo} className="flex items-center gap-4 py-4">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-destaque-amarelo text-destaque-amarelo-texto">
+              <div key={n.rotulo} className="flex min-w-0 items-start gap-4 p-3 lg:items-center lg:px-0 lg:py-4">
+                <span className="hidden size-10 shrink-0 items-center justify-center rounded-[10px] bg-destaque-amarelo text-destaque-amarelo-texto lg:flex">
                   <IconeFigma src={n.icone} tamanho={20} />
                 </span>
-                <div className="flex flex-col-reverse">
+                <div className="flex min-w-0 flex-col-reverse gap-1 lg:gap-0">
                   <dt className="texto-pequeno text-texto-invertido-sec">{n.rotulo}</dt>
-                  <dd className="font-condensed text-[26px] leading-tight font-bold">
+                  <dd className="font-condensed text-[18px] leading-tight font-bold [overflow-wrap:anywhere] text-destaque-amarelo lg:text-[26px] lg:text-texto-invertido">
                     <TextoDoSite texto={n.valor} />
                   </dd>
                 </div>
