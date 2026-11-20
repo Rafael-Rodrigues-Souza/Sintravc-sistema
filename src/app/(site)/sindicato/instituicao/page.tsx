@@ -68,7 +68,10 @@ export default async function PaginaInstituicao() {
                 </a>
               </Button>
               <Button asChild variant="sobre-escuro">
-                <Link href={LINKS.contato.href}>Fale com o sindicato</Link>
+                <Link href={LINKS.contato.href}>
+                  <IconeFigma src="/site/icone-conversa.svg" tamanho={18} />
+                  Fale com o sindicato
+                </Link>
               </Button>
             </>
           }
