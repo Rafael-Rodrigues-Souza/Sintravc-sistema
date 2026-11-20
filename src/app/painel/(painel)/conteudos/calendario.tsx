@@ -116,6 +116,10 @@ export function Calendario({
     mostrarComunicados ? comunicados.filter((c) => c.primeiroDia <= data && data <= c.ultimoDia) : [];
   const parametros = useSearchParams();
   const grade = React.useMemo(() => gradeDoMes(ano, mes), [ano, mes]);
+  const linhasDasBarras = React.useMemo(
+    () => (mostrarComunicados ? linhasPorSemana(grade, comunicados) : new Map<string, (ComunicadoNaTela | null)[]>()),
+    [grade, comunicados, mostrarComunicados],
+  );
   const mesDeHoje = hoje.slice(0, 7) === `${ano}-${String(mes).padStart(2, "0")}`;
   const [diaEscolhido, setDiaEscolhido] = React.useState(() => (mesDeHoje ? hoje : grade.find((d) => d.doMes)!.data));
   const [arrastando, setArrastando] = React.useState<Arrastado | null>(null);
@@ -260,7 +264,7 @@ export function Calendario({
                 hoje={hoje}
                 escolhido={dia.data === diaEscolhido}
                 itens={dias[dia.data] ?? []}
-                comunicados={comunicadosDoDia(dia.data)}
+                comunicados={linhasDasBarras.get(dia.data) ?? []}
                 soltavel={podeSoltar(dia.data)}
                 sobre={sobre === dia.data}
                 podeArrastar={podeAgendar}
@@ -456,7 +460,8 @@ function Dia({
   aoEntrar: () => void;
   aoSair: () => void;
   aoSoltar: (e: React.DragEvent, data: string) => void;
-  comunicados: ComunicadoNaTela[];
+  /** Uma posição por linha da semana: o comunicado daquele dia, ou vazio para manter as barras alinhadas. */
+  comunicados: (ComunicadoNaTela | null)[];
 }) {
   const ehHoje = dia.data === hoje;
   const domingo = new Date(`${dia.data}T12:00:00Z`).getUTCDay() === 0;
@@ -497,7 +502,8 @@ function Dia({
       >
         {dia.dia}
       </button>
-      {comunicados.map((c) => {
+      {comunicados.map((c, linha) => {
+        if (!c) return <span key={`vazio-${linha}`} aria-hidden className="h-6" />;
         const comeca = c.primeiroDia === dia.data;
         const termina = c.ultimoDia === dia.data;
         // O texto e o foco ficam no começo da barra e no começo de cada semana; o resto é só a cor.
@@ -639,4 +645,32 @@ function ComunicadosDoMes({ comunicados }: { comunicados: ComunicadoNaTela[] }) 
       </ul>
     </section>
   );
+}
+
+/**
+ * As barras de comunicado de cada dia, em linhas fixas por semana (E17): o mesmo comunicado fica na
+ * mesma altura do domingo ao sábado, e um dia sem ele naquela linha recebe um espaço vazio. A linha é
+ * a primeira livre, na ordem de início.
+ */
+function linhasPorSemana(grade: DiaDaGrade[], comunicados: ComunicadoNaTela[]) {
+  const porDia = new Map<string, (ComunicadoNaTela | null)[]>();
+  for (let inicio = 0; inicio < grade.length; inicio += 7) {
+    const semana = grade.slice(inicio, inicio + 7).map((d) => d.data);
+    const primeiro = semana[0]!;
+    const ultimo = semana.at(-1)!;
+    const daSemana = comunicados.filter((c) => c.primeiroDia <= ultimo && c.ultimoDia >= primeiro);
+    const linhas: ComunicadoNaTela[][] = [];
+    for (const c of daSemana) {
+      const livre = linhas.find((l) => l.every((outro) => outro.ultimoDia < c.primeiroDia || outro.primeiroDia > c.ultimoDia));
+      if (livre) livre.push(c);
+      else linhas.push([c]);
+    }
+    for (const data of semana) {
+      const doDia = linhas.map((l) => l.find((c) => c.primeiroDia <= data && data <= c.ultimoDia) ?? null);
+      // Sem nada nas últimas linhas, não reserva espaço à toa.
+      while (doDia.length > 0 && doDia.at(-1) === null) doDia.pop();
+      porDia.set(data, doDia);
+    }
+  }
+  return porDia;
 }

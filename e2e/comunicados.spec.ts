@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import postgres from "postgres";
 
-import { ambienteE2E } from "../playwright.config";
+import { ambienteE2E, RESPONSIVO } from "../playwright.config";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { bahiaEmCampos } from "../src/lib/datas";
+import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { apertar } from "./entrar";
 import { entrarComo, semRolagemLateral, telaEstreita } from "./responsivo";
 
@@ -282,9 +283,20 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
     }
     await semRolagemLateral(page);
 
+    // Um segundo no ar, para a faixa ter setas e Pausar.
+    await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), hasTouch);
+    await preencher(page, { mensagem: `Segundo ${mensagem}`, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, estreita ? /^Publicar$/ : /^Publicar agora$/, { toque: hasTouch });
+    await expect(formulario(page)).toBeHidden();
+
     await page.goto("/contato");
     await expect(faixa(page)).toContainText(mensagem);
+    await expect(faixa(page).getByText("Comunicado 1 de 2")).toBeVisible();
     await semRolagemLateral(page);
+    if (hasTouch) {
+      // Setas, Pausar, X e “Saiba mais” com a área de toque mínima (E48).
+      const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: '[data-testid="faixa-comunicado"]' });
+      expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);
+    }
     const fechar = faixa(page).getByRole("button", { name: "Fechar comunicado" });
     await expect(fechar).toBeVisible();
     await apertar(fechar, hasTouch);

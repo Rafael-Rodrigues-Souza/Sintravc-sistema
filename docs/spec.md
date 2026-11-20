@@ -55,7 +55,7 @@ Notação: `PK` chave primária · `FK` chave estrangeira · `UQ` única · `?` 
 | **ConteudoLink** | `conteudo_id` FK; `tipo` (fonte, anexo); `titulo`; `url?`; `midia_id?`; `visivel`; `ordem` | — |
 | **ConteudoVersao** | `conteudo_id` FK; `versao`; `snapshot` (JSON); `criado_por` FK; `criado_em` | Retrato completo do que foi ao ar, gerado a cada publicação (inclusive “Publicar alterações”); o salvamento automático não gera (E31, E42). UQ (`conteudo_id`, `versao`). Restaurável como rascunho. |
 | **VisualizacaoDiaria** | `conteudo_id` FK; `dia`; `total`; PK composta | Contador anônimo para “Mais lidas” (E30). |
-| **Comunicado** | `id`; `mensagem` (≤ 140); `link_conteudo_id?` FK ou `link_url?`; `inicio`; `fim`; `ordem_fila`; `estado` (rascunho, agendado, publicado, encerrado); `encerrado_por?` | É faixa, não Conteudo (RN14, C3). Pode ser duplicado depois de encerrado. |
+| **Comunicado** | `id`; `mensagem` (≤ 140); `link_conteudo_id?` FK ou `link_url?`; `inicio?`; `fim?` (vazios só no rascunho); `ordem_fila`; `estado` (rascunho, agendado, publicado, encerrado); `ja_publicado`; `publicado_em?`; `encerrado_em?`; `encerrado_por?` (vazio quando o sistema encerrou no fim); `criado_por` FK; `atualizado_por` FK | É faixa, não Conteudo (RN14, C3). O site e as abas seguem o relógio (`inicio ≤ agora < fim`); a T02 só acerta o estado (E58). No ar, só o começo não muda. Pode ser duplicado depois de encerrado. Rascunho nunca publicado pode ser excluído pelo ADM ou por quem criou (E07, E58). |
 | **Episodio** | `id`; `numero` UQ; `youtube_id` UQ; `titulo`; `resumo?`; `tema_categoria_id?` FK (escopo radio); `exibicao_em`; `duracao_seg?`; `capa_url`; `ultimo_programa` (UQ parcial: só um true); `estado` | Nenhum vídeo é guardado (RN17). Tema vem da Categoria (E15). |
 | **DestaqueHome** | `id`; `versao` (rascunho ou publicado); `area` (carrossel, lista); `posicao`; `modo` (auto, escolhido); `item_tipo` (noticia, episodio, programa); `item_id?`; `entra_em?`; `sai_em?`; `escolhido_por?` | Carrossel com até 5 itens; lista com 3 posições. Só esta área controla a Home (E13). “Publicar alterações” copia o rascunho para o publicado. |
 | **Parceiro** | `id`; `nome`; `logo_midia_id` FK; `categoria_id` FK; `desconto_pct` (0–100); `como_usar?`; `publico` (associado, associado e dependentes); `comeca_em?`; `valido_ate?`; `endereco_ou_site?`; `estado` | Só o ADM. Agendado quando `comeca_em` é futuro; vai para Arquivado ao vencer (RN57). |
@@ -136,7 +136,8 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
   - é faixa em todas as páginas (até 140 caracteres), com período;
   - entra e sai do ar sozinho e alterna na fila;
   - “Encerrar agora” pede confirmação;
-  - pode ser duplicado (RN14).
+  - pode ser duplicado (RN14);
+  - no ar, edita a mensagem, o link e o fim, mas não o começo; a faixa alterna a cada `comunicados.alternar_segundos`, com pausa, e o X do visitante guarda os fechados num cookie (E58).
 - **Episódio:** usa o link do YouTube e o player só carrega no clique. Marcar “Último programa” substitui o anterior (RN17, R12).
 - **Home:** só a área Página inicial controla os destaques, com rascunho e “Publicar alterações” (E13). No editor, o link “Destacar na Home” só vale para notícia publicada; no rascunho fica travado (E43).
 - **Notícia fixada:** uma por vez no topo da página Notícias (RN58).
@@ -289,7 +290,7 @@ Todas as tarefas são idempotentes, com nova tentativa e registro de falha (RNF1
 | # | Tarefa | Quando | O que faz | Fase |
 |---|---|---|---|---|
 | T01 | Publicar agendados | No horário (job por item) | Notícia ou documento agendado → publicado com a cópia atual; gera versão, Atividade (com o atraso, se o servidor estava fora do ar) e, se for documento, aviso aos associados (Fase 2). Pedido único por (item, hora marcada), posto na fila na transação de quem agendou; pedido velho não faz nada. Tentativas pelo `Parametro` (`tarefas.*`). Falha de vez → volta a Rascunho; notificação e e-mail M06 para quem agendou e os ADMs ativos (E21, E44). | 1 |
-| T02 | Comunicados | No início e no fim do período | Entra e sai do ar; Atividade. | 1 |
+| T02 | Comunicados | No início e no fim do período | Acerta o estado (agendado → publicado → encerrado) e grava a Atividade com o atraso. A faixa já segue o relógio; pedido velho não faz nada (E58). | 1 |
 | T03 | Episódios agendados | No horário | Publica. | 1 |
 | T04 | Destaques da Home | Em `entra_em` e `sai_em` | Entra e sai do carrossel. | 1 |
 | T05 | Notícia fixada | Em `fixada_ate` | Desafixa. | 1 |

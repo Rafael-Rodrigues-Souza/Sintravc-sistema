@@ -81,15 +81,15 @@ export function FaixaComunicado({
   };
 
   const paginacao = varios ? (
-    <div className="flex items-center gap-1">
-      <button type="button" onClick={() => ir(-1)} aria-label="Comunicado anterior" className={cn(botao, "size-8")}>
+    <div className="flex items-center gap-1 pointer-coarse:gap-0">
+      <button type="button" onClick={() => ir(-1)} aria-label="Comunicado anterior" className={cn(botao, "size-8 pointer-coarse:size-11")}>
         <IconeFigma src="/site/comunicado-seta-esquerda.svg" tamanho={16} />
       </button>
       <p aria-live={anuncio ? "polite" : "off"} aria-atomic className="texto-pequeno whitespace-nowrap text-destaque-marinho-fixo">
         <span className="sr-only">Comunicado </span>
         {indice + 1} de {total}
       </p>
-      <button type="button" onClick={() => ir(1)} aria-label="Próximo comunicado" className={cn(botao, "size-8")}>
+      <button type="button" onClick={() => ir(1)} aria-label="Próximo comunicado" className={cn(botao, "size-8 pointer-coarse:size-11")}>
         <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
       </button>
       {trocaSozinha && !menosMovimento ? (
@@ -97,7 +97,7 @@ export function FaixaComunicado({
           type="button"
           onClick={() => setPausadaPelaPessoa((p) => !p)}
           aria-label={pausadaPelaPessoa ? "Voltar a trocar os comunicados" : "Parar de trocar os comunicados"}
-          className={cn(botao, "size-8")}
+          className={cn(botao, "size-8 pointer-coarse:size-11")}
         >
           {pausadaPelaPessoa ? <Play aria-hidden className="size-3.5" /> : <Pause aria-hidden className="size-3.5" />}
         </button>
@@ -107,7 +107,7 @@ export function FaixaComunicado({
 
   const fecharBotao =
     modo === "site" ? (
-      <button type="button" onClick={fechar} aria-label="Fechar comunicado" className={cn(botao, "size-8")}>
+      <button type="button" onClick={fechar} aria-label="Fechar comunicado" className={cn(botao, "size-8 pointer-coarse:size-11")}>
         <IconeFigma src="/site/comunicado-fechar.svg" tamanho={18} />
       </button>
     ) : null;
@@ -161,7 +161,7 @@ export function FaixaComunicado({
                   <a
                     href={c.link.href}
                     {...(c.link.externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    className="flex shrink-0 items-center gap-1.5 rounded-[6px] texto-botao underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
+                    className="flex shrink-0 items-center gap-1.5 rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
                   >
                     Saiba mais
                     <span className="sr-only">: {c.mensagem}</span>

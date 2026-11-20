@@ -275,7 +275,7 @@ export function AreaComunicados({
         <section aria-label="Lista de comunicados" className="flex min-w-0 flex-col gap-4 lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-borda-padrao lg:bg-fundo-superficie">
           <nav
             aria-label="Estados dos comunicados"
-            className="-mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:my-0 lg:flex-wrap lg:px-6 lg:pt-5 lg:pb-0"
+            className="-mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:mt-0 lg:mb-0 lg:px-6 lg:pt-5 lg:pb-1"
           >
             {(Object.keys(ROTULO_DA_ABA) as Aba[]).map((a) => {
               const atual = a === aba;
@@ -377,7 +377,7 @@ export function AreaComunicados({
                                 mover(item.id, 1);
                               }
                             }}
-                            className="inline-flex size-9 cursor-grab items-center justify-center rounded-[10px] text-texto-terciario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring active:cursor-grabbing"
+                            className="inline-flex size-9 cursor-grab items-center pointer-coarse:size-11 justify-center rounded-[10px] text-texto-terciario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring active:cursor-grabbing"
                           >
                             <GripVertical aria-hidden className="size-4" />
                           </button>
