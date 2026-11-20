@@ -16,7 +16,7 @@ import {
   salvarComunicado,
   type ResultadoSalvar,
 } from "@/lib/comunicados/comunicados";
-import { ErroComunicado, type LinkComunicado } from "@/lib/comunicados/regras";
+import { ErroComunicado, NOME_DO_TIPO, type LinkComunicado } from "@/lib/comunicados/regras";
 import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
 import { SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -142,8 +142,7 @@ export async function acaoBuscarConteudos(busca: unknown): Promise<Resposta<{ it
   if (!lido.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   try {
     const itens = await conteudosParaOLink(lido.data, { quem: (await sessaoDaEquipe()).quem });
-    const nome = { noticia: "Notícia", edital: "Edital", acordo: "Acordo" } as const;
-    return { tipo: "ok", itens: itens.map((c) => ({ id: c.id, rotulo: `${nome[c.tipo]}: ${c.titulo}` })) };
+    return { tipo: "ok", itens: itens.map((c) => ({ id: c.id, rotulo: `${NOME_DO_TIPO[c.tipo]}: ${c.titulo}` })) };
   } catch (erro) {
     return erroParaResposta(erro, "buscar os conteúdos");
   }

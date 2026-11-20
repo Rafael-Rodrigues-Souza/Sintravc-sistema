@@ -1,11 +1,10 @@
 import { eq } from "drizzle-orm";
 
-import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { comunicado } from "@/lib/db/schema";
 import type { PedidoComunicado } from "@/lib/tarefas/fila";
 
-import { rotuloDoComunicado } from "./regras";
+import { registrar } from "./comum";
 
 export type ResultadoVirada = { tipo: "feita" } | { tipo: "ignorada" };
 
@@ -25,12 +24,11 @@ export async function executarViradaDoComunicado(pedido: PedidoComunicado, deps:
     const [atual] = await tx.select().from(comunicado).where(eq(comunicado.id, pedido.comunicadoId)).for("update");
     if (!atual) return { tipo: "ignorada" };
     const atraso = { marcado_para: marcadoPara.toISOString(), atraso_segundos: Math.max(0, Math.round((agora.getTime() - marcadoPara.getTime()) / 1000)) };
-    const alvo = { tipo: "comunicado", id: atual.id, rotulo: rotuloDoComunicado(atual.mensagem) };
 
     if (pedido.virada === "entrar") {
       if (atual.estado !== "agendado" || atual.inicio?.getTime() !== marcadoPara.getTime()) return { tipo: "ignorada" };
       await tx.update(comunicado).set({ estado: "publicado", jaPublicado: true, publicadoEm: atual.inicio }).where(eq(comunicado.id, atual.id));
-      await registrarAtividade(tx, { ator: { tipo: "sistema" }, acao: "comunicado.entrar_no_ar", area: "comunicados", alvo, detalhe: atraso });
+      await registrar(tx, null, atual, "entrar_no_ar", atraso);
       return { tipo: "feita" };
     }
 
@@ -40,7 +38,7 @@ export async function executarViradaDoComunicado(pedido: PedidoComunicado, deps:
       .update(comunicado)
       .set({ estado: "encerrado", encerradoEm: atual.fim, jaPublicado: true, publicadoEm: atual.publicadoEm ?? atual.inicio })
       .where(eq(comunicado.id, atual.id));
-    await registrarAtividade(tx, { ator: { tipo: "sistema" }, acao: "comunicado.sair_do_ar", area: "comunicados", alvo, detalhe: atraso });
+    await registrar(tx, null, atual, "sair_do_ar", atraso);
     return { tipo: "feita" };
   });
 }

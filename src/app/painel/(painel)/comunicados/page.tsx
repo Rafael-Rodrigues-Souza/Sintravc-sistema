@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
-import { contarPorAba, listarComunicados, MAXIMO_NA_FILA, paginaDoEncerrado, type Aba } from "@/lib/comunicados/comunicados";
+import { contarPorAba, listarComunicados, MAXIMO_NA_FILA, paginaDoEncerrado } from "@/lib/comunicados/comunicados";
+import { ABAS, type Aba } from "@/lib/comunicados/regras";
 import { comunicadosNoAr } from "@/lib/comunicados/faixa";
 import { dataNaBahia, horaNaBahia } from "@/lib/datas";
 import { lerParametro } from "@/lib/parametros";
@@ -12,7 +13,6 @@ import { AreaComunicados, type ItemNaTela } from "./area-comunicados";
 
 export const metadata: Metadata = { title: "Comunicados" };
 
-const ABAS: Aba[] = ["no_ar", "agendados", "rascunhos", "encerrados"];
 const POR_PAGINA = 20;
 
 /** "24/10 08h00" no horário da Bahia (RNF06). */
@@ -30,7 +30,7 @@ function curto(d: Date) {
 export default async function PaginaComunicados({ searchParams }: { searchParams: Promise<{ aba?: string; pagina?: string; abrir?: string; ver?: string; novo?: string }> }) {
   const pessoa = await exigirArea("comunicados");
   const p = await searchParams;
-  const aba = (ABAS as string[]).includes(p.aba ?? "") ? (p.aba as Aba) : "no_ar";
+  const aba = (ABAS as readonly string[]).includes(p.aba ?? "") ? (p.aba as Aba) : "no_ar";
   // A aba No ar vem inteira: a fila só se reordena completa (E58).
   const porPagina = aba === "no_ar" ? MAXIMO_NA_FILA : POR_PAGINA;
   const agora = new Date();

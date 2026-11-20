@@ -11,6 +11,14 @@ export type EstadoComunicado = "rascunho" | "agendado" | "publicado" | "encerrad
  */
 export type Situacao = "rascunho" | "agendado" | "no_ar" | "encerrado";
 
+/** As abas da área Comunicados, na ordem da tela (E58). */
+export const ABAS = ["no_ar", "agendados", "rascunhos", "encerrados"] as const;
+export type Aba = (typeof ABAS)[number];
+
+/** Os conteúdos que o “Saiba mais” aceita, com o nome de cada tipo. */
+export const NOME_DO_TIPO = { noticia: "Notícia", edital: "Edital", acordo: "Acordo" } as const;
+export type TipoDoLink = keyof typeof NOME_DO_TIPO;
+
 export type LinkComunicado = { tipo: "conteudo"; id: string } | { tipo: "url"; url: string } | null;
 
 export type DadosComunicado = {
@@ -104,7 +112,7 @@ export function rotuloDoComunicado(mensagem: string): string {
 }
 
 /** Endereço público de um conteúdo publicado, para o “Saiba mais” (as páginas chegam no #15 e no #16). */
-export function enderecoPublicoDoConteudo(tipo: "noticia" | "edital" | "acordo", slug: string): string {
+export function enderecoPublicoDoConteudo(tipo: TipoDoLink, slug: string): string {
   if (tipo === "noticia") return `/noticias/${slug}`;
   if (tipo === "edital") return `/documentos/editais/${slug}`;
   return `/documentos/acordos-coletivos/${slug}`;

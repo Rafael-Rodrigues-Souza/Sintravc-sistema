@@ -25,7 +25,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { FaixaComunicado, type ComunicadoNaFaixa } from "@/components/site/faixa-comunicado";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { Aba } from "@/lib/comunicados/comunicados";
+import { ABAS, type Aba } from "@/lib/comunicados/regras";
 import type { Situacao } from "@/lib/comunicados/regras";
 import { cn } from "@/lib/utils";
 
@@ -290,7 +290,7 @@ export function AreaComunicados({
             aria-label="Estados dos comunicados"
             className="-mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:mt-0 lg:mb-0 lg:px-6 lg:pt-5 lg:pb-1"
           >
-            {(Object.keys(ROTULO_DA_ABA) as Aba[]).map((a) => {
+            {ABAS.map((a) => {
               const atual = a === aba;
               return (
                 <Link

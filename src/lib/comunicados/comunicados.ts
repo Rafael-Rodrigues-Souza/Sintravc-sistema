@@ -1,21 +1,24 @@
 import { and, asc, desc, eq, gt, inArray, lte, max, ne, or, sql } from "drizzle-orm";
 
-import { registrarAtividade } from "@/lib/atividade";
 import { banco, type Transacao } from "@/lib/db";
 import { comunicado, conteudo } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import type { Fila } from "@/lib/tarefas/fila";
 
+import { filtroNoAr, registrar } from "./comum";
 import {
+  ABAS,
   comunicadoNaoEncontrado,
   conferirDados,
   ErroComunicado,
-  rotuloDoComunicado,
+  NOME_DO_TIPO,
   situacaoDo,
+  type Aba,
   type DadosComunicado,
   type LinkComunicado,
   type ModoDeSalvar,
   type Situacao,
+  type TipoDoLink,
 } from "./regras";
 
 export type LinhaComunicado = typeof comunicado.$inferSelect;
@@ -26,8 +29,6 @@ export type Deps = {
   agora?: Date;
 };
 export type DepsComFila = Deps & { fila: Fila };
-
-const AREA = "comunicados";
 
 // --- Peças internas -------------------------------------------------------------------------
 
@@ -62,22 +63,6 @@ async function conferirConteudoDoLink(tx: Transacao, link: LinkComunicado) {
 async function proximaPosicaoNaFila(tx: Transacao): Promise<number> {
   const [linha] = await tx.select({ maior: max(comunicado.ordemFila) }).from(comunicado);
   return (linha?.maior ?? 0) + 1;
-}
-
-async function registrar(
-  tx: Transacao,
-  quem: QuemDaEquipe | null,
-  alvo: { id: string; mensagem: string },
-  acao: string,
-  detalhe: Record<string, unknown> = {},
-) {
-  await registrarAtividade(tx, {
-    ator: quem ? { tipo: "pessoa", id: quem.id } : { tipo: "sistema" },
-    acao: `comunicado.${acao}`,
-    area: AREA,
-    alvo: { tipo: "comunicado", id: alvo.id, rotulo: rotuloDoComunicado(alvo.mensagem) },
-    detalhe,
-  });
 }
 
 /** Põe na fila as viradas do período (T02): entrar no início (se ainda não entrou) e sair no fim. */
@@ -307,8 +292,6 @@ export async function reordenarFila(entrada: { ids: string[] }, deps: Deps): Pro
 
 // --- Leitura para o painel -------------------------------------------------------------------
 
-export type Aba = "no_ar" | "agendados" | "rascunhos" | "encerrados";
-
 export type ComunicadoNaLista = {
   id: string;
   mensagem: string;
@@ -328,7 +311,7 @@ function filtroDaAba(aba: Aba, agora: Date) {
   const programado = inArray(comunicado.estado, ["agendado", "publicado"]);
   switch (aba) {
     case "no_ar":
-      return and(programado, lte(comunicado.inicio, agora), gt(comunicado.fim, agora));
+      return filtroNoAr(agora);
     case "agendados":
       return and(programado, gt(comunicado.inicio, agora));
     case "rascunhos":
@@ -351,7 +334,26 @@ function ordemDaAba(aba: Aba) {
   }
 }
 
-const TIPO_NO_ROTULO = { noticia: "notícia", edital: "edital", acordo: "acordo" } as const;
+/** O comunicado com o conteúdo do “Saiba mais”, como listar e carregar leem. */
+const COM_O_CONTEUDO = { c: comunicado, alvoTipo: conteudo.tipo, alvoTitulo: conteudo.titulo };
+type LinhaComConteudo = { c: LinhaComunicado; alvoTipo: TipoDoLink | null; alvoTitulo: string | null };
+
+function itemDaLista({ c, alvoTipo, alvoTitulo }: LinhaComConteudo, agora: Date): ComunicadoNaLista {
+  const situacao = situacaoDo(c, agora);
+  return {
+    id: c.id,
+    mensagem: c.mensagem,
+    link: linkDaLinha(c),
+    rotuloDoLink: alvoTipo ? `${NOME_DO_TIPO[alvoTipo].toLowerCase()} “${alvoTitulo}”` : c.linkUrl,
+    inicio: c.inicio,
+    fim: c.fim,
+    situacao,
+    // Passou do fim sem a T02 rodar: conta como encerrado no fim.
+    encerradoEm: c.encerradoEm ?? (situacao === "encerrado" ? c.fim : null),
+    criadoPor: c.criadoPor,
+    jaPublicado: c.jaPublicado || situacao !== "rascunho",
+  };
+}
 
 /** Uma página de uma aba da área Comunicados. */
 export async function listarComunicados(
@@ -366,7 +368,7 @@ export async function listarComunicados(
 
   const [linhas, [contagem]] = await Promise.all([
     banco()
-      .select({ c: comunicado, alvoTipo: conteudo.tipo, alvoTitulo: conteudo.titulo })
+      .select(COM_O_CONTEUDO)
       .from(comunicado)
       .leftJoin(conteudo, eq(conteudo.id, comunicado.linkConteudoId))
       .where(onde)
@@ -378,18 +380,7 @@ export async function listarComunicados(
 
   return {
     total: contagem?.total ?? 0,
-    itens: linhas.map(({ c, alvoTipo, alvoTitulo }) => ({
-      id: c.id,
-      mensagem: c.mensagem,
-      link: linkDaLinha(c),
-      rotuloDoLink: alvoTipo ? `${TIPO_NO_ROTULO[alvoTipo]} “${alvoTitulo}”` : c.linkUrl,
-      inicio: c.inicio,
-      fim: c.fim,
-      situacao: situacaoDo(c, agora),
-      encerradoEm: c.encerradoEm ?? (c.estado !== "encerrado" && c.fim && c.fim <= agora ? c.fim : null),
-      criadoPor: c.criadoPor,
-      jaPublicado: c.jaPublicado || situacaoDo(c, agora) !== "rascunho",
-    })),
+    itens: linhas.map((l) => itemDaLista(l, agora)),
   };
 }
 
@@ -421,9 +412,8 @@ export async function paginaDoEncerrado(id: string, porPagina: number, deps: Dep
 export async function contarPorAba(deps: Deps): Promise<Record<Aba, number>> {
   exigir(deps.quem, "ver", { tipo: "comunicado" });
   const agora = deps.agora ?? new Date();
-  const abas: Aba[] = ["no_ar", "agendados", "rascunhos", "encerrados"];
   const totais = await Promise.all(
-    abas.map(async (aba) => {
+    ABAS.map(async (aba) => {
       const [linha] = await banco().select({ total: sql<number>`count(*)::int` }).from(comunicado).where(filtroDaAba(aba, agora));
       return [aba, linha?.total ?? 0] as const;
     }),
@@ -438,30 +428,16 @@ export async function carregarComunicado(id: string, deps: Deps): Promise<Comuni
   exigir(deps.quem, "ver", { tipo: "comunicado" });
   const agora = deps.agora ?? new Date();
   const [linha] = await banco()
-    .select({ c: comunicado, alvoTipo: conteudo.tipo, alvoTitulo: conteudo.titulo })
+    .select(COM_O_CONTEUDO)
     .from(comunicado)
     .leftJoin(conteudo, eq(conteudo.id, comunicado.linkConteudoId))
     .where(eq(comunicado.id, id));
   if (!linha) return null;
-  const { c, alvoTipo, alvoTitulo } = linha;
-  const situacao = situacaoDo(c, agora);
-  return {
-    id: c.id,
-    mensagem: c.mensagem,
-    link: linkDaLinha(c),
-    rotuloDoLink: alvoTipo ? `${TIPO_NO_ROTULO[alvoTipo]} “${alvoTitulo}”` : c.linkUrl,
-    rotuloDoConteudo: alvoTitulo,
-    inicio: c.inicio,
-    fim: c.fim,
-    situacao,
-    encerradoEm: c.encerradoEm,
-    criadoPor: c.criadoPor,
-    jaPublicado: c.jaPublicado || situacao !== "rascunho",
-  };
+  return { ...itemDaLista(linha, agora), rotuloDoConteudo: linha.alvoTitulo };
 }
 
 /** Notícias, editais e acordos publicados, para o “Saiba mais” (busca pelo título). */
-export async function conteudosParaOLink(busca: string, deps: Deps): Promise<{ id: string; tipo: keyof typeof TIPO_NO_ROTULO; titulo: string }[]> {
+export async function conteudosParaOLink(busca: string, deps: Deps): Promise<{ id: string; tipo: TipoDoLink; titulo: string }[]> {
   exigir(deps.quem, "gerenciar", { tipo: "comunicado" });
   const termo = busca.trim();
   return banco()

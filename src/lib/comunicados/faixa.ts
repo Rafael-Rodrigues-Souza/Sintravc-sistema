@@ -1,9 +1,10 @@
-import { and, asc, eq, gt, inArray, lte } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import { banco } from "@/lib/db";
 import { comunicado, conteudo } from "@/lib/db/schema";
 
-import { enderecoPublicoDoConteudo } from "./regras";
+import { filtroNoAr } from "./comum";
+import { enderecoPublicoDoConteudo, type TipoDoLink } from "./regras";
 
 export type ComunicadoDaFaixa = {
   id: string;
@@ -29,7 +30,7 @@ export async function comunicadosNoAr(agora: Date = new Date()): Promise<Comunic
     })
     .from(comunicado)
     .leftJoin(conteudo, eq(conteudo.id, comunicado.linkConteudoId))
-    .where(and(inArray(comunicado.estado, ["agendado", "publicado"]), lte(comunicado.inicio, agora), gt(comunicado.fim, agora)))
+    .where(filtroNoAr(agora))
     .orderBy(asc(comunicado.ordemFila), asc(comunicado.id));
 
   return linhas.map((l) => ({
@@ -39,7 +40,7 @@ export async function comunicadosNoAr(agora: Date = new Date()): Promise<Comunic
   }));
 }
 
-function linkDaFaixa(l: { linkUrl: string | null; alvoTipo: "noticia" | "edital" | "acordo" | null; alvoSlug: string | null; alvoEstado: string | null }) {
+function linkDaFaixa(l: { linkUrl: string | null; alvoTipo: TipoDoLink | null; alvoSlug: string | null; alvoEstado: string | null }) {
   if (l.linkUrl) return { href: l.linkUrl, externo: !l.linkUrl.startsWith("/") };
   if (l.alvoTipo && l.alvoSlug && l.alvoEstado === "publicado") {
     return { href: enderecoPublicoDoConteudo(l.alvoTipo, l.alvoSlug), externo: false };
