@@ -5,6 +5,7 @@ import type { ConfigSite } from "@/lib/config-site";
 import { formatarTelefone, linkTelefone } from "@/lib/config-site/links";
 import { RODAPE } from "@/conteudo/site";
 import { anoNaBahia } from "@/lib/datas";
+import { cn } from "@/lib/utils";
 import { Logo } from "@/components/marca/logo";
 
 import { BotaoCookies } from "./aviso-cookies";
@@ -15,9 +16,9 @@ import { TextoDoSite } from "./texto-do-site";
 const link =
   "rounded-sm outline-none hover:text-texto-invertido focus-visible:ring-2 focus-visible:ring-destaque-amarelo";
 
-function Coluna({ titulo, itens, extra }: { titulo: string; itens: ItemDeMenu[]; extra?: React.ReactNode }) {
+function Coluna({ titulo, itens, extra, className }: { titulo: string; itens: ItemDeMenu[]; extra?: React.ReactNode; className?: string }) {
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className={cn("flex flex-col gap-3.5", className)}>
       <h2 className="texto-eyebrow text-destaque-amarelo">{titulo}</h2>
       <ul className="texto-corpo flex flex-col gap-[7px] text-texto-invertido-sec pointer-coarse:vao-y-toque-8 pointer-coarse:py-1.5">
         {itens.map((item) => (
@@ -67,12 +68,14 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
           ) : null}
         </div>
 
+        {/* No celular (2 colunas), os pares são Navegação e Associado, depois Sindicato e Documentos (Figma 295:51242 e 295:51252). */}
         <nav aria-label="Rodapé" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:flex lg:gap-12 xl:gap-16">
           <Coluna titulo="Navegação" itens={[LINKS.inicio, LINKS.noticias, LINKS.radio, LINKS.contato]} />
-          <Coluna titulo="Sindicato" itens={SINDICATO.itens} />
-          <Coluna titulo="Documentos" itens={DOCUMENTOS.itens} />
+          <Coluna titulo="Sindicato" itens={SINDICATO.itens} className="max-sm:order-2" />
+          <Coluna titulo="Documentos" itens={DOCUMENTOS.itens} className="max-sm:order-2" />
           <Coluna
             titulo="Associado"
+            className="max-sm:order-1"
             itens={[]}
             extra={
               <li>
@@ -112,7 +115,8 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
           <p>
             © {ano} {RODAPE.nomeCompleto}
           </p>
-          <ul className="flex flex-wrap gap-x-6 gap-y-1 text-texto-invertido pointer-coarse:vao-y-toque-8">
+          {/* Entre 320 e ~340 px, o espaço entre os links encolhe para “Cookies” ficar na mesma linha (#64); depois, 24 px (Figma 295:51274). */}
+          <ul className="flex flex-wrap gap-x-[clamp(4px,calc((100vw_-_310px)/2),24px)] gap-y-1 text-texto-invertido pointer-coarse:vao-y-toque-8">
             {[LINKS.politica, LINKS.termos].map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className={`${link} alvo-toque inline-flex min-h-8 items-center whitespace-nowrap`}>
