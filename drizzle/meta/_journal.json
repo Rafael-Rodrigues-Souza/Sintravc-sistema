@@ -113,6 +113,13 @@
       "when": 1795186900942,
       "tag": "0015_comunicados",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795200521449,
+      "tag": "0016_comunicados_cookie_fechados",
+      "breakpoints": true
     }
   ]
 }

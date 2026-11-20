@@ -41,7 +41,7 @@ export async function MolduraSite({ children }: { children: React.ReactNode }) {
         </a>
         <BarraSuperior config={config} />
         <Cabecalho linkFiliacao={filiacao} />
-        <FaixaComunicado comunicados={faixa.comunicados} intervaloSegundos={faixa.intervaloSegundos} />
+        <FaixaComunicado comunicados={faixa.comunicados} intervaloSegundos={faixa.intervaloSegundos} diasDoCookie={faixa.diasDoCookie} />
         <main id="conteudo" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
@@ -59,10 +59,14 @@ export async function MolduraSite({ children }: { children: React.ReactNode }) {
 async function comunicadosParaAFaixa(loja: Awaited<ReturnType<typeof cookies>>) {
   const fechados = new Set(lerFechados(loja.get(COOKIE_COMUNICADOS_FECHADOS)?.value));
   try {
-    const [noAr, intervaloSegundos] = await Promise.all([comunicadosNoAr(), lerParametro("comunicados.alternar_segundos")]);
-    return { comunicados: noAr.filter((c) => !fechados.has(c.id)), intervaloSegundos };
+    const [noAr, intervaloSegundos, diasDoCookie] = await Promise.all([
+      comunicadosNoAr(),
+      lerParametro("comunicados.alternar_segundos"),
+      lerParametro("comunicados.cookie_fechados_dias"),
+    ]);
+    return { comunicados: noAr.filter((c) => !fechados.has(c.id)), intervaloSegundos, diasDoCookie };
   } catch (erro) {
     console.error("Faixa de comunicado: falha ao ler os comunicados no ar.", erro);
-    return { comunicados: [], intervaloSegundos: 0 };
+    return { comunicados: [], intervaloSegundos: 0, diasDoCookie: 0 };
   }
 }

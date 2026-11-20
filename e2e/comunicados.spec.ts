@@ -207,7 +207,11 @@ test("o X fecha a faixa (continua fechada nas outras páginas) e ela volta com u
   await expect(faixa(page)).toBeHidden();
   await page.goto("/sindicato/diretoria");
   await expect(faixa(page)).toBeHidden();
-  expect((await context.cookies()).some((c) => c.name === "sintravc_comunicados_fechados")).toBe(true);
+  const cookie = (await context.cookies()).find((c) => c.name === "sintravc_comunicados_fechados");
+  // Validade pelo parâmetro comunicados.cookie_fechados_dias (365 dias).
+  const dias = (cookie!.expires * 1000 - Date.now()) / (24 * 60 * 60 * 1000);
+  expect(dias).toBeGreaterThan(364);
+  expect(dias).toBeLessThanOrEqual(365);
 
   await page.goto("/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();

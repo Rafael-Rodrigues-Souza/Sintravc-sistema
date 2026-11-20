@@ -30,11 +30,14 @@ const botao =
 export function FaixaComunicado({
   comunicados,
   intervaloSegundos,
+  diasDoCookie = 0,
   modo = "site",
   className,
 }: {
   comunicados: ComunicadoNaFaixa[];
   intervaloSegundos: number;
+  /** Por quantos dias o X é lembrado (`comunicados.cookie_fechados_dias`). Só no modo "site". */
+  diasDoCookie?: number;
   /** "site": com o X. "previa": painel, sem o X e sem trocar sozinha. "miniatura": só a primeira, sem botões. */
   modo?: "site" | "previa" | "miniatura";
   className?: string;
@@ -76,7 +79,7 @@ export function FaixaComunicado({
   };
 
   const fechar = () => {
-    gravarFechados(comunicados.map((c) => c.id));
+    gravarFechados(comunicados.map((c) => c.id), diasDoCookie);
     setFechada(true);
   };
 
@@ -187,13 +190,13 @@ export function FaixaComunicado({
   );
 }
 
-/** Guarda no cookie os comunicados fechados (E58). Vale por um ano: é uma comodidade do navegador. */
-function gravarFechados(ids: string[]) {
+/** Guarda no cookie os comunicados fechados (E58), pelo número de dias do parâmetro. */
+function gravarFechados(ids: string[], dias: number) {
   const anteriores = lerFechados(
     document.cookie
       .split("; ")
       .find((parte) => parte.startsWith(`${COOKIE_COMUNICADOS_FECHADOS}=`))
       ?.slice(COOKIE_COMUNICADOS_FECHADOS.length + 1),
   );
-  document.cookie = `${COOKIE_COMUNICADOS_FECHADOS}=${juntarFechados(anteriores, ids)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  document.cookie = `${COOKIE_COMUNICADOS_FECHADOS}=${juntarFechados(anteriores, ids)}; path=/; max-age=${dias * 24 * 60 * 60}; samesite=lax`;
 }

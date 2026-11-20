@@ -4,7 +4,11 @@
  */
 export const COOKIE_COMUNICADOS_FECHADOS = "sintravc_comunicados_fechados";
 
-/** Quantos ids o cookie guarda, no máximo (os mais novos). */
+/**
+ * Quantos ids o cookie guarda, no máximo (os mais novos). Limite técnico, não regra: cada id ocupa 37
+ * caracteres, e 20 ficam em ~740 bytes, longe dos 4 KB que o navegador aceita por cookie. Por isso fica
+ * fixo aqui, e não na tabela Parametro.
+ */
 const MAXIMO_NO_COOKIE = 20;
 
 /** Lê o valor do cookie: ids separados por ponto. O que não é id é ignorado. */
