@@ -12,6 +12,7 @@ import { atividadesDe, noticiaCompleta, rascunhoSalvo } from "@/testes/noticias"
 import {
   cancelarAgendamentoDoComunicado,
   carregarComunicado,
+  comunicadosDoCalendario,
   duplicarComunicado,
   encerrarComunicado,
   excluirComunicado,
@@ -341,5 +342,31 @@ describe("T02 · entrar e sair do ar (CA-US24.1, spec §6)", () => {
     expect(await comunicadosNoAr(p.depois)).toEqual([]);
     await executarViradaDoComunicado({ comunicadoId: id, virada: "sair", para: p.fim.toISOString() }, { agora: p.depois });
     expect(await linha(id)).toMatchObject({ estado: "encerrado", jaPublicado: true, publicadoEm: p.inicio });
+  });
+});
+
+describe("calendário de Conteúdos (E17, C3)", () => {
+  it("mostra o período em dias da Bahia, vai até o encerramento e deixa o rascunho de fora", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id, p } = await agendado(2070);
+    const encerrado = await agendado(2070, quem, "Encerrado antes do fim");
+    await encerrarComunicado({ id: encerrado.id }, { quem, agora: p.durante });
+    const rascunho = await salvarComunicado({ dados: dados({ inicio: p.inicio, fim: p.fim }), modo: "rascunho" }, { quem, fila: filaEmMemoria().fila });
+    const { diaNoCalendario } = await import("@/lib/conteudos/grade-do-mes");
+
+    const lista = await comunicadosDoCalendario(
+      { de: new Date("2070-10-01T03:00:00Z"), ate: new Date("2070-11-30T03:00:00Z") },
+      { quem, agora: p.antes, diaDe: diaNoCalendario },
+    );
+
+    expect(lista.find((c) => c.id === id)).toMatchObject({ situacao: "agendado", primeiroDia: "2070-10-30", ultimoDia: "2070-11-02" });
+    expect(lista.find((c) => c.id === encerrado.id)).toMatchObject({ situacao: "encerrado", primeiroDia: "2070-10-30", ultimoDia: "2070-10-31" });
+    expect(lista.some((c) => c.id === rascunho.id)).toBe(false);
+  });
+
+  it("o ATD não vê", async () => {
+    await expect(
+      comunicadosDoCalendario({ de: new Date(), ate: new Date() }, { quem: await pessoaDaEquipe("ATD"), diaDe: (d) => d.toISOString() }),
+    ).rejects.toBeInstanceOf(SemPermissao);
   });
 });

@@ -291,3 +291,29 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
     await expect(faixa(page)).toBeHidden();
   });
 });
+
+test("calendário de Conteúdos (E17): barra marinho do período, sem arrastar; o clique abre o comunicado e a legenda esconde", async ({ page }) => {
+  const mensagem = `Comunicado no calendário (${Date.now()}).`;
+  const inicio = campoDaqui(2 * DIA);
+  await entrarComo(page, pessoas.com, "/painel/comunicados");
+  await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
+  await preencher(page, { mensagem, inicio, fim: campoDaqui(4 * DIA) }, /^Agendar comunicado$/);
+  await expect(formulario(page)).toBeHidden();
+
+  await page.goto(`/painel/conteudos?visao=calendario&mes=${inicio.slice(0, 7)}`);
+  const barra = page.getByTestId("barra-comunicado").filter({ hasText: mensagem }).first();
+  await expect(barra).toBeVisible();
+  await expect(barra).toHaveAttribute("draggable", "false");
+  await expect(page.locator(`[data-dia="${inicio.slice(0, 10)}"]`).getByTestId("barra-comunicado").filter({ hasText: mensagem })).toHaveCount(1);
+
+  const legenda = page.getByRole("button", { name: /^Comunicados/ });
+  await legenda.click();
+  await expect(legenda).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByTestId("barra-comunicado")).toHaveCount(0);
+  await legenda.click();
+
+  await barra.click();
+  await expect(page).toHaveURL(/\/painel\/comunicados/);
+  await expect(formulario(page).getByRole("heading", { name: "Editar comunicado" })).toBeVisible();
+  await expect(formulario(page).getByLabel("Mensagem *")).toHaveValue(mensagem);
+});

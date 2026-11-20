@@ -441,3 +441,44 @@ export async function conteudosParaOLink(busca: string, deps: Deps): Promise<{ i
     .orderBy(desc(conteudo.publicadoEm), desc(conteudo.id))
     .limit(8);
 }
+
+// --- Calendário de Conteúdos (E17, C3) --------------------------------------------------------
+
+export type ComunicadoNoCalendario = {
+  id: string;
+  mensagem: string;
+  situacao: Exclude<Situacao, "rascunho">;
+  /** Primeiro e último dia ("AAAA-MM-DD", horário da Bahia) em que esteve ou estará no ar. */
+  primeiroDia: string;
+  ultimoDia: string;
+};
+
+/**
+ * Os comunicados com período dentro de um intervalo, para as barras do calendário (E17): só para
+ * consulta. Vai até o encerramento, se foi encerrado antes do fim. Rascunho não aparece.
+ */
+export async function comunicadosDoCalendario(
+  intervalo: { de: Date; ate: Date },
+  deps: Deps & { diaDe: (instante: Date) => string },
+): Promise<ComunicadoNoCalendario[]> {
+  exigir(deps.quem, "ver", { tipo: "comunicado" });
+  const agora = deps.agora ?? new Date();
+  const termino = sql`coalesce(${comunicado.encerradoEm}, ${comunicado.fim})`;
+  const linhas = await banco()
+    .select()
+    .from(comunicado)
+    .where(and(ne(comunicado.estado, "rascunho"), lte(comunicado.inicio, intervalo.ate), sql`${termino} > ${intervalo.de.toISOString()}::timestamptz`))
+    .orderBy(asc(comunicado.inicio), asc(comunicado.ordemFila));
+  return linhas.map((c) => {
+    const ate = c.encerradoEm ?? c.fim!;
+    // Quem sai às 00h00 não ficou no ar naquele dia.
+    const ultimo = new Date(Math.max(c.inicio!.getTime(), ate.getTime() - 1));
+    return {
+      id: c.id,
+      mensagem: c.mensagem,
+      situacao: situacaoDo(c, agora) as ComunicadoNoCalendario["situacao"],
+      primeiroDia: deps.diaDe(c.inicio!),
+      ultimoDia: deps.diaDe(ultimo),
+    };
+  });
+}

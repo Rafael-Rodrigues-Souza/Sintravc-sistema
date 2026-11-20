@@ -6,7 +6,8 @@ import { MenuCriar } from "@/components/painel/menu-criar";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
-import { itensDoCalendario, rascunhosSemData } from "@/lib/conteudos/calendario";
+import { comunicadosDoCalendario } from "@/lib/comunicados/comunicados";
+import { intervaloDaGrade, itensDoCalendario, rascunhosSemData } from "@/lib/conteudos/calendario";
 import { acoesDisponiveis } from "@/lib/conteudos/acoes-disponiveis";
 import { carregarNoticia } from "@/lib/conteudos/carregar";
 import { descreverAcao } from "@/lib/conteudos/descrever-acao";
@@ -87,7 +88,8 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
   const editarId = ehUuid(p.editar) ? p.editar : undefined;
 
   const deps = { quem: pessoa.quem };
-  const [lista, porTipo, categorias, autores, doCalendario, rascunhos, rapida] = await Promise.all([
+  const verComunicados = calendario && pode(pessoa.quem, "ver", { tipo: "comunicado" });
+  const [lista, porTipo, categorias, autores, doCalendario, rascunhos, rapida, comunicadosDoMes] = await Promise.all([
     calendario
       ? null
       : listarConteudos({ tipo, estado: arquivados ? undefined : estado, categoriaId, autorId, busca, pagina, arquivados }, deps),
@@ -97,6 +99,8 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
     calendario ? itensDoCalendario({ ...mesAberto, tipo }, deps) : null,
     calendario ? rascunhosSemData(deps) : null,
     editarId && pode(pessoa.quem, "editar", { tipo: "noticia" }) ? dadosDaEdicaoRapida(editarId, pessoa.quem) : null,
+    // Comunicados só para consulta (E17, C3).
+    verComunicados ? comunicadosDoCalendario(intervaloDaGrade(mesAberto.ano, mesAberto.mes), { ...deps, diaDe: diaNoCalendario }) : [],
   ]);
 
   const endereco = (mudanca: Partial<Busca>) => {
@@ -264,6 +268,7 @@ export default async function PaginaConteudos({ searchParams }: { searchParams: 
           hrefMesAnterior={endereco({ mes: mesTexto(mesVizinho(mesAberto.ano, mesAberto.mes, -1)) })}
           hrefProximoMes={endereco({ mes: mesTexto(mesVizinho(mesAberto.ano, mesAberto.mes, 1)) })}
           hrefHoje={endereco({ mes: undefined })}
+          comunicados={comunicadosDoMes}
         />
       ) : null}
 
