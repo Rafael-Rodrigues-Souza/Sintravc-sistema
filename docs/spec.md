@@ -290,7 +290,7 @@ Todas as tarefas são idempotentes, com nova tentativa e registro de falha (RNF1
 | # | Tarefa | Quando | O que faz | Fase |
 |---|---|---|---|---|
 | T01 | Publicar agendados | No horário (job por item) | Notícia ou documento agendado → publicado com a cópia atual; gera versão, Atividade (com o atraso, se o servidor estava fora do ar) e, se for documento, aviso aos associados (Fase 2). Pedido único por (item, hora marcada), posto na fila na transação de quem agendou; pedido velho não faz nada. Tentativas pelo `Parametro` (`tarefas.*`). Falha de vez → volta a Rascunho; notificação e e-mail M06 para quem agendou e os ADMs ativos (E21, E44). | 1 |
-| T02 | Comunicados | No início e no fim do período | Acerta o estado (agendado → publicado → encerrado) e grava a Atividade com o atraso. A faixa já segue o relógio; pedido velho não faz nada (E58). | 1 |
+| T02 | Comunicados | No início e no fim do período | Acerta o estado (agendado → publicado → encerrado) e grava a Atividade (`comunicado.entrar_no_ar` e `comunicado.sair_do_ar`, ator sistema) com o atraso; a publicação pela pessoa grava `comunicado.publicar`. A faixa já segue o relógio; pedido velho não faz nada (E58). | 1 |
 | T03 | Episódios agendados | No horário | Publica. | 1 |
 | T04 | Destaques da Home | Em `entra_em` e `sai_em` | Entra e sai do carrossel. | 1 |
 | T05 | Notícia fixada | Em `fixada_ate` | Desafixa. | 1 |
