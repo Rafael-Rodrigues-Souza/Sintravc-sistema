@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import postgres from "postgres";
 
 import { ambienteE2E, RESPONSIVO } from "../playwright.config";
@@ -149,49 +149,163 @@ test("CA-US01.2 · dois no ar: “1 de 2”, setas e teclado, troca sozinha e pa
   await expect(visivel).toContainText(primeiro);
 });
 
-test("depois de Pausar e Voltar a trocar com o mouse, a faixa troca sozinha com o mouse fora (o foco do clique não para a faixa)", async ({ page }) => {
-  const primeiro = `Aviso pausado (${Date.now()}).`;
-  const segundo = `Aviso que volta a trocar (${Date.now()}).`;
-  await entrarComo(page, pessoas.com, "/painel/comunicados");
-  for (const mensagem of [primeiro, segundo]) {
-    await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+/** Publica pela tela, um depois do outro (a fila segue essa ordem). */
+async function publicarNoAr(page: Page, mensagens: string[], { toque = false } = {}) {
+  await entrarComo(page, pessoas.com, "/painel/comunicados", { toque });
+  // Na folha de baixo (tela estreita), o botão é só “Publicar”.
+  const publicar = telaEstreita(page) ? /^Publicar$/ : /^Publicar agora$/;
+  for (const mensagem of mensagens) {
+    await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), toque);
+    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, publicar, { toque });
     await expect(formulario(page)).toBeHidden();
   }
+}
+
+const janela = (page: Page) => page.getByTestId("janela-comunicados");
+/** O botão da mensagem que está à vista na faixa (abre a janela em destaque). */
+const mensagemNaFaixa = (page: Page) => faixa(page).locator("[aria-hidden=false]").getByRole("button", { name: /ver em destaque/ });
+
+test("o clique na mensagem abre a janela: passa pelas setas, para a troca e fecha pelo X, Esc, fora e voltar, sem sobrar histórico", async ({ page }) => {
+  const primeiro = `Aviso em destaque (${Date.now()}).`;
+  const segundo = `Outro aviso em destaque (${Date.now()}).`;
+  await publicarNoAr(page, [primeiro, segundo]);
+
+  await page.clock.install();
+  await page.goto("/");
+  await page.goto("/contato");
+  const visivel = faixa(page).locator("[aria-hidden=false]");
+
+  // Abre em destaque, no comunicado que a faixa mostra.
+  await mensagemNaFaixa(page).click();
+  await expect(janela(page)).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Comunicado" })).toContainText(primeiro);
+  await expect(janela(page).getByText("Comunicado 1 de 2")).toBeVisible();
+
+  // Com a janela aberta, a faixa não troca sozinha.
+  await page.mouse.move(5, 5);
+  await page.clock.runFor(20_000);
+  await expect(janela(page)).toContainText(primeiro);
+
+  // Setas da janela e do teclado.
+  await janela(page).getByRole("button", { name: "Próximo comunicado" }).click();
+  await expect(janela(page)).toContainText(segundo);
+  await expect(janela(page).getByText("Comunicado 2 de 2")).toBeVisible();
+  await page.keyboard.press("ArrowLeft");
+  await expect(janela(page)).toContainText(primeiro);
+  await page.keyboard.press("ArrowRight");
+  await expect(janela(page)).toContainText(segundo);
+
+  // 1) X: fecha, a faixa fica no comunicado que estava na janela e o foco volta para a mensagem.
+  await janela(page).getByRole("button", { name: "Fechar", exact: true }).click();
+  await expect(janela(page)).toBeHidden();
+  await expect(visivel).toContainText(segundo);
+  await expect(mensagemNaFaixa(page)).toBeFocused();
+
+  // 2) Esc.
+  await mensagemNaFaixa(page).click();
+  await expect(janela(page)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(janela(page)).toBeHidden();
+  await expect(mensagemNaFaixa(page)).toBeFocused();
+
+  // 3) Tocar fora, no fundo escuro.
+  await mensagemNaFaixa(page).click();
+  await expect(janela(page)).toBeVisible();
+  const tela = page.viewportSize()!;
+  await page.mouse.click(8, tela.height - 8);
+  await expect(janela(page)).toBeHidden();
+  await expect(mensagemNaFaixa(page)).toBeFocused();
+
+  // 4) Voltar do celular (do navegador): fecha sem sair da página.
+  await mensagemNaFaixa(page).click();
+  await expect(janela(page)).toBeVisible();
+  await page.goBack();
+  await expect(janela(page)).toBeHidden();
+  await expect(page).toHaveURL(/\/contato$/);
+  await expect(mensagemNaFaixa(page)).toBeFocused();
+
+  // Nenhuma das quatro deixou entrada no histórico: um voltar sai de /contato para a página de antes.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("depois de fechar a janela com o mouse, a faixa volta a trocar sozinha com o mouse fora (o foco devolvido não para a faixa)", async ({ page }) => {
+  const primeiro = `Aviso visto na janela (${Date.now()}).`;
+  const segundo = `Aviso que vem depois (${Date.now()}).`;
+  await publicarNoAr(page, [primeiro, segundo]);
 
   await page.clock.install();
   await page.goto("/contato");
   const visivel = faixa(page).locator("[aria-hidden=false]");
-  await expect(visivel).toContainText(primeiro);
+  await mensagemNaFaixa(page).click();
+  await expect(janela(page)).toBeVisible();
+  await page.mouse.click(8, page.viewportSize()!.height - 8);
+  await expect(janela(page)).toBeHidden();
 
-  // Pausar com o mouse: não troca.
-  await faixa(page).getByRole("button", { name: "Parar de trocar os comunicados" }).click();
-  await page.mouse.move(5, 600);
-  await page.clock.runFor(10_000);
-  await expect(visivel).toContainText(primeiro);
-
-  // Voltar a trocar com o mouse e tirar o mouse da faixa: o botão fica com o foco do clique, sem o anel.
-  await faixa(page).getByRole("button", { name: "Voltar a trocar os comunicados" }).click();
+  // O foco voltou para a mensagem, sem o anel (veio do mouse): com o mouse fora, a troca continua.
   await page.mouse.move(5, 600);
   await page.clock.runFor(8_500);
   await expect(visivel).toContainText(segundo);
   await expect(faixa(page).getByText("Comunicado 2 de 2")).toBeVisible();
 });
 
-test("com menos movimento pedido pelo sistema, a faixa não troca sozinha e não tem o botão Pausar", async ({ page }) => {
-  await entrarComo(page, pessoas.com, "/painel/comunicados");
-  for (const mensagem of [`Aviso A (${Date.now()})`, `Aviso B (${Date.now()})`]) {
-    await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
-    await expect(formulario(page)).toBeHidden();
-  }
+test("“Ver todos” abre a janela com a lista na ordem da fila; tocar num mostra ele em destaque", async ({ page }) => {
+  const mensagens = [`Lista A (${Date.now()})`, `Lista B (${Date.now()})`, `Lista C (${Date.now()})`];
+  await publicarNoAr(page, mensagens);
+
+  await page.goto("/contato");
+  const verTodos = faixa(page).getByRole("button", { name: "Ver todos os comunicados" });
+  await verTodos.click();
+  const lista = page.getByRole("dialog", { name: "Todos os comunicados" }).getByRole("list", { name: /ordem da fila/ });
+  await expect(lista.getByRole("listitem")).toHaveText(mensagens.map((m, i) => `${i + 1}.${m}`));
+
+  await lista.getByRole("button", { name: mensagens[2] }).click();
+  await expect(page.getByRole("dialog", { name: "Comunicado" })).toContainText(mensagens[2]!);
+  await expect(janela(page).getByText("Comunicado 3 de 3")).toBeVisible();
+
+  // Da janela, “Ver todos” volta à lista, com o atual marcado.
+  await janela(page).getByRole("button", { name: "Ver todos" }).click();
+  await expect(lista.getByRole("button", { name: mensagens[2] })).toHaveAttribute("aria-current", "true");
+
+  await page.keyboard.press("Escape");
+  await expect(janela(page)).toBeHidden();
+  await expect(faixa(page).locator("[aria-hidden=false]")).toContainText(mensagens[2]!);
+  await expect(faixa(page).getByRole("button", { name: "Ver todos os comunicados" })).toBeFocused();
+
+  // Com um só no ar, não há “Ver todos”.
+  await tirarTudoDoAr();
+  await publicarNoAr(page, [`Sozinho (${Date.now()})`]);
+  await page.goto("/contato");
+  await expect(faixa(page)).toBeVisible();
+  await expect(faixa(page).getByRole("button", { name: /Ver todos/ })).toHaveCount(0);
+});
+
+test("com menos movimento pedido pelo sistema, a faixa troca sozinha sem a transição, e não há botão Pausar", async ({ page }) => {
+  const primeiro = `Aviso A (${Date.now()})`;
+  const segundo = `Aviso B (${Date.now()})`;
+  await publicarNoAr(page, [primeiro, segundo]);
+
+  const transicao = () =>
+    faixa(page)
+      .locator("[aria-hidden=false]")
+      .evaluate((el) => getComputedStyle(el).transitionDuration);
+
+  // Sem o pedido: esmaece ao trocar.
+  await page.goto("/contato");
+  expect(await transicao()).not.toMatch(/^0s(, 0s)*$/);
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.install();
   await page.goto("/contato");
-  await expect(faixa(page).getByText("Comunicado 1 de 2")).toBeVisible();
-  await expect(faixa(page).getByRole("button", { name: /Parar de trocar/ })).toHaveCount(0);
-  await page.clock.runFor(20_000);
-  await expect(faixa(page).getByText("Comunicado 1 de 2")).toBeVisible();
+  await page.mouse.move(5, 600);
+  const visivel = faixa(page).locator("[aria-hidden=false]");
+  await expect(visivel).toContainText(primeiro);
+  expect(await transicao()).toMatch(/^0s(, 0s)*$/);
+  await expect(faixa(page).getByRole("button", { name: /Parar de trocar|Pausar/ })).toHaveCount(0);
+
+  await page.clock.runFor(8_500);
+  await expect(visivel).toContainText(segundo);
+  await expect(faixa(page).getByText("Comunicado 2 de 2")).toBeVisible();
 });
 
 test("o X fecha a faixa (continua fechada nas outras páginas) e ela volta com um comunicado novo", async ({ page, context }) => {
@@ -316,7 +430,7 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
     }
     await semRolagemLateral(page);
 
-    // Um segundo no ar, para a faixa ter setas e Pausar.
+    // Um segundo no ar, para a faixa ter setas e “Ver todos”.
     await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), hasTouch);
     await preencher(page, { mensagem: `Segundo ${mensagem}`, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, estreita ? /^Publicar$/ : /^Publicar agora$/, { toque: hasTouch });
     await expect(formulario(page)).toBeHidden();
@@ -326,14 +440,85 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
     await expect(faixa(page).getByText("Comunicado 1 de 2")).toBeVisible();
     await semRolagemLateral(page);
     if (hasTouch) {
-      // Setas, Pausar, X e “Saiba mais” com a área de toque mínima (E48).
+      // Mensagem, setas, “Ver todos”, X e “Saiba mais” com a área de toque mínima (E48).
       const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: '[data-testid="faixa-comunicado"]' });
       expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);
+    }
+    if (hasTouch) {
+      // A janela da mensagem também cabe no celular, sem rolagem lateral, com os alvos de toque.
+      await apertar(mensagemNaFaixa(page), true);
+      await expect(janela(page)).toBeVisible();
+      await semRolagemLateral(page);
+      const naJanela = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: '[data-testid="janela-comunicados"]' });
+      expect(naJanela.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);
+      await apertar(janela(page).getByRole("button", { name: "Fechar", exact: true }), true);
+      await expect(janela(page)).toBeHidden();
     }
     const fechar = faixa(page).getByRole("button", { name: "Fechar comunicado" });
     await expect(fechar).toBeVisible();
     await apertar(fechar, hasTouch);
     await expect(faixa(page)).toBeHidden();
+  });
+
+  test("deslizar o dedo de lado na faixa e na janela passa os comunicados; na vertical, rola a página", async ({ page, hasTouch }) => {
+    test.skip(!hasTouch, "Deslize é só no toque.");
+    const primeiro = `Deslize A (${Date.now()})`;
+    const segundo = `Deslize B (${Date.now()})`;
+    await publicarNoAr(page, [primeiro, segundo], { toque: true });
+    await page.clock.install();
+    await page.goto("/contato");
+    const visivel = faixa(page).locator("[aria-hidden=false]");
+    await expect(visivel).toContainText(primeiro);
+
+    // Toques de verdade pelo CDP: o navegador decide entre rolar a página e mandar o movimento à faixa.
+    const cdp = await page.context().newCDPSession(page);
+    async function deslizar(de: { x: number; y: number }, ate: { x: number; y: number }) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [de] });
+      for (let i = 1; i <= 8; i++) {
+        const x = de.x + ((ate.x - de.x) * i) / 8;
+        const y = de.y + ((ate.y - de.y) * i) / 8;
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
+      }
+      // O dedo para um instante antes de soltar, como uma pessoa faz.
+      await page.waitForTimeout(150);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [ate] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    }
+    // Toque pelo CDP, como o deslize.
+    async function tocar(alvo: Locator) {
+      const c = (await alvo.boundingBox())!;
+      const ponto = { x: c.x + c.width / 2, y: c.y + c.height / 2 };
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [ponto] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    }
+    const caixa = (await mensagemNaFaixa(page).boundingBox())!;
+    const meio = { x: caixa.x + caixa.width / 2, y: caixa.y + caixa.height / 2 };
+
+    await deslizar(meio, { x: meio.x - 150, y: meio.y });
+    await expect(visivel).toContainText(segundo);
+    await expect(faixa(page).getByText("Comunicado 2 de 2")).toBeVisible();
+    await expect(janela(page)).toBeHidden();
+
+    await deslizar(meio, { x: meio.x + 150, y: meio.y });
+    await expect(visivel).toContainText(primeiro);
+
+    // Na janela, o mesmo. Uma pessoa não toca no mesmo instante em que soltou o deslize.
+    await page.waitForTimeout(400);
+    await tocar(mensagemNaFaixa(page));
+    await expect(janela(page)).toBeVisible();
+    const cartao = (await janela(page).getByRole("article").boundingBox())!;
+    const centro = { x: cartao.x + cartao.width / 2, y: cartao.y + cartao.height / 2 };
+    await deslizar(centro, { x: centro.x - 150, y: centro.y });
+    await expect(janela(page)).toContainText(segundo);
+    await expect(janela(page)).toBeVisible();
+    await page.waitForTimeout(400);
+    await tocar(janela(page).getByRole("button", { name: "Fechar", exact: true }));
+    await expect(janela(page)).toBeHidden();
+
+    // Dedo na vertical sobre a faixa: a página rola e o comunicado não muda.
+    await deslizar(meio, { x: meio.x + 10, y: meio.y - 220 });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await expect(visivel).toContainText(segundo);
   });
 });
 

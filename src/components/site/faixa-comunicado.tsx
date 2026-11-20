@@ -1,12 +1,13 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
 import * as React from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
 import { cn } from "@/lib/utils";
 
 import { COOKIE_COMUNICADOS_FECHADOS, juntarFechados, lerFechados } from "./comunicados-fechados";
+import { useDeslize } from "./deslize";
+import { JanelaComunicados, type VistaDaJanela } from "./janela-comunicados";
 
 export type ComunicadoNaFaixa = {
   id: string;
@@ -22,8 +23,11 @@ const botao =
  * todas as páginas do site e também serve de prévia no painel.
  *
  * - Com vários no ar, troca sozinha a cada `intervaloSegundos`, na ordem da fila (CA-US01.2, E58).
- *   A troca para com o mouse em cima, com o foco do teclado dentro, pelo botão Pausar, quando a pessoa usa as
- *   setas e quando o sistema pede menos movimento (WCAG 2.2.2).
+ *   A troca para com o mouse em cima, com o foco do teclado dentro, com a janela aberta e depois que a
+ *   pessoa passa pelas setas ou pelo deslize. Com menos movimento pedido pelo sistema, continua
+ *   trocando, só sem a transição. O X cumpre a WCAG 2.2.2 (dá para esconder o que se move).
+ * - Deslizar o dedo de lado passa para o próximo ou o anterior, sem atrapalhar a rolagem da página.
+ * - A mensagem abre a janela dos comunicados em destaque; “Ver todos” (dois ou mais) abre a lista.
  * - Todos os textos ficam empilhados no mesmo lugar: a faixa tem a altura do maior e não pula.
  * - O X fecha a faixa e guarda os comunicados fechados num cookie; volta se entrar um novo (E58).
  */
@@ -38,31 +42,34 @@ export function FaixaComunicado({
   intervaloSegundos: number;
   /** Por quantos dias o X é lembrado (`comunicados.cookie_fechados_dias`). Só no modo "site". */
   diasDoCookie?: number;
-  /** "site": com o X. "previa": painel, sem o X e sem trocar sozinha. "miniatura": só a primeira, sem botões. */
+  /** "site": com o X e a janela. "previa": painel, sem o X e sem trocar sozinha. "miniatura": só a primeira, sem botões. */
   modo?: "site" | "previa" | "miniatura";
   className?: string;
 }) {
   const [atual, setAtual] = React.useState(0);
   const [fechada, setFechada] = React.useState(false);
-  const [pausadaPelaPessoa, setPausadaPelaPessoa] = React.useState(false);
+  const [passouPelaPessoa, setPassouPelaPessoa] = React.useState(false);
   const [emUso, setEmUso] = React.useState(false);
   const [focoDentro, setFocoDentro] = React.useState(false);
-  const [menosMovimento, setMenosMovimento] = React.useState(false);
   const [anuncio, setAnuncio] = React.useState(false);
+  const [janela, setJanela] = React.useState<VistaDaJanela | null>(null);
+  // Quem abriu a janela, para o foco voltar a ele ao fechar.
+  const abridor = React.useRef<"mensagem" | "todos">("mensagem");
+  const secao = React.useRef<HTMLElement>(null);
 
   const total = comunicados.length;
   const indice = total === 0 ? 0 : Math.min(atual, total - 1);
   const varios = total > 1 && modo !== "miniatura";
-  const trocaSozinha = varios && modo === "site";
-  const parada = pausadaPelaPessoa || emUso || focoDentro || menosMovimento;
+  const noSite = modo === "site";
+  const trocaSozinha = varios && noSite;
+  const parada = passouPelaPessoa || emUso || focoDentro || janela !== null;
 
-  React.useEffect(() => {
-    const consulta = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const mudar = () => setMenosMovimento(consulta.matches);
-    mudar();
-    consulta.addEventListener("change", mudar);
-    return () => consulta.removeEventListener("change", mudar);
-  }, []);
+  function ir(passo: number) {
+    setAnuncio(true);
+    setPassouPelaPessoa(true);
+    setAtual((indice + passo + total) % total);
+  }
+  const deslize = useDeslize(ir);
 
   React.useEffect(() => {
     if (!trocaSozinha || parada) return;
@@ -72,10 +79,9 @@ export function FaixaComunicado({
 
   if (total === 0 || fechada) return null;
 
-  const ir = (passo: number) => {
-    setAnuncio(true);
-    setPausadaPelaPessoa(true);
-    setAtual((indice + passo + total) % total);
+  const abrir = (vista: VistaDaJanela, quem: "mensagem" | "todos") => {
+    abridor.current = quem;
+    setJanela(vista);
   };
 
   const fechar = () => {
@@ -95,37 +101,35 @@ export function FaixaComunicado({
       <button type="button" onClick={() => ir(1)} aria-label="Próximo comunicado" className={cn(botao, "size-8 pointer-coarse:size-11")}>
         <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
       </button>
-      {trocaSozinha && !menosMovimento ? (
-        <button
-          type="button"
-          onClick={() => setPausadaPelaPessoa((p) => !p)}
-          aria-label={pausadaPelaPessoa ? "Voltar a trocar os comunicados" : "Parar de trocar os comunicados"}
-          className={cn(botao, "size-8 pointer-coarse:size-11")}
-        >
-          {pausadaPelaPessoa ? <Play aria-hidden className="size-3.5" /> : <Pause aria-hidden className="size-3.5" />}
-        </button>
-      ) : null}
     </div>
   ) : null;
 
-  const fecharBotao =
-    modo === "site" ? (
-      <button type="button" onClick={fechar} aria-label="Fechar comunicado" className={cn(botao, "size-8 pointer-coarse:size-11")}>
-        <IconeFigma src="/site/comunicado-fechar.svg" tamanho={18} />
-      </button>
-    ) : null;
+  const fecharBotao = noSite ? (
+    <button type="button" onClick={fechar} aria-label="Fechar comunicado" className={cn(botao, "size-8 pointer-coarse:size-11")}>
+      <IconeFigma src="/site/comunicado-fechar.svg" tamanho={18} />
+    </button>
+  ) : null;
 
   const visiveis = modo === "miniatura" ? comunicados.slice(0, 1) : comunicados;
 
   return (
+    <>
     <section
+      ref={secao}
       aria-label={varios ? "Comunicados do sindicato" : "Comunicado do sindicato"}
       data-testid="faixa-comunicado"
-      className={cn("bg-destaque-amarelo text-destaque-marinho-fixo", modo === "site" && "print:hidden", className)}
+      className={cn(
+        "bg-destaque-amarelo text-destaque-marinho-fixo",
+        noSite && "print:hidden",
+        // O dedo de lado passa os comunicados; na vertical, o navegador rola a página como sempre.
+        trocaSozinha && "touch-pan-y touch-pinch-zoom",
+        className,
+      )}
+      {...(trocaSozinha ? deslize : {})}
       onMouseEnter={() => setEmUso(true)}
       onMouseLeave={() => setEmUso(false)}
       // Só o foco do teclado para a faixa: o clique do mouse deixa o foco no botão sem o anel, e a
-      // faixa ficaria parada depois de “Voltar a trocar”, com o mouse já fora dela.
+      // faixa ficaria parada com o mouse já fora dela.
       onFocus={(e) => setFocoDentro(e.target.matches(":focus-visible"))}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocoDentro(false);
@@ -137,7 +141,7 @@ export function FaixaComunicado({
         className={cn(
           "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 pt-3 pb-3.5 [grid-template-areas:'rotulo_controles'_'mensagem_mensagem']",
           "lg:grid-cols-[auto_auto_minmax(0,1fr)_auto] lg:gap-x-5 lg:py-3 lg:[grid-template-areas:'rotulo_divisor_mensagem_controles']",
-          modo === "site" ? "conteudo-site" : "px-4 lg:px-5",
+          noSite ? "conteudo-site" : "px-4 lg:px-5",
           modo === "miniatura" && "pointer-events-none",
         )}
       >
@@ -158,21 +162,54 @@ export function FaixaComunicado({
                 inert={!ativo}
                 className={cn(
                   "col-start-1 row-start-1 flex flex-col items-start gap-2 lg:flex-row lg:items-center lg:gap-5",
-                  !ativo && "invisible",
+                  noSite && "gap-3",
+                  // Esmaece um e só depois mostra o outro (os textos ficam no mesmo lugar e não podem se
+                  // cruzar). Com menos movimento pedido pelo sistema, troca sem transição.
+                  "transition-[opacity,visibility] duration-150 ease-out motion-reduce:delay-0 motion-reduce:duration-0",
+                  ativo ? "delay-150" : "invisible opacity-0",
                 )}
               >
-                <p className="min-w-0 flex-1 texto-titulo-card-pequeno break-words">{c.mensagem}</p>
-                {c.link ? (
-                  <a
-                    href={c.link.href}
-                    {...(c.link.externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    className="flex shrink-0 items-center gap-1.5 rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
+                {noSite ? (
+                  <button
+                    type="button"
+                    data-abre="mensagem"
+                    aria-haspopup="dialog"
+                    onClick={() => abrir("destaque", "mensagem")}
+                    className="alvo-toque min-w-0 flex-1 cursor-pointer rounded-[6px] text-left texto-titulo-card-pequeno break-words outline-none hover:underline hover:underline-offset-2 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
                   >
-                    Saiba mais
-                    <span className="sr-only">: {c.mensagem}</span>
-                    {c.link.externo ? <span className="sr-only"> (abre em outra aba)</span> : null}
-                    <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
-                  </a>
+                    {c.mensagem}
+                    <span className="sr-only"> (ver em destaque)</span>
+                  </button>
+                ) : (
+                  <p className="min-w-0 flex-1 texto-titulo-card-pequeno break-words">{c.mensagem}</p>
+                )}
+                {c.link || (noSite && varios) ? (
+                  <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1">
+                    {c.link ? (
+                      <a
+                        href={c.link.href}
+                        {...(c.link.externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        className="flex shrink-0 items-center gap-1.5 rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
+                      >
+                        Saiba mais
+                        <span className="sr-only">: {c.mensagem}</span>
+                        {c.link.externo ? <span className="sr-only"> (abre em outra aba)</span> : null}
+                        <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
+                      </a>
+                    ) : null}
+                    {noSite && varios ? (
+                      <button
+                        type="button"
+                        data-abre="todos"
+                        aria-haspopup="dialog"
+                        onClick={() => abrir("lista", "todos")}
+                        className="flex shrink-0 items-center rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
+                      >
+                        Ver todos
+                        <span className="sr-only"> os comunicados</span>
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
             );
@@ -187,6 +224,24 @@ export function FaixaComunicado({
         ) : null}
       </div>
     </section>
+
+      {/* Fora da seção: os eventos do portal subiriam até ela (o deslize na janela passaria a faixa também). */}
+      {noSite ? (
+        <JanelaComunicados
+          comunicados={comunicados}
+          indice={indice}
+          aoIr={(i) => {
+            setPassouPelaPessoa(true);
+            setAtual(i);
+          }}
+          vista={janela}
+          aoMudarVista={setJanela}
+          aoDevolverFoco={() =>
+            secao.current?.querySelector<HTMLElement>(`[aria-hidden=false] [data-abre=${abridor.current}]`)?.focus()
+          }
+        />
+      ) : null}
+    </>
   );
 }
 
