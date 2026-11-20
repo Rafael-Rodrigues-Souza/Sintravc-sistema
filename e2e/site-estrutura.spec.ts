@@ -295,6 +295,47 @@ test.describe("topo com foto: Instituição e Contato (Figma 57:813 / 56:519, 89
   }
 });
 
+test.describe("rodapé e redes do Contato como no Figma (295:51234, 87:1052; #64)", { tag: "@responsivo" }, () => {
+  const topoDe = async (page: Page, titulo: string) => (await rodape(page).getByRole("heading", { name: titulo, exact: true }).boundingBox())!.y;
+
+  test("colunas do rodapé: no celular, Navegação com Associado e Sindicato com Documentos", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const navegacao = await topoDe(page, "Navegação");
+    const sindicato = await topoDe(page, "Sindicato");
+    const documentos = await topoDe(page, "Documentos");
+    const associado = await topoDe(page, "Associado");
+
+    if (page.viewportSize()!.width < 640) {
+      expect(associado, "Associado ao lado de Navegação").toBe(navegacao);
+      expect(sindicato, "Sindicato na segunda linha").toBeGreaterThan(navegacao);
+      expect(documentos, "Documentos ao lado de Sindicato").toBe(sindicato);
+    } else {
+      expect(sindicato, "Sindicato ao lado de Navegação").toBe(navegacao);
+    }
+  });
+
+  test("os links Política, Termos e Cookies ficam numa linha só, inclusive no celular mais estreito", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const altura = page.viewportSize()!.height;
+    for (const largura of [page.viewportSize()!.width, RESPONSIVO.varredura.de, RESPONSIVO.perfis["celular-pequeno"].largura]) {
+      await page.setViewportSize({ width: largura, height: altura });
+      const politica = (await rodape(page).getByRole("link", { name: "Política de privacidade" }).boundingBox())!;
+      const cookies = (await rodape(page).getByRole("button", { name: "Cookies" }).boundingBox())!;
+      expect(cookies.y, `Cookies na linha da Política a ${largura} px`).toBe(politica.y);
+    }
+  });
+
+  test("no desktop, o título das redes do Contato ocupa 2 linhas", async ({ page, baseURL }) => {
+    test.skip(telaEstreita(page), "no celular, o título ocupa a largura toda");
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const linhas = await page.getByRole("heading", { name: "Acompanhe o SINTRAVC nas redes sociais" }).evaluate((h) => Math.round(h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight)));
+    expect(linhas).toBe(2);
+  });
+});
+
 test.describe("Contato (US05)", { tag: "@responsivo" }, () => {
   test("canais da ConfigSite e o mapa do Google só depois do clique em Carregar mapa (CA-US05.1, CA-US05.2)", async ({ page, hasTouch, baseURL }) => {
     await semAviso(page, baseURL);
