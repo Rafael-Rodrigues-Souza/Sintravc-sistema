@@ -324,7 +324,14 @@ test.describe("rodapé e redes do Contato como no Figma (295:51234, 87:1052; #64
       await page.evaluate(() => document.fonts.ready);
       const politica = (await rodape(page).getByRole("link", { name: "Política de privacidade" }).boundingBox())!;
       const cookies = (await rodape(page).getByRole("button", { name: "Cookies" }).boundingBox())!;
-      expect(cookies.y, `Cookies na linha da Política a ${largura} px`).toBe(politica.y);
+      // Na falha, a mensagem traz o que o navegador mediu (largura da lista, espaço, fonte e cada link).
+      const medidas = await rodape(page).getByRole("button", { name: "Cookies" }).evaluate((botao) => {
+        const lista = botao.closest("ul")!;
+        const estilo = getComputedStyle(lista);
+        const larguras = [...lista.children].map((li) => li.getBoundingClientRect().width.toFixed(1));
+        return `lista ${lista.clientWidth}px, espaço ${estilo.columnGap}, fonte ${estilo.fontSize} ${estilo.fontFamily.split(",")[0]}, janela ${window.innerWidth}/${document.documentElement.clientWidth}, links ${larguras.join(" + ")}`;
+      });
+      expect(cookies.y, `Cookies na linha da Política a ${largura} px (${medidas})`).toBe(politica.y);
     }
   });
 
