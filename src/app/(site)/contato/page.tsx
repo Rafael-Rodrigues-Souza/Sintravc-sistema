@@ -4,7 +4,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { FilieSe } from "@/components/site/filie-se";
 import { MapaComConsentimento } from "@/components/site/mapa-com-consentimento";
 import { redesDoSite } from "@/components/site/redes";
-import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas } from "@/components/site/partes-da-pagina";
+import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas, TopoComFoto } from "@/components/site/partes-da-pagina";
 import { Marcador, TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { CONTATO_PAGINA } from "@/conteudo/site";
@@ -35,25 +35,43 @@ export default async function PaginaContato() {
   return (
     <>
       <section aria-labelledby="titulo-pagina" className="bg-fundo-marinho text-texto-invertido">
-        <div className="conteudo-site flex flex-col gap-8 py-8 lg:grid lg:grid-cols-[1fr_minmax(0,480px)] lg:items-center lg:gap-16 lg:py-14">
-          <div className="flex flex-col gap-5">
-            <Migalhas sobreEscuro itens={[{ rotulo: "Início", href: "/" }, { rotulo: "Contato" }]} />
-            <Eyebrow sobreEscuro className="mt-2 lg:mt-6">
-              {hero.eyebrow}
-            </Eyebrow>
-            <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
-              {hero.titulo}
-            </h1>
-            <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">
-              {hero.texto}
-            </p>
-            <p className="texto-pequeno flex items-center gap-2 self-start rounded-full border border-sobre-escuro-borda bg-sobre-escuro-superficie px-3 py-1.5">
-              <span aria-hidden className="size-2 shrink-0 rounded-full bg-destaque-amarelo" />
-              <span>
-                Atendimento: <TextoDoSite texto={contato.horario} />
-              </span>
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
+        <TopoComFoto
+          texto={
+            <>
+              <Migalhas sobreEscuro itens={[{ rotulo: "Início", href: "/" }, { rotulo: "Contato" }]} />
+              <Eyebrow sobreEscuro className="mt-2 lg:mt-6">
+                {hero.eyebrow}
+              </Eyebrow>
+              <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
+                {hero.titulo}
+              </h1>
+              <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">
+                {hero.texto}
+              </p>
+              <p className="texto-pequeno flex items-center gap-2 self-start rounded-full border border-sobre-escuro-borda bg-sobre-escuro-superficie px-3 py-1.5">
+                <span aria-hidden className="size-2 shrink-0 rounded-full bg-destaque-amarelo" />
+                <span>
+                  Atendimento: <TextoDoSite texto={contato.horario} />
+                </span>
+              </p>
+            </>
+          }
+          foto={
+            <>
+              <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
+              <p className="absolute right-5 bottom-5 left-5 flex max-w-[300px] items-center gap-3 rounded-[16px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-destaque-marinho-fixo text-destaque-amarelo">
+                  <IconeFigma src="/site/icone-local.svg" tamanho={18} />
+                </span>
+                <span className="flex flex-col">
+                  <span className="font-bold">{hero.presencial}</span>
+                  <span className="texto-pequeno">Sede em {contato.cidade}</span>
+                </span>
+              </p>
+            </>
+          }
+          acoes={
+            <>
               <Button asChild>
                 <a href={whatsapp} target="_blank" rel="noopener noreferrer">
                   <IconeFigma src="/site/icone-whatsapp.svg" tamanho={18} />
@@ -66,21 +84,9 @@ export default async function PaginaContato() {
                   Ligar para o sindicato
                 </a>
               </Button>
-            </div>
-          </div>
-          <div className="relative">
-            <FotoPendente className="aspect-[4/3] w-full justify-start rounded-[24px] pt-8" />
-            <p className="absolute right-5 bottom-5 left-5 flex max-w-[300px] items-center gap-3 rounded-[16px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-destaque-marinho-fixo text-destaque-amarelo">
-                <IconeFigma src="/site/icone-local.svg" tamanho={18} />
-              </span>
-              <span className="flex flex-col">
-                <span className="font-bold">{hero.presencial}</span>
-                <span className="texto-pequeno">Sede em {contato.cidade}</span>
-              </span>
-            </p>
-          </div>
-        </div>
+            </>
+          }
+        />
       </section>
 
       {/* Canais */}

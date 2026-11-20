@@ -240,30 +240,6 @@ test.describe("Sindicato: Instituição e Diretoria (US07)", { tag: "@responsivo
     await semRolagemLateral(page);
   });
 
-  test("topo da Instituição: no celular, a foto vem antes dos botões; no desktop, ao lado (Figma 57:813 / 56:519)", async ({ page, baseURL }) => {
-    await semAviso(page, baseURL);
-    await page.goto("/sindicato/instituicao");
-    const topo = page.getByRole("region", { name: "Juntos, somos mais fortes." });
-    const foto = (await topo.getByRole("img", { name: /Foto ainda não enviada/ }).boundingBox())!;
-    const historia = (await topo.getByRole("link", { name: "Conheça nossa história" }).boundingBox())!;
-    const titulo = (await topo.getByRole("heading", { level: 1 }).boundingBox())!;
-
-    if (telaEstreita(page)) {
-      expect(foto.y, "foto abaixo do título").toBeGreaterThan(titulo.y + titulo.height - 1);
-      expect(historia.y, "botões abaixo da foto").toBeGreaterThan(foto.y + foto.height - 1);
-    } else {
-      expect(foto.x, "foto à direita do texto").toBeGreaterThan(historia.x + historia.width);
-    }
-
-    // O leitor de tela e o Tab seguem a mesma ordem: texto, foto, botões.
-    const ordem = await topo.evaluate((secao) =>
-      [...secao.querySelectorAll("h1, [role=img], a")]
-        .map((el) => (el.tagName === "H1" ? "título" : el.getAttribute("role") === "img" ? "foto" : el.textContent?.trim()))
-        .filter((t) => t === "título" || t === "foto" || t === "Conheça nossa história"),
-    );
-    expect(ordem).toEqual(["título", "foto", "Conheça nossa história"]);
-  });
-
   test("Diretoria: o destaque do vice é maior que os cartões e menor que o do presidente", async ({ page, baseURL }) => {
     await semAviso(page, baseURL);
     await page.goto("/sindicato/diretoria");
@@ -278,6 +254,41 @@ test.describe("Sindicato: Instituição e Diretoria (US07)", { tag: "@responsivo
     expect(vice, `vice (${vice}) maior que o cartão (${cartao})`).toBeGreaterThan(cartao);
     expect(presidente, `presidente (${presidente}) maior que o vice (${vice})`).toBeGreaterThan(vice);
   });
+});
+
+test.describe("topo com foto: Instituição e Contato (Figma 57:813 / 56:519, 89:964 / 87:629; #64)", { tag: "@responsivo" }, () => {
+  const TOPOS = [
+    { caminho: "/sindicato/instituicao", titulo: "Juntos, somos mais fortes.", botao: "Conheça nossa história" },
+    { caminho: "/contato", titulo: "Entre em contato", botao: "Chamar no WhatsApp" },
+  ];
+
+  for (const topo of TOPOS) {
+    test(`${topo.caminho}: no celular, a foto vem entre o texto e os botões; no desktop, ao lado`, async ({ page, baseURL }) => {
+      await semAviso(page, baseURL);
+      await page.goto(topo.caminho);
+      const secao = page.getByRole("region", { name: topo.titulo });
+      const foto = (await secao.getByRole("img", { name: /Foto ainda não enviada/ }).boundingBox())!;
+      const botao = (await secao.getByRole("link", { name: topo.botao }).boundingBox())!;
+      const titulo = (await secao.getByRole("heading", { level: 1 }).boundingBox())!;
+
+      if (telaEstreita(page)) {
+        expect(foto.y, "foto abaixo do título").toBeGreaterThan(titulo.y + titulo.height - 1);
+        expect(botao.y, "botões abaixo da foto").toBeGreaterThan(foto.y + foto.height - 1);
+      } else {
+        expect(foto.x, "foto à direita do texto").toBeGreaterThan(botao.x + botao.width);
+      }
+
+      // O leitor de tela e o Tab seguem a mesma ordem: título, foto, botões.
+      const ordem = await secao.evaluate(
+        (el, nomeDoBotao) =>
+          [...el.querySelectorAll("h1, [role=img], a")]
+            .map((n) => (n.tagName === "H1" ? "título" : n.getAttribute("role") === "img" ? "foto" : n.textContent?.trim()))
+            .filter((t) => t === "título" || t === "foto" || t === nomeDoBotao),
+        topo.botao,
+      );
+      expect(ordem).toEqual(["título", "foto", topo.botao]);
+    });
+  }
 });
 
 test.describe("Contato (US05)", { tag: "@responsivo" }, () => {

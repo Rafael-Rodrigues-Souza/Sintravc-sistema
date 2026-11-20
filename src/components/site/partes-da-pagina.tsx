@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -82,6 +83,22 @@ export function FotoPendente({ iniciais, rotulo = "[Foto a definir pelo sindicat
     >
       {iniciais ? <span className="font-condensed text-[44px] leading-none font-extrabold text-destaque-azul">{iniciais}</span> : null}
       <Marcador className="texto-pequeno">{rotulo}</Marcador>
+    </div>
+  );
+}
+
+/**
+ * Topo das páginas com foto (Instituição e Contato). No celular e no tablet em pé, a foto fica
+ * entre o texto e os botões (Figma 57:813; #64), com 16 px entre eles; do lg em diante, o texto e
+ * os botões ficam à esquerda e a foto, centralizada, à direita. A ordem do DOM é a do celular, para
+ * o leitor de tela e o Tab seguirem a mesma ordem.
+ */
+export function TopoComFoto({ texto, foto, acoes }: { texto: ReactNode; foto: ReactNode; acoes: ReactNode }) {
+  return (
+    <div className="conteudo-site flex flex-col gap-4 py-8 lg:grid lg:grid-cols-[1fr_minmax(0,480px)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 lg:gap-y-0 lg:py-14">
+      <div className="flex flex-col gap-5 lg:col-start-1 lg:row-start-2">{texto}</div>
+      <div className="relative lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">{foto}</div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-3 lg:col-start-1 lg:row-start-3 lg:mt-5">{acoes}</div>
     </div>
   );
 }

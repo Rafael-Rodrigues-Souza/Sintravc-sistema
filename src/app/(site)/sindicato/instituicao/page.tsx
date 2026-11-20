@@ -5,7 +5,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { AbasSindicato } from "@/components/site/abas-sindicato";
 import { FilieSe } from "@/components/site/filie-se";
 import { LINKS } from "@/components/site/navegacao";
-import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas } from "@/components/site/partes-da-pagina";
+import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas, TopoComFoto } from "@/components/site/partes-da-pagina";
 import { TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { INSTITUICAO } from "@/conteudo/site";
@@ -39,35 +39,40 @@ export default async function PaginaInstituicao() {
     <>
       {/* Topo */}
       <section aria-labelledby="titulo-pagina" className="bg-fundo-marinho text-texto-invertido">
-        {/* No celular, a foto fica entre o texto e os botões (Figma 57:813); no desktop, à direita dos dois. */}
-        <div className="conteudo-site flex flex-col gap-4 py-8 lg:grid lg:grid-cols-[1fr_minmax(0,480px)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 lg:gap-y-0 lg:py-14">
-          <div className="flex flex-col gap-5 lg:col-start-1 lg:row-start-2">
-            <Migalhas sobreEscuro itens={[{ rotulo: "Início", href: "/" }, { rotulo: "Sindicato" }, { rotulo: "Instituição" }]} />
-            <Eyebrow sobreEscuro className="mt-2 lg:mt-6">{hero.eyebrow}</Eyebrow>
-            <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
-              {hero.titulo}
-            </h1>
-            <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">{hero.texto}</p>
-          </div>
-          <div className="relative lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">
-            <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
-            <p className="absolute right-5 bottom-5 left-5 flex max-w-[280px] flex-col gap-2 rounded-[16px] bg-destaque-amarelo p-4 font-bold text-destaque-amarelo-texto">
-              <IconeFigma src="/site/icone-aspas.svg" tamanho={20} />
-              {hero.destaqueDaFoto}
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:gap-3 lg:col-start-1 lg:row-start-3 lg:mt-5">
-            <Button asChild>
-              <a href="#historia">
-                Conheça nossa história
-                <IconeFigma src="/site/icone-seta-direita.svg" tamanho={18} />
-              </a>
-            </Button>
-            <Button asChild variant="sobre-escuro">
-              <Link href={LINKS.contato.href}>Fale com o sindicato</Link>
-            </Button>
-          </div>
-        </div>
+        <TopoComFoto
+          texto={
+            <>
+              <Migalhas sobreEscuro itens={[{ rotulo: "Início", href: "/" }, { rotulo: "Sindicato" }, { rotulo: "Instituição" }]} />
+              <Eyebrow sobreEscuro className="mt-2 lg:mt-6">{hero.eyebrow}</Eyebrow>
+              <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
+                {hero.titulo}
+              </h1>
+              <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">{hero.texto}</p>
+            </>
+          }
+          foto={
+            <>
+              <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
+              <p className="absolute right-5 bottom-5 left-5 flex max-w-[280px] flex-col gap-2 rounded-[16px] bg-destaque-amarelo p-4 font-bold text-destaque-amarelo-texto">
+                <IconeFigma src="/site/icone-aspas.svg" tamanho={20} />
+                {hero.destaqueDaFoto}
+              </p>
+            </>
+          }
+          acoes={
+            <>
+              <Button asChild>
+                <a href="#historia">
+                  Conheça nossa história
+                  <IconeFigma src="/site/icone-seta-direita.svg" tamanho={18} />
+                </a>
+              </Button>
+              <Button asChild variant="sobre-escuro">
+                <Link href={LINKS.contato.href}>Fale com o sindicato</Link>
+              </Button>
+            </>
+          }
+        />
       </section>
 
       <AbasSindicato atual={LINKS.instituicao.href} />
