@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import * as React from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { useFecharPeloVoltar } from "@/components/use-fechar-pelo-voltar";
 import { enquadramentoDaImagem } from "@/lib/midia/apresentacao";
 import {
   alternarZoom,
@@ -34,14 +35,10 @@ const PASSO_DA_SETA = 48;
 const SENSIBILIDADE_DA_RODA = 0.002;
 /** Um dedo que andou mais que isto (px) arrastou: não conta como toque. */
 const FOLGA_DO_TOQUE = 10;
-/** Marca, no history.state, da entrada que o visualizador acrescenta ao abrir (o voltar do celular fecha). */
-const CHAVE_NO_HISTORICO = "visualizadorDaMidia";
 
 const CENTRO: Ponto = { x: 0, y: 0 };
 const distancia = (a: Ponto, b: Ponto) => Math.hypot(a.x - b.x, a.y - b.y);
 const meio = (a: Ponto, b: Ponto): Ponto => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-const marcaNoHistorico = (): unknown =>
-  (window.history.state as Record<string, unknown> | null)?.[CHAVE_NO_HISTORICO];
 
 /** A imagem em 100% (o tamanho do layout, sem o transform) e a área onde ela aparece. */
 function medir(img: HTMLImageElement | null, caixa: HTMLElement | null): Medidas {
@@ -77,35 +74,8 @@ export function VisualizadorImagem({
   /** Para onde o foco volta ao fechar: quem abriu (a prévia ou “Ver inteira”). */
   aoDevolverFoco: () => void;
 }) {
-  // O voltar do celular fecha o visualizador, sem sair da página: ao abrir, entra uma entrada no
-  // histórico, marcada com o código desta abertura, e o voltar a tira e fecha. Fechar pelo X ou pelo
-  // Esc também tira a entrada (history.back), para não sobrar um “voltar” que não faz nada.
-  const abertura = React.useRef<string | null>(null);
-  const fechar = React.useEffectEvent(() => {
-    abertura.current = null;
-    aoMudar(false);
-  });
-  React.useEffect(() => {
-    if (!aberto) return;
-    abertura.current ??= `${Date.now()}-${Math.random()}`;
-    const minha = abertura.current;
-    // No modo estrito do React o efeito roda duas vezes: a entrada só entra uma vez.
-    if (marcaNoHistorico() !== minha) {
-      window.history.pushState({ ...(window.history.state as object | null), [CHAVE_NO_HISTORICO]: minha }, "");
-    }
-    const aoVoltar = () => {
-      if (marcaNoHistorico() !== minha) fechar();
-    };
-    window.addEventListener("popstate", aoVoltar);
-    return () => window.removeEventListener("popstate", aoVoltar);
-  }, [aberto]);
-
-  function mudar(novo: boolean) {
-    if (novo) aoMudar(true);
-    // Fecha pelo histórico: quem fecha de fato é o popstate acima.
-    else if (abertura.current && marcaNoHistorico() === abertura.current) window.history.back();
-    else fechar();
-  }
+  // O voltar do celular fecha o visualizador, sem sair da página; o X e o Esc tiram a entrada do histórico.
+  const mudar = useFecharPeloVoltar("visualizadorDaMidia", aberto, aoMudar);
 
   return (
     <DialogPrimitive.Root open={aberto} onOpenChange={mudar}>
