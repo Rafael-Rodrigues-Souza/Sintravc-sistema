@@ -184,7 +184,7 @@ export default async function PaginaContato() {
 
       {/* Redes */}
       <section aria-labelledby="redes" className="bg-fundo-marinho text-texto-invertido">
-        <div className="conteudo-site grid gap-8 py-14 lg:grid-cols-[minmax(0,400px)_1fr] lg:items-center lg:gap-16 lg:py-20">
+        <div className="conteudo-site grid gap-8 py-14 lg:grid-cols-[minmax(0,440px)_1fr] lg:items-center lg:gap-16 lg:py-20">
           <div className="flex flex-col gap-4">
             <Eyebrow sobreEscuro>{textoRedes.eyebrow}</Eyebrow>
             <h2 id="redes" className="texto-titulo-secao-mobile lg:texto-titulo-secao">
