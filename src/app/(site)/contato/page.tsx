@@ -202,7 +202,7 @@ export default async function PaginaContato() {
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="font-bold">{rede.nome}</span>
                     {rede.href ? (
-                      <span className="texto-pequeno truncate text-texto-invertido-sec">{rede.href.replace(/^https:\/\/(www\.)?/, "")}</span>
+                      <span className="texto-pequeno text-texto-invertido-sec [overflow-wrap:anywhere]">{rede.href.replace(/^https:\/\/(www\.)?/, "")}</span>
                     ) : (
                       <Marcador className="texto-pequeno self-start">[Link a definir pelo sindicato]</Marcador>
                     )}
