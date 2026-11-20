@@ -321,6 +321,7 @@ test.describe("rodapé e redes do Contato como no Figma (295:51234, 87:1052; #64
     const altura = page.viewportSize()!.height;
     for (const largura of [page.viewportSize()!.width, RESPONSIVO.varredura.de, RESPONSIVO.perfis["celular-pequeno"].largura]) {
       await page.setViewportSize({ width: largura, height: altura });
+      await page.evaluate(() => document.fonts.ready);
       const politica = (await rodape(page).getByRole("link", { name: "Política de privacidade" }).boundingBox())!;
       const cookies = (await rodape(page).getByRole("button", { name: "Cookies" }).boundingBox())!;
       expect(cookies.y, `Cookies na linha da Política a ${largura} px`).toBe(politica.y);

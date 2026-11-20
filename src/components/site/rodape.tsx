@@ -115,8 +115,11 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
           <p>
             © {ano} {RODAPE.nomeCompleto}
           </p>
-          {/* Entre 320 e ~340 px, o espaço entre os links encolhe para “Cookies” ficar na mesma linha (#64); depois, 24 px (Figma 295:51274). */}
-          <ul className="flex flex-wrap gap-x-[clamp(4px,calc((100vw_-_310px)/2),24px)] gap-y-1 text-texto-invertido pointer-coarse:vao-y-toque-8">
+          {/*
+            “Cookies” na mesma linha de 320 px em diante (#64), com folga de ~8 px: abaixo de 360 px os
+            links passam a 13 px e o espaço entre eles encolhe; a partir de ~376 px, 24 px (Figma 295:51274).
+          */}
+          <ul className="flex flex-wrap gap-x-[clamp(8px,calc((100vw_-_316px)/2),24px)] gap-y-1 max-[360px]:gap-x-[clamp(8px,calc((100vw_-_296px)/2),24px)] max-[360px]:text-[13px] text-texto-invertido pointer-coarse:vao-y-toque-8">
             {[LINKS.politica, LINKS.termos].map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className={`${link} alvo-toque inline-flex min-h-8 items-center whitespace-nowrap`}>
