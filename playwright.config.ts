@@ -62,6 +62,8 @@ export const RESPONSIVO = {
   alvoDeToque: 44,
   /** A partir desta largura (o `lg` do Tailwind) o painel tem o menu lateral; abaixo, a barra de baixo (E49). */
   menuLateralAPartirDe: 1024,
+  /** Abaixo desta largura (o `sm` do Tailwind), o layout de celular: o rodapé do site em 2 colunas, por exemplo. */
+  celularAbaixoDe: 640,
 } as const;
 
 export default defineConfig({

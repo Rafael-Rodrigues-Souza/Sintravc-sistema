@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -83,5 +84,55 @@ export function FotoPendente({ iniciais, rotulo = "[Foto a definir pelo sindicat
       {iniciais ? <span className="font-condensed text-[44px] leading-none font-extrabold text-destaque-azul">{iniciais}</span> : null}
       <Marcador className="texto-pequeno">{rotulo}</Marcador>
     </div>
+  );
+}
+
+/**
+ * Topo marinho das páginas com foto (Instituição e Contato): migalhas, sobretítulo, título, texto,
+ * a foto (pendente, D5) com o quadro amarelo e os botões. No celular e no tablet em pé, a foto fica
+ * entre o texto e os botões (Figma 57:813; #64), com 16 px entre eles; do lg em diante, o texto e
+ * os botões ficam à esquerda e a foto, centralizada, à direita. A ordem do DOM é a do celular, para
+ * o leitor de tela e o Tab seguirem a mesma ordem.
+ */
+export function TopoComFoto({
+  migalhas,
+  eyebrow,
+  titulo,
+  texto,
+  complemento,
+  destaqueDaFoto,
+  acoes,
+}: {
+  migalhas: { rotulo: string; href?: string }[];
+  eyebrow: ReactNode;
+  titulo: ReactNode;
+  texto: ReactNode;
+  /** Abaixo do texto, como o horário no Contato. */
+  complemento?: ReactNode;
+  /** O conteúdo do quadro amarelo sobre a foto. */
+  destaqueDaFoto: ReactNode;
+  acoes: ReactNode;
+}) {
+  return (
+    <section aria-labelledby="titulo-pagina" className="bg-fundo-marinho text-texto-invertido">
+      <div className="conteudo-site flex flex-col gap-4 py-8 lg:grid lg:grid-cols-[1fr_minmax(0,480px)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 lg:gap-y-0 lg:py-14">
+        <div className="flex flex-col gap-5 lg:col-start-1 lg:row-start-2">
+          <Migalhas sobreEscuro itens={migalhas} />
+          <Eyebrow sobreEscuro className="mt-2 lg:mt-6">
+            {eyebrow}
+          </Eyebrow>
+          <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
+            {titulo}
+          </h1>
+          <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">{texto}</p>
+          {complemento}
+        </div>
+        <div className="relative lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">
+          <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
+          <div className="absolute right-5 bottom-5 left-5 max-w-[300px] rounded-[16px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto">{destaqueDaFoto}</div>
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:gap-3 lg:col-start-1 lg:row-start-3 lg:mt-5">{acoes}</div>
+      </div>
+    </section>
   );
 }

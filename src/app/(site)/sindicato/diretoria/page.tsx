@@ -17,7 +17,12 @@ export const metadata: Metadata = {
   description: "Conheça quem representa e defende a categoria dos rodoviários de Vitória da Conquista.",
 };
 
-/** Destaque do presidente (grande) e do vice (menor): foto (iniciais por enquanto) ao lado do nome. */
+/**
+ * Destaque do presidente (grande) e do vice (médio): foto (iniciais por enquanto) e nome. A
+ * hierarquia vale em toda largura (#64): presidente > vice > cartões. No celular e no tablet em
+ * pé, os dois ficam empilhados, como no frame mobile (58:1368; E49); do lg em diante, a foto fica
+ * ao lado do nome.
+ */
 function Destaque({ membro, mensagem, tamanho }: { membro: MembroDaDiretoria; mensagem?: string; tamanho: "grande" | "medio" }) {
   const grande = tamanho === "grande";
   return (
@@ -25,10 +30,10 @@ function Destaque({ membro, mensagem, tamanho }: { membro: MembroDaDiretoria; me
       aria-label={membro.cargo}
       className={cn(
         "grid overflow-hidden rounded-[24px] border border-borda-padrao bg-fundo-superficie",
-        grande ? "sm:grid-cols-[minmax(0,2fr)_3fr]" : "grid-cols-[112px_1fr] sm:grid-cols-[180px_1fr]",
+        grande ? "lg:grid-cols-[minmax(0,2fr)_3fr]" : "lg:grid-cols-[300px_1fr]",
       )}
     >
-      <FotoPendente iniciais={iniciais(membro.nome)} className={grande ? "aspect-[4/3] sm:aspect-auto sm:min-h-[320px]" : "min-h-[150px]"} rotulo={grande ? "[Foto a definir pelo sindicato]" : "[Foto]"} />
+      <FotoPendente iniciais={iniciais(membro.nome)} className={grande ? "aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:min-h-[320px]" : "aspect-[16/9] sm:aspect-[21/9] lg:aspect-auto lg:min-h-[240px]"} rotulo={grande ? "[Foto a definir pelo sindicato]" : "[Foto]"} />
       <div className={cn("flex flex-col justify-center gap-3", grande ? "p-6 lg:p-12" : "p-5 lg:p-8")}>
         <Eyebrow>{membro.cargo}</Eyebrow>
         <h2 className={cn("text-texto-primario", grande ? "texto-titulo-secao-mobile lg:texto-titulo-secao" : "texto-titulo-card-grande")}>{membro.nome}</h2>
@@ -69,15 +74,16 @@ export default async function PaginaDiretoria() {
             </h1>
             <p className="texto-corpo max-w-[520px] text-texto-invertido-sec lg:texto-corpo-grande">{DIRETORIA.descricao}</p>
           </div>
-          <dl className="flex flex-col divide-y divide-sobre-escuro-divisor rounded-[20px] border border-sobre-escuro-borda bg-sobre-escuro-superficie px-5 lg:min-w-[340px]">
+          {/* No celular e no tablet em pé, uma faixa de 3 colunas sem ícones (58:1384); no desktop, a lista com ícones (58:996). */}
+          <dl className="grid grid-cols-3 divide-x divide-sobre-escuro-divisor rounded-[16px] border border-sobre-escuro-borda bg-sobre-escuro-superficie lg:flex lg:min-w-[340px] lg:flex-col lg:divide-x-0 lg:divide-y lg:rounded-[20px] lg:px-5">
             {numeros.map((n) => (
-              <div key={n.rotulo} className="flex items-center gap-4 py-4">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-destaque-amarelo text-destaque-amarelo-texto">
+              <div key={n.rotulo} className="flex min-w-0 items-start gap-4 p-3 lg:items-center lg:px-0 lg:py-4">
+                <span className="hidden size-10 shrink-0 items-center justify-center rounded-[10px] bg-destaque-amarelo text-destaque-amarelo-texto lg:flex">
                   <IconeFigma src={n.icone} tamanho={20} />
                 </span>
-                <div className="flex flex-col-reverse">
+                <div className="flex min-w-0 flex-col-reverse gap-1 lg:gap-0">
                   <dt className="texto-pequeno text-texto-invertido-sec">{n.rotulo}</dt>
-                  <dd className="font-condensed text-[26px] leading-tight font-bold">
+                  <dd className="font-condensed text-[18px] leading-tight font-bold [overflow-wrap:anywhere] text-destaque-amarelo lg:text-[26px] lg:text-texto-invertido">
                     <TextoDoSite texto={n.valor} />
                   </dd>
                 </div>

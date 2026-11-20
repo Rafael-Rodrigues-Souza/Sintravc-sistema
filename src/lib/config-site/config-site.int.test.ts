@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -48,6 +50,34 @@ describe("ConfigSite: dados de exemplo (seed)", () => {
     });
     expect(config.mensagemFiliacao).toBe("Olá! Quero me filiar ao SINTRAVC.");
     expect(config.historia.marcos[0]).toMatchObject({ id: "fundacao", ano: "1993" });
+  });
+});
+
+describe("ConfigSite: redes do sindicato (E57)", () => {
+  const MIGRACAO = "drizzle/0014_redes_do_sindicato.sql";
+
+  it("o seed traz o Instagram e o YouTube, e deixa o Facebook e o canal no WhatsApp sem link", async () => {
+    const config = await lerConfigSite();
+    expect(config.redes).toEqual({
+      instagram: "https://www.instagram.com/sintravc.ba/",
+      youtube: "https://www.youtube.com/@melodialives",
+      facebook: null,
+      canalWhatsapp: null,
+    });
+  });
+
+  it("a migração não sobrescreve um link que alguém já tenha configurado", async () => {
+    const copia = structuredClone(original) as ConfigSite;
+    copia.redes = { ...copia.redes, instagram: "https://www.instagram.com/outro/", youtube: null };
+    await gravar(copia);
+
+    await banco().execute(sql.raw(readFileSync(MIGRACAO, "utf8")));
+
+    const [linha] = await banco().select({ dados: configSite.dados }).from(configSite);
+    expect((linha?.dados as ConfigSite).redes).toMatchObject({
+      instagram: "https://www.instagram.com/outro/",
+      youtube: "https://www.youtube.com/@melodialives",
+    });
   });
 });
 

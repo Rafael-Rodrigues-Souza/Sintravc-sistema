@@ -7,7 +7,7 @@ import { apertar } from "./entrar";
 import { janelaEstreitaNoDesktop, semAnimacao, semRolagemLateral, telaEstreita } from "./responsivo";
 
 /**
- * Estrutura do site público na Fase 1 (#13): cabeçalho, menu mobile, rodapé, Filiar-se e aviso de
+ * Estrutura do site público na Fase 1 (#13, #64): cabeçalho, menu mobile, rodapé, Filiar-se e aviso de
  * cookies (RF07, RF09; N13, E01, E56). Os dados de contato vêm da ConfigSite do seed (RN43).
  */
 
@@ -239,6 +239,109 @@ test.describe("Sindicato: Instituição e Diretoria (US07)", { tag: "@responsivo
     await expect(page.getByText("9", { exact: true })).toBeVisible();
     await semRolagemLateral(page);
   });
+
+  test("Diretoria: o destaque do vice é maior que os cartões e menor que o do presidente", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/sindicato/diretoria");
+    const area = async (onde: ReturnType<Page["getByRole"]>) => {
+      const caixa = (await onde.getByRole("img").first().boundingBox())!;
+      return Math.round(caixa.width * caixa.height);
+    };
+    const presidente = await area(page.getByRole("article", { name: "Presidente" }));
+    const vice = await area(page.getByRole("article", { name: "Vice-presidente" }));
+    const cartao = await area(page.getByRole("region", { name: "Nossa diretoria" }).getByRole("listitem").first());
+
+    expect(vice, `vice (${vice}) maior que o cartão (${cartao})`).toBeGreaterThan(cartao);
+    expect(presidente, `presidente (${presidente}) maior que o vice (${vice})`).toBeGreaterThan(vice);
+
+    // Os números do topo: no celular e no tablet em pé, numa faixa de 3 colunas (58:1384); no desktop, em lista (58:996).
+    const topos = await page.getByRole("region", { name: "Diretoria" }).locator("dl > div").evaluateAll((itens) => itens.map((i) => Math.round(i.getBoundingClientRect().top)));
+    expect(new Set(topos).size, `topos dos números: ${topos.join(", ")}`).toBe(telaEstreita(page) ? 1 : 3);
+  });
+});
+
+test.describe("topo com foto: Instituição e Contato (Figma 57:813 / 56:519, 89:964 / 87:629; #64)", { tag: "@responsivo" }, () => {
+  const TOPOS = [
+    { caminho: "/sindicato/instituicao", titulo: "Juntos, somos mais fortes.", botao: "Conheça nossa história" },
+    { caminho: "/contato", titulo: "Entre em contato", botao: "Chamar no WhatsApp" },
+  ];
+
+  for (const topo of TOPOS) {
+    test(`${topo.caminho}: no celular, a foto vem entre o texto e os botões; no desktop, ao lado`, async ({ page, baseURL }) => {
+      await semAviso(page, baseURL);
+      await page.goto(topo.caminho);
+      const secao = page.getByRole("region", { name: topo.titulo });
+      const foto = (await secao.getByRole("img", { name: /Foto ainda não enviada/ }).boundingBox())!;
+      const botao = (await secao.getByRole("link", { name: topo.botao }).boundingBox())!;
+      const titulo = (await secao.getByRole("heading", { level: 1 }).boundingBox())!;
+
+      if (telaEstreita(page)) {
+        expect(foto.y, "foto abaixo do título").toBeGreaterThan(titulo.y + titulo.height - 1);
+        expect(botao.y, "botões abaixo da foto").toBeGreaterThan(foto.y + foto.height - 1);
+      } else {
+        expect(foto.x, "foto à direita do texto").toBeGreaterThan(botao.x + botao.width);
+      }
+
+      // O leitor de tela e o Tab seguem a mesma ordem: título, foto, botões.
+      const ordem = await secao.evaluate(
+        (el, nomeDoBotao) =>
+          [...el.querySelectorAll("h1, [role=img], a")]
+            .map((n) => (n.tagName === "H1" ? "título" : n.getAttribute("role") === "img" ? "foto" : n.textContent?.trim()))
+            .filter((t) => t === "título" || t === "foto" || t === nomeDoBotao),
+        topo.botao,
+      );
+      expect(ordem).toEqual(["título", "foto", topo.botao]);
+    });
+  }
+});
+
+test.describe("rodapé e redes do Contato como no Figma (295:51234, 87:1052; #64)", { tag: "@responsivo" }, () => {
+  const topoDe = async (page: Page, titulo: string) => (await rodape(page).getByRole("heading", { name: titulo, exact: true }).boundingBox())!.y;
+
+  test("colunas do rodapé: no celular, Navegação com Associado e Sindicato com Documentos", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const navegacao = await topoDe(page, "Navegação");
+    const sindicato = await topoDe(page, "Sindicato");
+    const documentos = await topoDe(page, "Documentos");
+    const associado = await topoDe(page, "Associado");
+
+    if (page.viewportSize()!.width < RESPONSIVO.celularAbaixoDe) {
+      expect(associado, "Associado ao lado de Navegação").toBe(navegacao);
+      expect(sindicato, "Sindicato na segunda linha").toBeGreaterThan(navegacao);
+      expect(documentos, "Documentos ao lado de Sindicato").toBe(sindicato);
+    } else {
+      expect(sindicato, "Sindicato ao lado de Navegação").toBe(navegacao);
+    }
+  });
+
+  test("os links Política, Termos e Cookies ficam numa linha só, inclusive no celular mais estreito", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const altura = page.viewportSize()!.height;
+    for (const largura of [page.viewportSize()!.width, RESPONSIVO.varredura.de, RESPONSIVO.perfis["celular-pequeno"].largura]) {
+      await page.setViewportSize({ width: largura, height: altura });
+      await page.evaluate(() => document.fonts.ready);
+      const politica = (await rodape(page).getByRole("link", { name: "Política de privacidade" }).boundingBox())!;
+      const cookies = (await rodape(page).getByRole("button", { name: "Cookies" }).boundingBox())!;
+      // Na falha, a mensagem traz o que o navegador mediu (largura da lista, espaço, fonte e cada link).
+      const medidas = await rodape(page).getByRole("button", { name: "Cookies" }).evaluate((botao) => {
+        const lista = botao.closest("ul")!;
+        const estilo = getComputedStyle(lista);
+        const larguras = [...lista.children].map((li) => li.getBoundingClientRect().width.toFixed(1));
+        return `lista ${lista.clientWidth}px, espaço ${estilo.columnGap}, fonte ${estilo.fontSize} ${estilo.fontFamily.split(",")[0]}, janela ${window.innerWidth}/${document.documentElement.clientWidth}, links ${larguras.join(" + ")}`;
+      });
+      expect(cookies.y, `Cookies na linha da Política a ${largura} px (${medidas})`).toBe(politica.y);
+    }
+  });
+
+  test("no desktop, o título das redes do Contato ocupa 2 linhas", async ({ page, baseURL }) => {
+    test.skip(telaEstreita(page), "no celular, o título ocupa a largura toda");
+    await semAviso(page, baseURL);
+    await page.goto("/contato");
+    const linhas = await page.getByRole("heading", { name: "Acompanhe o SINTRAVC nas redes sociais" }).evaluate((h) => Math.round(h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight)));
+    expect(linhas).toBe(2);
+  });
 });
 
 test.describe("Contato (US05)", { tag: "@responsivo" }, () => {
@@ -319,16 +422,47 @@ test.describe("alvos de toque do site (RNF10, E48)", { tag: "@responsivo" }, () 
   });
 });
 
-test.describe("redes sociais da ConfigSite (RN43)", () => {
-  test("com link do Facebook na ConfigSite, ele aparece na barra superior, no rodapé e no Contato", async ({ page, baseURL }) => {
+test.describe("redes sociais da ConfigSite (RN43, E57)", { tag: "@responsivo" }, () => {
+  /** Seed (#64): Instagram e YouTube; o e2e acrescenta o Facebook de teste. Sem canal, o WhatsApp abre a recepção. */
+  const REDES_DO_RODAPE = [
+    { nome: "Instagram", href: "https://www.instagram.com/sintravc.ba/" },
+    { nome: "Facebook", href: FACEBOOK_DE_TESTE },
+    { nome: "YouTube", href: "https://www.youtube.com/@melodialives" },
+    { nome: "WhatsApp da recepção", href: WHATSAPP },
+  ];
+
+  test("ícones das redes no rodapé e na barra superior, com nome, link em nova aba e alvo de toque", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/");
+    const lugares = telaEstreita(page) ? [rodape(page)] : [rodape(page), page.getByTestId("barra-superior")];
+    for (const lugar of lugares) {
+      const links = lugar.getByRole("link", { name: /^(Instagram|Facebook|YouTube|WhatsApp da recepção|Canal no WhatsApp)$/ });
+      await expect(links).toHaveCount(REDES_DO_RODAPE.length);
+      for (const rede of REDES_DO_RODAPE) {
+        const link = lugar.getByRole("link", { name: rede.nome, exact: true });
+        await expect(link).toHaveAttribute("href", rede.href);
+        await expect(link).toHaveAttribute("target", "_blank");
+      }
+    }
+    // O canal sem link não aparece com esse nome: o ícone é o da recepção.
+    await expect(page.getByRole("link", { name: "Canal no WhatsApp" })).toHaveCount(0);
+
+    // Os ícones do rodapé têm o alvo de toque inteiro, sem depender do toque.
+    for (const rede of REDES_DO_RODAPE) {
+      const caixa = (await rodape(page).getByRole("link", { name: rede.nome, exact: true }).boundingBox())!;
+      expect(Math.min(caixa.width, caixa.height), `${rede.nome} no rodapé`).toBeGreaterThanOrEqual(RESPONSIVO.alvoDeToque);
+    }
+  });
+
+  test("o Contato lista só as redes com link, sem marcador para as que o sindicato não tem", async ({ page, baseURL }) => {
     await semAviso(page, baseURL);
     await page.goto("/contato");
-    const barra = page.getByTestId("barra-superior");
-    await expect(barra.getByRole("link", { name: "Facebook" })).toHaveAttribute("href", FACEBOOK_DE_TESTE);
-    await expect(rodape(page).getByRole("link", { name: "Facebook" })).toHaveAttribute("href", FACEBOOK_DE_TESTE);
-    await expect(page.getByRole("region", { name: "Acompanhe o SINTRAVC nas redes sociais" }).getByRole("link", { name: /Facebook/ })).toHaveAttribute(
-      "href",
-      FACEBOOK_DE_TESTE,
-    );
+    const regiao = page.getByRole("region", { name: "Acompanhe o SINTRAVC nas redes sociais" });
+    await expect(regiao.getByRole("link", { name: /Facebook/ })).toHaveAttribute("href", FACEBOOK_DE_TESTE);
+    await expect(regiao.getByRole("link", { name: /Instagram/ })).toHaveAttribute("href", "https://www.instagram.com/sintravc.ba/");
+    await expect(regiao.getByRole("link", { name: /YouTube/ })).toHaveAttribute("href", "https://www.youtube.com/@melodialives");
+    await expect(regiao.getByRole("listitem")).toHaveCount(3);
+    await expect(regiao).not.toContainText("Canal no WhatsApp");
+    await expect(regiao).not.toContainText("[Link a definir pelo sindicato]");
   });
 });

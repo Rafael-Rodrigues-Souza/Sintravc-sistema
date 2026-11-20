@@ -17,7 +17,7 @@ export function PaginaDeErro({
 }) {
   return (
     <section aria-labelledby="titulo-erro" className="conteudo-site flex flex-col gap-6 py-14 lg:flex-row lg:items-center lg:gap-24 lg:py-28">
-      <p aria-hidden className="font-condensed text-[120px] leading-[0.9] font-extrabold tracking-[-0.005em] text-destaque-amarelo lg:text-[220px]">
+      <p aria-hidden className="text-center font-condensed text-[120px] leading-[0.9] font-extrabold tracking-[-0.005em] text-destaque-amarelo lg:text-left lg:text-[220px]">
         {codigo}
       </p>
       <div className="flex flex-1 flex-col gap-[18px]">
