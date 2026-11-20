@@ -306,7 +306,7 @@ test.describe("rodapé e redes do Contato como no Figma (295:51234, 87:1052; #64
     const documentos = await topoDe(page, "Documentos");
     const associado = await topoDe(page, "Associado");
 
-    if (page.viewportSize()!.width < 640) {
+    if (page.viewportSize()!.width < RESPONSIVO.celularAbaixoDe) {
       expect(associado, "Associado ao lado de Navegação").toBe(navegacao);
       expect(sindicato, "Sindicato na segunda linha").toBeGreaterThan(navegacao);
       expect(documentos, "Documentos ao lado de Sindicato").toBe(sindicato);
@@ -454,13 +454,15 @@ test.describe("redes sociais da ConfigSite (RN43, E57)", { tag: "@responsivo" },
     }
   });
 
-  test("o Contato lista as redes com o link e o canal no WhatsApp como marcador", async ({ page, baseURL }) => {
+  test("o Contato lista só as redes com link, sem marcador para as que o sindicato não tem", async ({ page, baseURL }) => {
     await semAviso(page, baseURL);
     await page.goto("/contato");
     const regiao = page.getByRole("region", { name: "Acompanhe o SINTRAVC nas redes sociais" });
     await expect(regiao.getByRole("link", { name: /Facebook/ })).toHaveAttribute("href", FACEBOOK_DE_TESTE);
     await expect(regiao.getByRole("link", { name: /Instagram/ })).toHaveAttribute("href", "https://www.instagram.com/sintravc.ba/");
     await expect(regiao.getByRole("link", { name: /YouTube/ })).toHaveAttribute("href", "https://www.youtube.com/@melodialives");
-    await expect(regiao).toContainText("Canal no WhatsApp");
+    await expect(regiao.getByRole("listitem")).toHaveCount(3);
+    await expect(regiao).not.toContainText("Canal no WhatsApp");
+    await expect(regiao).not.toContainText("[Link a definir pelo sindicato]");
   });
 });
