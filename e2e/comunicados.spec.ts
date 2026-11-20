@@ -149,6 +149,35 @@ test("CA-US01.2 · dois no ar: “1 de 2”, setas e teclado, troca sozinha e pa
   await expect(visivel).toContainText(primeiro);
 });
 
+test("depois de Pausar e Voltar a trocar com o mouse, a faixa troca sozinha com o mouse fora (o foco do clique não para a faixa)", async ({ page }) => {
+  const primeiro = `Aviso pausado (${Date.now()}).`;
+  const segundo = `Aviso que volta a trocar (${Date.now()}).`;
+  await entrarComo(page, pessoas.com, "/painel/comunicados");
+  for (const mensagem of [primeiro, segundo]) {
+    await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
+    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+    await expect(formulario(page)).toBeHidden();
+  }
+
+  await page.clock.install();
+  await page.goto("/contato");
+  const visivel = faixa(page).locator("[aria-hidden=false]");
+  await expect(visivel).toContainText(primeiro);
+
+  // Pausar com o mouse: não troca.
+  await faixa(page).getByRole("button", { name: "Parar de trocar os comunicados" }).click();
+  await page.mouse.move(5, 600);
+  await page.clock.runFor(10_000);
+  await expect(visivel).toContainText(primeiro);
+
+  // Voltar a trocar com o mouse e tirar o mouse da faixa: o botão fica com o foco do clique, sem o anel.
+  await faixa(page).getByRole("button", { name: "Voltar a trocar os comunicados" }).click();
+  await page.mouse.move(5, 600);
+  await page.clock.runFor(8_500);
+  await expect(visivel).toContainText(segundo);
+  await expect(faixa(page).getByText("Comunicado 2 de 2")).toBeVisible();
+});
+
 test("com menos movimento pedido pelo sistema, a faixa não troca sozinha e não tem o botão Pausar", async ({ page }) => {
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   for (const mensagem of [`Aviso A (${Date.now()})`, `Aviso B (${Date.now()})`]) {

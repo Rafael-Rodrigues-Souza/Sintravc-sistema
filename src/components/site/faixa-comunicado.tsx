@@ -22,7 +22,7 @@ const botao =
  * todas as páginas do site e também serve de prévia no painel.
  *
  * - Com vários no ar, troca sozinha a cada `intervaloSegundos`, na ordem da fila (CA-US01.2, E58).
- *   A troca para com o mouse em cima, com o foco dentro, pelo botão Pausar, quando a pessoa usa as
+ *   A troca para com o mouse em cima, com o foco do teclado dentro, pelo botão Pausar, quando a pessoa usa as
  *   setas e quando o sistema pede menos movimento (WCAG 2.2.2).
  * - Todos os textos ficam empilhados no mesmo lugar: a faixa tem a altura do maior e não pula.
  * - O X fecha a faixa e guarda os comunicados fechados num cookie; volta se entrar um novo (E58).
@@ -121,7 +121,9 @@ export function FaixaComunicado({
       className={cn("bg-destaque-amarelo text-destaque-marinho-fixo", modo === "site" && "print:hidden", className)}
       onMouseEnter={() => setEmUso(true)}
       onMouseLeave={() => setEmUso(false)}
-      onFocus={() => setFocoDentro(true)}
+      // Só o foco do teclado para a faixa: o clique do mouse deixa o foco no botão sem o anel, e a
+      // faixa ficaria parada depois de “Voltar a trocar”, com o mouse já fora dela.
+      onFocus={(e) => setFocoDentro(e.target.matches(":focus-visible"))}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocoDentro(false);
       }}
