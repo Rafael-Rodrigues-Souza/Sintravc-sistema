@@ -35,9 +35,12 @@ export type ComunicadoNaTela = {
   ultimoDia: string;
 };
 
-/** Onde o clique na barra leva: o comunicado aberto na área Comunicados (E17); o encerrado, à aba dele. */
+/**
+ * Onde o clique na barra leva: o comunicado aberto na área Comunicados (E17); o encerrado, que não se
+ * edita, na aba Encerrados, rolado até a vista e destacado (E58).
+ */
 const hrefDoComunicado = (c: ComunicadoNaTela) =>
-  c.situacao === "encerrado" ? "/painel/comunicados?aba=encerrados" : `/painel/comunicados?abrir=${c.id}`;
+  c.situacao === "encerrado" ? `/painel/comunicados?aba=encerrados&ver=${c.id}` : `/painel/comunicados?abrir=${c.id}`;
 const COR_DA_BARRA = "bg-destaque-marinho-fixo text-texto-invertido dark:ring-1 dark:ring-inset dark:ring-sobre-escuro-borda";
 
 type Arrastado = { tipo: "agendado"; item: ItemDoCalendarioNaTela } | { tipo: "rascunho"; item: RascunhoNaTela };

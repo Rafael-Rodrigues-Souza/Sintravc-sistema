@@ -358,3 +358,25 @@ test("calendário de Conteúdos (E17): barra marinho do período, sem arrastar; 
   await expect(formulario(page).getByRole("heading", { name: "Editar comunicado" })).toBeVisible();
   await expect(formulario(page).getByLabel("Mensagem *")).toHaveValue(mensagem);
 });
+
+test("calendário de Conteúdos: o clique num encerrado abre a aba Encerrados com ele na vista e destacado (E58)", async ({ page }) => {
+  const mensagem = `Encerrado visto no calendário (${Date.now()}).`;
+  await entrarComo(page, pessoas.com, "/painel/comunicados");
+  await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
+  await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+  await expect(formulario(page)).toBeHidden();
+  await page.getByTestId("linha-comunicado").filter({ hasText: mensagem }).getByRole("button", { name: /Ações do comunicado/ }).click();
+  await page.getByRole("menuitem", { name: "Encerrar agora" }).click();
+  await page.getByRole("alertdialog", { name: "Encerrar comunicado?" }).getByRole("button", { name: "Encerrar agora" }).click();
+  await expect(page.getByText("Comunicado encerrado: a faixa saiu do site")).toBeVisible();
+
+  await page.goto("/painel/conteudos?visao=calendario");
+  await page.getByTestId("barra-comunicado").filter({ hasText: mensagem }).first().click();
+
+  await expect(page).toHaveURL(/aba=encerrados&ver=/);
+  await expect(page.getByRole("link", { name: /Encerrados/ })).toHaveAttribute("aria-current", "page");
+  const linha = page.getByTestId("linha-comunicado").filter({ hasText: mensagem });
+  await expect(linha).toHaveAttribute("aria-current", "true");
+  await expect(linha).toBeInViewport();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});

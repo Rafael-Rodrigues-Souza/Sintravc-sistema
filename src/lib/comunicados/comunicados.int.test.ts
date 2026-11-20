@@ -17,6 +17,7 @@ import {
   encerrarComunicado,
   excluirComunicado,
   listarComunicados,
+  paginaDoEncerrado,
   reordenarFila,
   salvarComunicado,
 } from "./comunicados";
@@ -393,6 +394,24 @@ describe("calendário de Conteúdos (E17, C3)", () => {
     expect(lista.find((c) => c.id === id)).toMatchObject({ situacao: "agendado", primeiroDia: "2070-10-30", ultimoDia: "2070-11-02" });
     expect(lista.find((c) => c.id === encerrado.id)).toMatchObject({ situacao: "encerrado", primeiroDia: "2070-10-30", ultimoDia: "2070-10-31" });
     expect(lista.some((c) => c.id === rascunho.id)).toBe(false);
+  });
+
+  it("o clique num encerrado leva à página da aba Encerrados em que ele está", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const ids: string[] = [];
+    for (const mensagem of ["Encerrado 1", "Encerrado 2", "Encerrado 3", "Encerrado 4", "Encerrado 5"]) {
+      const c = await agendado(2071, quem, mensagem);
+      ids.push(c.id);
+    }
+    const agora = new Date("2071-12-01T12:00:00Z");
+    for (const id of ids) {
+      const pagina = await paginaDoEncerrado(id, 2, { quem, agora });
+      const lista = await listarComunicados({ aba: "encerrados", pagina: pagina!, porPagina: 2 }, { quem, agora });
+      expect(lista.itens.map((c) => c.id)).toContain(id);
+    }
+    // Rascunho não está na aba.
+    const { id: rascunho } = await salvarComunicado({ dados: dados(), modo: "rascunho" }, { quem, fila: filaEmMemoria().fila });
+    expect(await paginaDoEncerrado(rascunho, 2, { quem, agora })).toBeNull();
   });
 
   it("o ATD não vê", async () => {

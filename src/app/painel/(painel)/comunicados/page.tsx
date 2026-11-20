@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
-import { contarPorAba, listarComunicados, MAXIMO_NA_FILA, type Aba } from "@/lib/comunicados/comunicados";
+import { contarPorAba, listarComunicados, MAXIMO_NA_FILA, paginaDoEncerrado, type Aba } from "@/lib/comunicados/comunicados";
 import { comunicadosNoAr } from "@/lib/comunicados/faixa";
 import { dataNaBahia, horaNaBahia } from "@/lib/datas";
 import { lerParametro } from "@/lib/parametros";
@@ -24,17 +24,20 @@ function curto(d: Date) {
  * Comunicados (RF43, RF44, RN14; Figma 165:16358 e M 170:18854): o que está no site agora, as abas
  * No ar, Agendados, Rascunhos e Encerrados, o novo comunicado e o menu ⋯ de cada um. As abas seguem
  * o relógio (E58). `?abrir=<id>` abre o comunicado (clique no calendário de Conteúdos, E17);
- * `?novo=1` abre o formulário vazio (menu “Criar conteúdo”).
+ * `?aba=encerrados&ver=<id>` mostra o encerrado na página dele, rolado até a vista e destacado
+ * (E17, E58); `?novo=1` abre o formulário vazio (menu “Criar conteúdo”).
  */
-export default async function PaginaComunicados({ searchParams }: { searchParams: Promise<{ aba?: string; pagina?: string; abrir?: string; novo?: string }> }) {
+export default async function PaginaComunicados({ searchParams }: { searchParams: Promise<{ aba?: string; pagina?: string; abrir?: string; ver?: string; novo?: string }> }) {
   const pessoa = await exigirArea("comunicados");
   const p = await searchParams;
   const aba = (ABAS as string[]).includes(p.aba ?? "") ? (p.aba as Aba) : "no_ar";
-  const pagina = Math.max(1, Number.parseInt(p.pagina ?? "1", 10) || 1);
   // A aba No ar vem inteira: a fila só se reordena completa (E58).
   const porPagina = aba === "no_ar" ? MAXIMO_NA_FILA : POR_PAGINA;
   const agora = new Date();
   const deps = { quem: pessoa.quem, agora };
+  const ver = aba === "encerrados" && ehUuid(p.ver) ? p.ver : undefined;
+  const paginaDoVer = ver && !p.pagina ? await paginaDoEncerrado(ver, porPagina, deps) : null;
+  const pagina = paginaDoVer ?? Math.max(1, Number.parseInt(p.pagina ?? "1", 10) || 1);
 
   const [contagem, lista, noAr, intervalo] = await Promise.all([
     contarPorAba(deps),
@@ -66,6 +69,7 @@ export default async function PaginaComunicados({ searchParams }: { searchParams
       conferidoAs={horaNaBahia(agora)}
       podeGerenciar={pode(pessoa.quem, "gerenciar", { tipo: "comunicado" })}
       abrir={ehUuid(p.abrir) ? p.abrir : undefined}
+      destacar={ver}
       novo={p.novo === "1"}
     />
   );

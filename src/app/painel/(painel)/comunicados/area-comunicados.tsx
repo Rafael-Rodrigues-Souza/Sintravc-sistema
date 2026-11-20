@@ -70,6 +70,9 @@ const VAZIO: Record<Aba, string> = {
   encerrados: "Nenhum comunicado encerrado ainda.",
 };
 
+/** O encerrado vindo do calendário (E58): contorno marinho e fundo amarelo claro, nos dois temas. */
+const DESTAQUE = "bg-destaque-amarelo/20 outline-2 -outline-offset-2 outline-destaque-marinho-fixo dark:outline-destaque-amarelo";
+
 const SEM_CONEXAO = { tipo: "erro" as const, mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo." };
 
 type Confirmacao = { tipo: "encerrar" | "excluir"; item: ItemNaTela } | null;
@@ -85,6 +88,7 @@ export function AreaComunicados({
   conferidoAs,
   podeGerenciar,
   abrir,
+  destacar,
   novo: abrirNovo,
 }: {
   aba: Aba;
@@ -97,6 +101,8 @@ export function AreaComunicados({
   conferidoAs: string;
   podeGerenciar: boolean;
   abrir?: string;
+  /** Encerrado vindo do calendário de Conteúdos (E17, E58): rolado até a vista e destacado. */
+  destacar?: string;
   novo?: boolean;
 }) {
   const router = useRouter();
@@ -150,6 +156,13 @@ export function AreaComunicados({
     // Só na chegada.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abrir, abrirNovo]);
+
+  // A tabela (computador) e os cartões (celular) existem os dois: rola até o que está na tela.
+  React.useEffect(() => {
+    if (!destacar) return;
+    const alvo = [...document.querySelectorAll<HTMLElement>("[data-destacado]")].find((el) => el.offsetParent !== null);
+    alvo?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [destacar]);
 
   const depois = (r: Resposta, sucesso: string) => {
     if (r.tipo === "erro") {
@@ -347,6 +360,8 @@ export function AreaComunicados({
                     <tr
                       key={item.id}
                       data-testid="linha-comunicado"
+                      data-destacado={item.id === destacar ? "" : undefined}
+                      aria-current={item.id === destacar ? "true" : undefined}
                       draggable={fila}
                       onDragStart={(e) => {
                         e.dataTransfer.effectAllowed = "move";
@@ -361,7 +376,7 @@ export function AreaComunicados({
                         soltarSobre(item.id);
                       }}
                       onDragEnd={() => setArrastando(null)}
-                      className={cn("border-t border-borda-padrao align-middle", arrastando === item.id && "opacity-50")}
+                      className={cn("border-t border-borda-padrao align-middle", arrastando === item.id && "opacity-50", item.id === destacar && DESTAQUE)}
                     >
                       <td className="py-4 text-center">
                         {fila ? (
@@ -414,7 +429,16 @@ export function AreaComunicados({
               {/* Celular e tablet em pé: cartões (170:18854). */}
               <ul className="flex flex-col gap-3 lg:hidden">
                 {ordem.map((item, i) => (
-                  <li key={item.id} data-testid="cartao-comunicado" className="flex flex-col gap-3 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-4">
+                  <li
+                    key={item.id}
+                    data-testid="cartao-comunicado"
+                    data-destacado={item.id === destacar ? "" : undefined}
+                    aria-current={item.id === destacar ? "true" : undefined}
+                    className={cn(
+                      "flex flex-col gap-3 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-4",
+                      item.id === destacar && DESTAQUE,
+                    )}
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <Selo situacao={item.situacao} />
                       {podeGerenciar ? (

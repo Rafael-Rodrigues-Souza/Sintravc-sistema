@@ -393,6 +393,30 @@ export async function listarComunicados(
   };
 }
 
+/**
+ * Em que página da aba Encerrados está um comunicado (clique no calendário de Conteúdos, E17, E58),
+ * na mesma ordem de `listarComunicados`. Nulo se ele não está entre os encerrados.
+ */
+export async function paginaDoEncerrado(id: string, porPagina: number, deps: Deps): Promise<number | null> {
+  exigir(deps.quem, "ver", { tipo: "comunicado" });
+  const agora = deps.agora ?? new Date();
+  const onde = filtroDaAba("encerrados", agora);
+  const [alvo] = await banco().select({ id: comunicado.id }).from(comunicado).where(and(eq(comunicado.id, id), onde));
+  if (!alvo) return null;
+  // Os que vêm antes dele na ordem da aba: término mais recente, e o id para desempatar.
+  const [linha] = await banco()
+    .select({ antes: sql<number>`count(*)::int` })
+    .from(comunicado)
+    .where(
+      and(
+        onde,
+        sql`(coalesce(${comunicado.encerradoEm}, ${comunicado.fim}), ${comunicado.id}) >
+          (select coalesce(x.encerrado_em, x.fim), x.id from comunicado x where x.id = ${id})`,
+      ),
+    );
+  return Math.floor((linha?.antes ?? 0) / porPagina) + 1;
+}
+
 /** Quantos há em cada aba (os números das abas). */
 export async function contarPorAba(deps: Deps): Promise<Record<Aba, number>> {
   exigir(deps.quem, "ver", { tipo: "comunicado" });
