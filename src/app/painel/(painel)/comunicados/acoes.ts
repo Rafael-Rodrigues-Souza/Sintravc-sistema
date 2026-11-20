@@ -11,6 +11,7 @@ import {
   duplicarComunicado,
   encerrarComunicado,
   excluirComunicado,
+  MAXIMO_NA_FILA,
   reordenarFila,
   salvarComunicado,
   type ResultadoSalvar,
@@ -122,7 +123,7 @@ export async function acaoExcluirComunicado(pedido: unknown): Promise<Resposta> 
 
 /** A ordem nova da fila: todos os que estão no ar (RF43). */
 export async function acaoReordenarFila(pedido: unknown): Promise<Resposta> {
-  const lido = z.object({ ids: z.array(z.uuid()).min(1).max(100) }).safeParse(pedido);
+  const lido = z.object({ ids: z.array(z.uuid()).min(1).max(MAXIMO_NA_FILA) }).safeParse(pedido);
   if (!lido.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   try {
     await reordenarFila(lido.data, { quem: (await sessaoDaEquipe()).quem });

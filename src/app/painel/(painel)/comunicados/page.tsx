@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
-import { contarPorAba, listarComunicados, type Aba } from "@/lib/comunicados/comunicados";
+import { contarPorAba, listarComunicados, MAXIMO_NA_FILA, type Aba } from "@/lib/comunicados/comunicados";
 import { comunicadosNoAr } from "@/lib/comunicados/faixa";
 import { dataNaBahia, horaNaBahia } from "@/lib/datas";
 import { lerParametro } from "@/lib/parametros";
@@ -31,12 +31,14 @@ export default async function PaginaComunicados({ searchParams }: { searchParams
   const p = await searchParams;
   const aba = (ABAS as string[]).includes(p.aba ?? "") ? (p.aba as Aba) : "no_ar";
   const pagina = Math.max(1, Number.parseInt(p.pagina ?? "1", 10) || 1);
+  // A aba No ar vem inteira: a fila só se reordena completa (E58).
+  const porPagina = aba === "no_ar" ? MAXIMO_NA_FILA : POR_PAGINA;
   const agora = new Date();
   const deps = { quem: pessoa.quem, agora };
 
   const [contagem, lista, noAr, intervalo] = await Promise.all([
     contarPorAba(deps),
-    listarComunicados({ aba, pagina, porPagina: POR_PAGINA }, deps),
+    listarComunicados({ aba, pagina, porPagina }, deps),
     comunicadosNoAr(agora),
     lerParametro("comunicados.alternar_segundos"),
   ]);
@@ -58,7 +60,7 @@ export default async function PaginaComunicados({ searchParams }: { searchParams
       contagem={contagem}
       itens={itens}
       pagina={pagina}
-      totalDePaginas={Math.max(1, Math.ceil(lista.total / POR_PAGINA))}
+      totalDePaginas={Math.max(1, Math.ceil(lista.total / porPagina))}
       noAr={noAr}
       intervaloSegundos={intervalo}
       conferidoAs={horaNaBahia(agora)}

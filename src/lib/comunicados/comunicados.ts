@@ -269,16 +269,28 @@ export async function excluirComunicado(entrada: { id: string }, deps: Deps): Pr
 }
 
 /**
- * Muda a ordem da fila (RF43): `ids` é a lista inteira dos que estão no ar, na ordem nova. As posições
- * que eles já ocupavam são redistribuídas nessa ordem; os demais não mudam.
+ * Quantos a aba No ar mostra de uma vez, sem páginas: a fila se reordena inteira (`reordenarFila`).
+ * Bem acima do que cabe numa faixa que alterna.
+ */
+export const MAXIMO_NA_FILA = 100;
+
+/**
+ * Muda a ordem da fila (RF43, E58): `ids` tem de ser a lista inteira dos que estão no ar agora, na
+ * ordem nova. Com um id fora do ar, faltando um ou sobrando um, recusa sem mudar nada (a fila mudou
+ * enquanto a pessoa mexia, ou o pedido foi montado à mão). As posições que eles já ocupavam são
+ * redistribuídas nessa ordem; os demais não mudam.
  */
 export async function reordenarFila(entrada: { ids: string[] }, deps: Deps): Promise<void> {
   exigir(deps.quem, "gerenciar", { tipo: "comunicado" });
+  const agora = deps.agora ?? new Date();
   const ids = [...new Set(entrada.ids)];
-  if (ids.length < 2) return;
   await banco().transaction(async (tx) => {
-    const linhas = await tx.select().from(comunicado).where(inArray(comunicado.id, ids)).orderBy(asc(comunicado.id)).for("update");
-    if (linhas.length !== ids.length) throw comunicadoNaoEncontrado();
+    const linhas = await tx.select().from(comunicado).where(filtroDaAba("no_ar", agora)).orderBy(asc(comunicado.id)).for("update");
+    const noAr = new Set(linhas.map((l) => l.id));
+    if (ids.length !== entrada.ids.length || ids.length !== noAr.size || ids.some((id) => !noAr.has(id))) {
+      throw new ErroComunicado("invalido", "A fila mudou enquanto você mexia. Atualize a página e tente de novo.");
+    }
+    if (linhas.length < 2) return;
     const posicoes = linhas.map((l) => l.ordemFila).sort((a, b) => a - b);
     const porId = new Map(linhas.map((l) => [l.id, l]));
     const antes = [...linhas].sort((a, b) => a.ordemFila - b.ordemFila).map((l) => l.id);

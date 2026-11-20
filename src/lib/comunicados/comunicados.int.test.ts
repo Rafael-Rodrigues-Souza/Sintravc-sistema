@@ -277,12 +277,43 @@ describe("Fila e faixa (CA-US01.2)", () => {
 
     expect((await comunicadosNoAr(p.durante)).map((c) => c.mensagem)).toEqual(["Primeiro aviso", "Segundo aviso"]);
 
-    await reordenarFila({ ids: [b.id, a.id] }, { quem });
+    await reordenarFila({ ids: [b.id, a.id] }, { quem, agora: p.durante });
 
     expect((await comunicadosNoAr(p.durante)).map((c) => c.mensagem)).toEqual(["Segundo aviso", "Primeiro aviso"]);
     const lista = await listarComunicados({ aba: "no_ar" }, { quem, agora: p.durante });
     expect(lista.itens.map((c) => c.id)).toEqual([b.id, a.id]);
     expect((await atividadesDe(b.id)).at(-1)).toMatchObject({ acao: "comunicado.reordenar", detalhe: { para: [b.id, a.id] } });
+  });
+
+  it("reordenar só aceita os que estão no ar agora: com um agendado na lista, recusa sem mudar nada", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const a = await agendado(2052, quem, "No ar A");
+    const b = await agendado(2052, quem, "No ar B");
+    // Agendado para depois: no instante `durante`, ainda não está no ar.
+    const { fila } = filaEmMemoria();
+    const { id: futuro } = await salvarComunicado(
+      { dados: dados({ mensagem: "Ainda agendado", inicio: new Date("2052-11-10T11:00:00Z"), fim: new Date("2052-11-20T11:00:00Z") }), modo: "programar" },
+      { quem, fila, agora: a.p.antes },
+    );
+    const ordemAntes = await Promise.all([a.id, b.id, futuro].map(async (id) => (await linha(id)).ordemFila));
+
+    await expect(reordenarFila({ ids: [futuro, b.id, a.id] }, { quem, agora: a.p.durante })).rejects.toBeInstanceOf(ErroComunicado);
+
+    expect(await Promise.all([a.id, b.id, futuro].map(async (id) => (await linha(id)).ordemFila))).toEqual(ordemAntes);
+    expect((await atividadesDe(a.id)).map((x) => x.acao)).not.toContain("comunicado.reordenar");
+  });
+
+  it("reordenar só aceita a fila inteira: faltando um dos que estão no ar, recusa sem mudar nada", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const a = await agendado(2053, quem, "Fila A");
+    const b = await agendado(2053, quem, "Fila B");
+    const c = await agendado(2053, quem, "Fila C");
+    const antes = (await comunicadosNoAr(a.p.durante)).map((x) => x.mensagem);
+
+    await expect(reordenarFila({ ids: [c.id, a.id] }, { quem, agora: a.p.durante })).rejects.toBeInstanceOf(ErroComunicado);
+
+    expect((await comunicadosNoAr(a.p.durante)).map((x) => x.mensagem)).toEqual(antes);
+    expect((await atividadesDe(b.id)).map((x) => x.acao)).not.toContain("comunicado.reordenar");
   });
 
   it("as abas seguem o relógio: agendado, no ar e encerrado sem depender da tarefa", async () => {
