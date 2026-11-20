@@ -1,13 +1,21 @@
 import { sql, type SQL } from "drizzle-orm";
 import { PgBoss, type Db } from "pg-boss";
 
+import { executarViradaDoComunicado } from "@/lib/comunicados/tarefa";
 import { executarPublicacaoAgendada, registrarFalhaDaPublicacao } from "@/lib/conteudos/publicar-agendado";
 import { motivoDaFalha } from "@/lib/conteudos/motivo-da-falha";
 import type { Transacao } from "@/lib/db";
 import type { Enviar } from "@/lib/email";
 import { lerParametro } from "@/lib/parametros";
 
-import { FILA_PUBLICAR_AGENDADO, FILA_PUBLICAR_AGENDADO_FALHOU, type Fila, type PedidoPublicacao } from "./fila";
+import {
+  FILA_COMUNICADO,
+  FILA_PUBLICAR_AGENDADO,
+  FILA_PUBLICAR_AGENDADO_FALHOU,
+  type Fila,
+  type PedidoComunicado,
+  type PedidoPublicacao,
+} from "./fila";
 
 /** Quanto o desligamento espera a tarefa em andamento terminar (E44). */
 const ESPERA_AO_DESLIGAR_MS = 30_000;
@@ -74,6 +82,14 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
           db: bancoDaTransacao(tx),
         });
       },
+      async agendarComunicado(tx, { comunicadoId, virada, para }) {
+        const pedido: PedidoComunicado = { comunicadoId, virada, para: para.toISOString() };
+        await boss.send(FILA_COMUNICADO, pedido, {
+          startAfter: para,
+          singletonKey: `${comunicadoId}:${virada}:${pedido.para}`,
+          db: bancoDaTransacao(tx),
+        });
+      },
     },
     async pedidosPendentes() {
       const jobs = await boss.findJobs<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO, { queued: true });
@@ -82,6 +98,7 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
     async pararDeTrabalhar() {
       await boss.offWork(FILA_PUBLICAR_AGENDADO, { wait: true });
       await boss.offWork(FILA_PUBLICAR_AGENDADO_FALHOU, { wait: true });
+      await boss.offWork(FILA_COMUNICADO, { wait: true });
     },
     async parar() {
       await boss.stop({ graceful: true, timeout: ESPERA_AO_DESLIGAR_MS });
@@ -89,7 +106,7 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
   };
 }
 
-/** Cria as filas da T01 e começa a pegar as tarefas. */
+/** Cria as filas da T01 e da T02 e começa a pegar as tarefas. */
 async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
   const tentativas = opcoes.tentativas ?? (await lerParametro("tarefas.tentativas"));
   const intervalo = opcoes.intervaloSegundos ?? (await lerParametro("tarefas.intervalo_segundos"));
@@ -113,6 +130,11 @@ async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
       console.error(`Publicação agendada falhou de vez (${job.data.conteudoId}):`, erro);
       await registrarFalhaDaPublicacao(job.data, { motivo: motivoDaFalha(erro), enviar: opcoes.enviar });
     }
+  });
+  // T02: a faixa já segue o relógio (E58); aqui só o estado e a Atividade. Esgotadas as tentativas, fica no log.
+  await garantirFila(boss, FILA_COMUNICADO, { policy: "short", retryLimit: tentativas, retryDelay: intervalo });
+  await boss.work<PedidoComunicado>(FILA_COMUNICADO, busca, async ([job]) => {
+    if (job) await executarViradaDoComunicado(job.data);
   });
   // Rede de segurança: a tarefa que nem chegou a terminar (servidor caiu no meio, tempo esgotado).
   await boss.work<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO_FALHOU, busca, async ([job]) => {

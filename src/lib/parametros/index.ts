@@ -55,6 +55,7 @@ export const CATALOGO = {
   "documento.novo_dias": inteiro,
   "documento.extracao_tempo_maximo_ms": z.number().int().positive(),
   "documento.extracao_paginas_maximas": z.number().int().positive(),
+  "comunicados.alternar_segundos": z.number().int().positive(),
 } satisfies Record<string, z.ZodType>;
 
 export type ChaveParametro = keyof typeof CATALOGO;
