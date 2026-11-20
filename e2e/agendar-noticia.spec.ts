@@ -6,7 +6,7 @@ import postgres from "postgres";
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { codigoTotp } from "../src/lib/acesso/totp";
 import { bahiaEmCampos, bahiaParaUtc } from "../src/lib/datas";
-import { ambienteE2E } from "../playwright.config";
+import { ambienteE2E, RESPONSIVO } from "../playwright.config";
 import { acaoDaLinha } from "./responsivo";
 
 // Agendar (CA-US21.2), calendário (RF36) e Edição rápida pela tela, como uma pessoa faria.
@@ -68,6 +68,11 @@ async function escreverNoticia(page: Page, manchete: string) {
 }
 
 test.describe.configure({ mode: "serial" });
+
+// Na janela padrão (1280×720), a última linha do calendário fica abaixo da dobra. Quando o destino
+// cai na semana seguinte (sábado → domingo, por exemplo), o dragTo rola a página no meio do arraste
+// e a soltura se perde. Na janela do computador, a grade inteira cabe na tela, seja qual for o dia.
+test.use({ viewport: { width: RESPONSIVO.perfis.computador.largura, height: RESPONSIVO.perfis.computador.altura } });
 
 const AMANHA = diaDaqui(1);
 const DEPOIS_DE_AMANHA = diaDaqui(2);
