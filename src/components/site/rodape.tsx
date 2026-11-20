@@ -10,7 +10,7 @@ import { Logo } from "@/components/marca/logo";
 
 import { BotaoCookies } from "./aviso-cookies";
 import { DOCUMENTOS, LINKS, SINDICATO, type ItemDeMenu } from "./navegacao";
-import { redesComLink } from "./redes";
+import { redesDaBarraEDoRodape } from "./redes";
 import { TextoDoSite } from "./texto-do-site";
 
 const link =
@@ -40,7 +40,7 @@ function Coluna({ titulo, itens, extra, className }: { titulo: string; itens: It
  */
 export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFiliacao: string }) {
   const { contato } = config;
-  const redes = redesComLink(config);
+  const redes = redesDaBarraEDoRodape(config);
   const ano = anoNaBahia(new Date());
 
   return (

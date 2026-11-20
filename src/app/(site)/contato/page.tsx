@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { IconeFigma } from "@/components/icone-figma";
 import { FilieSe } from "@/components/site/filie-se";
 import { MapaComConsentimento } from "@/components/site/mapa-com-consentimento";
-import { redesDoSite } from "@/components/site/redes";
-import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas, TopoComFoto } from "@/components/site/partes-da-pagina";
-import { Marcador, TextoDoSite } from "@/components/site/texto-do-site";
+import { redesComLink } from "@/components/site/redes";
+import { CabecalhoDeSecao, Eyebrow, TopoComFoto } from "@/components/site/partes-da-pagina";
+import { TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { CONTATO_PAGINA } from "@/conteudo/site";
 import { lerConfigSite } from "@/lib/config-site";
@@ -29,65 +29,52 @@ export default async function PaginaContato() {
   const telefone = formatarTelefone(contato.telefone);
   const numeroDoWhatsapp = formatarWhatsApp(contato.whatsappRecepcao);
 
-  const redesSociais = redesDoSite(redes);
+  const redesSociais = redesComLink(redes);
   const { hero, canais, sede, redes: textoRedes } = CONTATO_PAGINA;
 
   return (
     <>
-      <section aria-labelledby="titulo-pagina" className="bg-fundo-marinho text-texto-invertido">
-        <TopoComFoto
-          texto={
-            <>
-              <Migalhas sobreEscuro itens={[{ rotulo: "Início", href: "/" }, { rotulo: "Contato" }]} />
-              <Eyebrow sobreEscuro className="mt-2 lg:mt-6">
-                {hero.eyebrow}
-              </Eyebrow>
-              <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
-                {hero.titulo}
-              </h1>
-              <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">
-                {hero.texto}
-              </p>
-              <p className="texto-pequeno flex items-center gap-2 self-start rounded-full border border-sobre-escuro-borda bg-sobre-escuro-superficie px-3 py-1.5">
-                <span aria-hidden className="size-2 shrink-0 rounded-full bg-destaque-amarelo" />
-                <span>
-                  Atendimento: <TextoDoSite texto={contato.horario} />
-                </span>
-              </p>
-            </>
-          }
-          foto={
-            <>
-              <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
-              <p className="absolute right-5 bottom-5 left-5 flex max-w-[300px] items-center gap-3 rounded-[16px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-destaque-marinho-fixo text-destaque-amarelo">
-                  <IconeFigma src="/site/icone-local.svg" tamanho={18} />
-                </span>
-                <span className="flex flex-col">
-                  <span className="font-bold">{hero.presencial}</span>
-                  <span className="texto-pequeno">Sede em {contato.cidade}</span>
-                </span>
-              </p>
-            </>
-          }
-          acoes={
-            <>
-              <Button asChild>
-                <a href={whatsapp} target="_blank" rel="noopener noreferrer">
-                  <IconeFigma src="/site/icone-whatsapp.svg" tamanho={18} />
-                  Chamar no WhatsApp
-                </a>
-              </Button>
-              <Button asChild variant="sobre-escuro">
-                <a href={linkTelefone(contato.telefone)}>
-                  <IconeFigma src="/site/icone-telefone.svg" tamanho={18} />
-                  Ligar para o sindicato
-                </a>
-              </Button>
-            </>
-          }
-        />
-      </section>
+      <TopoComFoto
+        migalhas={[{ rotulo: "Início", href: "/" }, { rotulo: "Contato" }]}
+        eyebrow={hero.eyebrow}
+        titulo={hero.titulo}
+        texto={hero.texto}
+        complemento={
+          <p className="texto-pequeno flex items-center gap-2 self-start rounded-full border border-sobre-escuro-borda bg-sobre-escuro-superficie px-3 py-1.5">
+            <span aria-hidden className="size-2 shrink-0 rounded-full bg-destaque-amarelo" />
+            <span>
+              Atendimento: <TextoDoSite texto={contato.horario} />
+            </span>
+          </p>
+        }
+        destaqueDaFoto={
+          <p className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-destaque-marinho-fixo text-destaque-amarelo">
+              <IconeFigma src="/site/icone-local.svg" tamanho={18} />
+            </span>
+            <span className="flex flex-col">
+              <span className="font-bold">{hero.presencial}</span>
+              <span className="texto-pequeno">Sede em {contato.cidade}</span>
+            </span>
+          </p>
+        }
+        acoes={
+          <>
+            <Button asChild>
+              <a href={whatsapp} target="_blank" rel="noopener noreferrer">
+                <IconeFigma src="/site/icone-whatsapp.svg" tamanho={18} />
+                Chamar no WhatsApp
+              </a>
+            </Button>
+            <Button asChild variant="sobre-escuro">
+              <a href={linkTelefone(contato.telefone)}>
+                <IconeFigma src="/site/icone-telefone.svg" tamanho={18} />
+                Ligar para o sindicato
+              </a>
+            </Button>
+          </>
+        }
+      />
 
       {/* Canais */}
       <section aria-labelledby="canais" className="conteudo-site flex flex-col gap-8 py-14 lg:gap-10 lg:py-20">
@@ -182,50 +169,42 @@ export default async function PaginaContato() {
         </div>
       </section>
 
-      {/* Redes */}
-      <section aria-labelledby="redes" className="bg-fundo-marinho text-texto-invertido">
-        <div className="conteudo-site grid gap-8 py-14 lg:grid-cols-[minmax(0,440px)_1fr] lg:items-center lg:gap-16 lg:py-20">
-          <div className="flex flex-col gap-4">
-            <Eyebrow sobreEscuro>{textoRedes.eyebrow}</Eyebrow>
-            <h2 id="redes" className="texto-titulo-secao-mobile lg:texto-titulo-secao">
-              {textoRedes.titulo}
-            </h2>
-            <p className="texto-corpo text-texto-invertido-sec">{textoRedes.texto}</p>
-          </div>
-          <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))] lg:gap-4">
-            {redesSociais.map((rede) => {
-              const conteudo = (
-                <>
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-destaque-amarelo text-destaque-amarelo-texto">
-                    <IconeFigma src={rede.icone} tamanho={22} />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="font-bold">{rede.nome}</span>
-                    {rede.href ? (
+      {/* Redes (sem nenhuma com link, a seção não aparece) */}
+      {redesSociais.length > 0 ? (
+        <section aria-labelledby="redes" className="bg-fundo-marinho text-texto-invertido">
+          <div className="conteudo-site grid gap-8 py-14 lg:grid-cols-[minmax(0,440px)_1fr] lg:items-center lg:gap-16 lg:py-20">
+            <div className="flex flex-col gap-4">
+              <Eyebrow sobreEscuro>{textoRedes.eyebrow}</Eyebrow>
+              <h2 id="redes" className="texto-titulo-secao-mobile lg:texto-titulo-secao">
+                {textoRedes.titulo}
+              </h2>
+              <p className="texto-corpo text-texto-invertido-sec">{textoRedes.texto}</p>
+            </div>
+            <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))] lg:gap-4">
+              {/* Só as redes com link: as que o sindicato não tem ficam escondidas, como no rodapé (E57). */}
+              {redesSociais.map((rede) => (
+                <li key={rede.chave} className="min-w-0">
+                  <a
+                    href={rede.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-[76px] items-center gap-4 rounded-[16px] border border-sobre-escuro-borda bg-sobre-escuro-superficie p-4 outline-none hover:bg-sobre-escuro-chip focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo"
+                  >
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-destaque-amarelo text-destaque-amarelo-texto">
+                      <IconeFigma src={rede.icone} tamanho={22} />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="font-bold">{rede.nome}</span>
                       <span className="texto-pequeno text-texto-invertido-sec [overflow-wrap:anywhere]">{rede.href.replace(/^https:\/\/(www\.)?/, "")}</span>
-                    ) : (
-                      <Marcador className="texto-pequeno self-start">[Link a definir pelo sindicato]</Marcador>
-                    )}
-                  </span>
-                  {rede.href ? <IconeFigma src="/site/icone-seta-diagonal.svg" tamanho={18} /> : null}
-                </>
-              );
-              const caixa = "flex min-h-[76px] items-center gap-4 rounded-[16px] border border-sobre-escuro-borda bg-sobre-escuro-superficie p-4";
-              return (
-                <li key={rede.nome} className="min-w-0">
-                  {rede.href ? (
-                    <a href={rede.href} target="_blank" rel="noopener noreferrer" className={cn(caixa, "outline-none hover:bg-sobre-escuro-chip focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo")}>
-                      {conteudo}
-                    </a>
-                  ) : (
-                    <div className={caixa}>{conteudo}</div>
-                  )}
+                    </span>
+                    <IconeFigma src="/site/icone-seta-diagonal.svg" tamanho={18} />
+                  </a>
                 </li>
-              );
-            })}
-          </ul>
-        </div>
-      </section>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
 
       <div className="pt-14 lg:pt-20">
         <FilieSe linkFiliacao={linkFiliacao(config)} />

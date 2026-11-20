@@ -2,7 +2,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import type { ConfigSite } from "@/lib/config-site";
 import { formatarTelefone, linkTelefone } from "@/lib/config-site/links";
 
-import { redesComLink } from "./redes";
+import { redesDaBarraEDoRodape } from "./redes";
 import { TextoDoSite } from "./texto-do-site";
 
 /**
@@ -10,7 +10,7 @@ import { TextoDoSite } from "./texto-do-site";
  * O telefone não está no Figma, mas o CA-US05.1 pede (correcoes-figma.md).
  */
 export function BarraSuperior({ config }: { config: ConfigSite }) {
-  const redes = redesComLink(config);
+  const redes = redesDaBarraEDoRodape(config);
   return (
     <div data-testid="barra-superior" className="hidden bg-fundo-marinho-profundo lg:block print:hidden">
       <div className="conteudo-site texto-pequeno flex items-center justify-between gap-6 py-2.5 text-texto-invertido-sec pointer-coarse:py-[13px]">

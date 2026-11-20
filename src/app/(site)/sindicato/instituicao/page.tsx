@@ -5,7 +5,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { AbasSindicato } from "@/components/site/abas-sindicato";
 import { FilieSe } from "@/components/site/filie-se";
 import { LINKS } from "@/components/site/navegacao";
-import { CabecalhoDeSecao, Eyebrow, FotoPendente, Migalhas, TopoComFoto } from "@/components/site/partes-da-pagina";
+import { CabecalhoDeSecao, Eyebrow, TopoComFoto } from "@/components/site/partes-da-pagina";
 import { TextoDoSite } from "@/components/site/texto-do-site";
 import { Button } from "@/components/ui/button";
 import { INSTITUICAO } from "@/conteudo/site";
@@ -38,45 +38,34 @@ export default async function PaginaInstituicao() {
   return (
     <>
       {/* Topo */}
-      <section aria-labelledby="titulo-pagina" className="bg-fundo-marinho text-texto-invertido">
-        <TopoComFoto
-          texto={
-            <>
-              <Migalhas sobreEscuro itens={[{ rotulo: "Início", href: "/" }, { rotulo: "Sindicato" }, { rotulo: "Instituição" }]} />
-              <Eyebrow sobreEscuro className="mt-2 lg:mt-6">{hero.eyebrow}</Eyebrow>
-              <h1 id="titulo-pagina" className="texto-display-mobile lg:texto-display">
-                {hero.titulo}
-              </h1>
-              <p className="texto-corpo max-w-[560px] text-texto-invertido-sec lg:texto-corpo-grande">{hero.texto}</p>
-            </>
-          }
-          foto={
-            <>
-              <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
-              <p className="absolute right-5 bottom-5 left-5 flex max-w-[280px] flex-col gap-2 rounded-[16px] bg-destaque-amarelo p-4 font-bold text-destaque-amarelo-texto">
-                <IconeFigma src="/site/icone-aspas.svg" tamanho={20} />
-                {hero.destaqueDaFoto}
-              </p>
-            </>
-          }
-          acoes={
-            <>
-              <Button asChild>
-                <a href="#historia">
-                  Conheça nossa história
-                  <IconeFigma src="/site/icone-seta-direita.svg" tamanho={18} />
-                </a>
-              </Button>
-              <Button asChild variant="sobre-escuro">
-                <Link href={LINKS.contato.href}>
-                  <IconeFigma src="/site/icone-conversa.svg" tamanho={18} />
-                  Fale com o sindicato
-                </Link>
-              </Button>
-            </>
-          }
-        />
-      </section>
+      <TopoComFoto
+        migalhas={[{ rotulo: "Início", href: "/" }, { rotulo: "Sindicato" }, { rotulo: "Instituição" }]}
+        eyebrow={hero.eyebrow}
+        titulo={hero.titulo}
+        texto={hero.texto}
+        destaqueDaFoto={
+          <p className="flex max-w-[248px] flex-col gap-2 font-bold">
+            <IconeFigma src="/site/icone-aspas.svg" tamanho={20} />
+            {hero.destaqueDaFoto}
+          </p>
+        }
+        acoes={
+          <>
+            <Button asChild>
+              <a href="#historia">
+                Conheça nossa história
+                <IconeFigma src="/site/icone-seta-direita.svg" tamanho={18} />
+              </a>
+            </Button>
+            <Button asChild variant="sobre-escuro">
+              <Link href={LINKS.contato.href}>
+                <IconeFigma src="/site/icone-conversa.svg" tamanho={18} />
+                Fale com o sindicato
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <AbasSindicato atual={LINKS.instituicao.href} />
 
