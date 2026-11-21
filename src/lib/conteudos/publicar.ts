@@ -19,8 +19,8 @@ export type DepsDaPublicacao = {
   quem: QuemDaEquipe;
   /** Sessão do editor, só para a Atividade (E40). */
   sessaoEdicao?: string;
-  /** Para a T05 da notícia fixada (E59). Sem ela, usa a fila do sistema, se precisar. */
-  fila?: Fila;
+  /** Para a T05 da notícia fixada (E59): a intenção de fixar vale ao publicar. */
+  fila: Fila;
   agora?: Date;
 };
 
@@ -64,7 +64,12 @@ export async function publicarNaTransacao(
   const agora = deps.agora ?? new Date();
   const copia = await copiaDeTrabalho(tx, atual);
   const { gravado, versao, primeira } = await irAoAr(tx, atual, copia, { criadoPor: deps.quem.id, agora });
-  const fixacao = await aplicarFixacaoAoPublicar(tx, atual.id, { agora, ator: { tipo: "pessoa", id: deps.quem.id }, fila: deps.fila });
+  const fixacao = await aplicarFixacaoAoPublicar(tx, atual.id, {
+    agora,
+    ator: { tipo: "pessoa", id: deps.quem.id },
+    fila: deps.fila,
+    jaEstavaNoAr: atual.estado === "publicado",
+  });
   await registrarAtividadeNoticia(
     tx,
     primeira ? "noticia.publicar" : "noticia.publicar_alteracoes",
@@ -143,7 +148,7 @@ export type ResultadoDescartar = { tipo: "descartada"; noticia: NoticiaAberta } 
  */
 export async function descartarAlteracoes(
   entrada: { id: string; revisaoBase: number },
-  deps: DepsDaPublicacao,
+  deps: Omit<DepsDaPublicacao, "fila" | "agora">,
 ): Promise<ResultadoDescartar> {
   exigir(deps.quem, "editar", { tipo: "noticia" });
   return banco().transaction(async (tx) => {

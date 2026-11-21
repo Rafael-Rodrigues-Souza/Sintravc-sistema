@@ -7,8 +7,8 @@ import type { OrdemDaLista } from "./consultas";
  */
 export type FiltrosDaUrl = { categoria: string | null; busca: string; ordem: OrdemDaLista; pagina: number };
 
-/** Tamanho máximo da busca: o resto é ignorado. */
-const BUSCA_MAXIMA = 100;
+/** Tamanho máximo da busca: o resto é ignorado (na URL e no “Carregar mais”). */
+export const BUSCA_MAXIMA = 100;
 
 function primeiro(valor: string | string[] | undefined): string {
   return (Array.isArray(valor) ? valor[0] : valor) ?? "";

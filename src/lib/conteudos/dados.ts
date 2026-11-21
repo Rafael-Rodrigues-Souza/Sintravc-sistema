@@ -50,6 +50,9 @@ export function noticiaVazia(): DadosNoticia {
 }
 
 /** Como a notícia aparece em listas, na Atividade e na Mídia ("Usado em") quando ainda não tem manchete. */
+/** A assinatura quando a notícia não tem uma (site e prévia). */
+export const ASSINATURA_PADRAO = "Redação SINTRAVC";
+
 export function rotuloDaNoticia(titulo: string): string {
   return titulo.trim() || "Notícia sem manchete";
 }

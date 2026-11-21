@@ -187,7 +187,7 @@ describe("salvarComunicado (RF43, RN14)", () => {
 
     await expect(programar()).rejects.toMatchObject({ campo: "link" });
 
-    await publicarNoticia({ id: rascunho.id, revisaoBase: rascunho.revisao }, { quem });
+    await publicarNoticia({ id: rascunho.id, revisaoBase: rascunho.revisao }, { quem, fila: filaEmMemoria().fila });
     const { id } = await programar();
     const [faixa] = await comunicadosNoAr(p.durante);
     expect(faixa).toMatchObject({ id, link: { href: expect.stringMatching(/^\/noticias\/.+/), externo: false } });

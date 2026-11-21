@@ -1,7 +1,7 @@
 import type { NoticiaParaLer } from "@/components/site/noticia-aberta";
 
 import { contarPalavras, tempoDeLeitura } from "./corpo";
-import type { DadosNoticia } from "./dados";
+import { ASSINATURA_PADRAO, type DadosNoticia } from "./dados";
 
 /**
  * Monta o que a notícia aberta mostra a partir dos dados (cópia de trabalho na prévia, retrato no
@@ -25,7 +25,7 @@ export function noticiaParaLer(
     corpo: dados.corpo,
     capa: capaUrl ? { url: capaUrl, alt: dados.capaAlt, legenda: dados.capaLegenda } : null,
     categoria: extras.categoria,
-    assinatura: dados.assinatura || "Redação SINTRAVC",
+    assinatura: dados.assinatura || ASSINATURA_PADRAO,
     local: dados.local,
     publicadoEm: extras.publicadoEm,
     atualizadoEm: extras.atualizadoEm,

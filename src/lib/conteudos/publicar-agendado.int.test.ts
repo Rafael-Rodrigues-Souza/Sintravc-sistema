@@ -26,7 +26,7 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
   it("na hora marcada, a notícia vai ao ar sozinha: versão, slug e Atividade do sistema", async () => {
     const { quem, id } = await agendada({ titulo: "Mutirão de exames no sindicato" });
 
-    const resultado = await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA });
+    const resultado = await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA, fila: filaEmMemoria().fila });
 
     expect(resultado).toEqual({ tipo: "publicada", versao: 1 });
     expect(await carregarNoticia(id, { quem })).toMatchObject({
@@ -57,7 +57,7 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
     const atual = (await carregarNoticia(id, { quem }))!;
     await salvarRascunhoNoticia({ id, revisaoBase: atual.revisao, dados: { ...atual.dados, lide: "Lide revisado." } }, edicaoDe(quem));
 
-    await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA });
+    await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA, fila: filaEmMemoria().fila });
 
     const [versao] = await versoesDaNoticia(id, { quem });
     expect(versao!.dados.lide).toBe("Lide revisado.");
@@ -65,10 +65,10 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
 
   it("é idempotente: rodar de novo não gera outra versão nem outro registro", async () => {
     const { quem, id } = await agendada();
-    await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA });
+    await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA, fila: filaEmMemoria().fila });
     const registros = (await atividadesDe(id)).length;
 
-    const segunda = await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA });
+    const segunda = await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA, fila: filaEmMemoria().fila });
 
     expect(segunda).toEqual({ tipo: "ignorada" });
     expect(await versoesDaNoticia(id, { quem })).toHaveLength(1);
@@ -80,11 +80,11 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
     const depois = new Date("2026-11-04T11:00:00Z");
     await reagendarConteudo({ id, para: depois }, { quem, fila: filaEmMemoria().fila, agora: ANTES });
 
-    expect(await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA })).toEqual({ tipo: "ignorada" });
+    expect(await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA, fila: filaEmMemoria().fila })).toEqual({ tipo: "ignorada" });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "agendado", agendadoPara: depois });
 
     await cancelarAgendamento({ id }, { quem });
-    expect(await executarPublicacaoAgendada({ conteudoId: id, para: depois.toISOString() }, { agora: depois })).toEqual({ tipo: "ignorada" });
+    expect(await executarPublicacaoAgendada({ conteudoId: id, para: depois.toISOString() }, { agora: depois, fila: filaEmMemoria().fila })).toEqual({ tipo: "ignorada" });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "rascunho", versao: 0 });
   });
 
@@ -92,7 +92,7 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
     const { id } = await agendada();
     const quandoVoltou = new Date(PARA.getTime() + 10 * 60_000);
 
-    await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: quandoVoltou });
+    await executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: quandoVoltou, fila: filaEmMemoria().fila });
 
     expect((await atividadesDe(id)).at(-1)).toMatchObject({
       acao: "noticia.publicar_agendado",
@@ -105,7 +105,7 @@ describe("executarPublicacaoAgendada: T01 (CA-US21.2, RF71, RNF13)", () => {
     const atual = (await carregarNoticia(id, { quem }))!;
     await salvarRascunhoNoticia({ id, revisaoBase: atual.revisao, dados: { ...atual.dados, assinatura: "" } }, edicaoDe(quem));
 
-    await expect(executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA })).rejects.toBeInstanceOf(ErroFaltamCampos);
+    await expect(executarPublicacaoAgendada({ conteudoId: id, para: PEDIDO_PARA }, { agora: PARA, fila: filaEmMemoria().fila })).rejects.toBeInstanceOf(ErroFaltamCampos);
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "agendado", versao: 0 });
   });
 });

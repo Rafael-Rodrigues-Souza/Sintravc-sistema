@@ -31,7 +31,7 @@ export type ResultadoPublicacaoAgendada = { tipo: "publicada"; versao: number } 
  */
 export async function executarPublicacaoAgendada(
   pedido: PedidoPublicacao,
-  deps: { agora?: Date; fila?: Fila } = {},
+  deps: { agora?: Date; fila: Fila },
 ): Promise<ResultadoPublicacaoAgendada> {
   const marcadoPara = new Date(pedido.para);
   return banco().transaction(async (tx) => {
@@ -44,7 +44,9 @@ export async function executarPublicacaoAgendada(
     const { versao } = await irAoAr(tx, atual, copia, { criadoPor: agendadoPor, agora });
     // Notícia com intenção de fixar: vale agora; vencida, publica sem fixar (E59).
     const fixacao =
-      atual.tipo === "noticia" ? await aplicarFixacaoAoPublicar(tx, atual.id, { agora, ator: { tipo: "sistema" }, fila: deps.fila }) : null;
+      atual.tipo === "noticia"
+        ? await aplicarFixacaoAoPublicar(tx, atual.id, { agora, ator: { tipo: "sistema" }, fila: deps.fila, jaEstavaNoAr: false })
+        : null;
     await registrarAtividade(tx, {
       ator: { tipo: "sistema" },
       acao: `${familiaDo(atual.tipo)}.publicar_agendado`,

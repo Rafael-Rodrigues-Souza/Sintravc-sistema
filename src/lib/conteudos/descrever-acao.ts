@@ -1,5 +1,7 @@
 /** Frases das "Últimas ações" (Figma 115:2324). Pura: o servidor monta o texto para a tela. */
-import { dataHoraNaBahia, dataNaBahia } from "@/lib/datas";
+import { dataHoraNaBahia } from "@/lib/datas";
+
+import { diaDaFixacao } from "./data-da-fixacao";
 
 const FRASES: Record<string, string> = {
   "noticia.criar": "Rascunho criado",
@@ -23,8 +25,8 @@ export function descreverAcao(acao: string, detalhe: Record<string, unknown>): s
   if (acao === "noticia.agendar" && para) return `Agendado para ${dataHoraNaBahia(para)}`;
   if (acao === "noticia.reagendar" && para) return `Reagendado para ${dataHoraNaBahia(para)}`;
   if (acao === "noticia.fixar" && typeof detalhe.fixada_ate === "string") {
-    // O fim é exclusivo (00:00 do dia seguinte): o dia escolhido é o anterior (E59).
-    const ate = dataNaBahia(new Date(new Date(detalhe.fixada_ate).getTime() - 1));
+    const [ano, mes, dia] = diaDaFixacao(new Date(detalhe.fixada_ate)).split("-");
+    const ate = `${dia}/${mes}/${ano}`;
     return detalhe.ao_publicar ? `Fixar até ${ate} ao publicar` : `Fixada no topo de Notícias até ${ate}`;
   }
   if (acao === "noticia.desafixar") {

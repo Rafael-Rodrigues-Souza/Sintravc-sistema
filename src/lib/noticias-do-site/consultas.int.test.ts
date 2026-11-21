@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { agendarNoticia } from "@/lib/conteudos/agendar";
@@ -6,6 +7,8 @@ import { arquivarConteudos, ocultarConteudos } from "@/lib/conteudos/ciclo-de-vi
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { fixarNoticia } from "@/lib/conteudos/fixar";
 import { publicarNoticia } from "@/lib/conteudos/publicar";
+import { banco } from "@/lib/db";
+import { conteudo, visualizacaoDiaria } from "@/lib/db/schema";
 import { salvarRascunhoNoticia } from "@/lib/conteudos/salvar";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 import { filaEmMemoria } from "@/lib/tarefas/fila";
@@ -233,6 +236,15 @@ describe("Mais lidas e contador anônimo (E30, E59, T17)", () => {
     const rascunho = await rascunhoSalvo(quem, await noticiaCompleta({ titulo: `Não conta ${marca()}` }));
 
     expect(await registrarVisualizacao(rascunho.id)).toBe(false);
+  });
+
+  it("usa o mesmo filtro “no ar” da lista: publicada sem data de publicação não soma nem entra nas Mais lidas", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const n = await publicada(quem, { titulo: `Sem data ${marca()}` });
+    await banco().update(conteudo).set({ publicadoEm: null }).where(eq(conteudo.id, n.id));
+
+    expect(await registrarVisualizacao(n.id)).toBe(false);
+    expect(await banco().select().from(visualizacaoDiaria).where(eq(visualizacaoDiaria.conteudoId, n.id))).toEqual([]);
   });
 
   it("a janela usa o calendário da Bahia", () => {

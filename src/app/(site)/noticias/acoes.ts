@@ -3,11 +3,12 @@
 import { z } from "zod";
 
 import { listarNoticiasDoSite, type NoticiaDoSite } from "@/lib/noticias-do-site/consultas";
+import { BUSCA_MAXIMA } from "@/lib/noticias-do-site/filtros";
 import { exigir } from "@/lib/permissoes";
 
 const esquema = z.object({
   categoriaId: z.uuid().optional(),
-  busca: z.string().max(100).optional(),
+  busca: z.string().max(BUSCA_MAXIMA).optional(),
   ordem: z.enum(["recentes", "antigas"]),
   pagina: z.number().int().min(2).max(10_000),
   excluir: z.uuid().optional(),

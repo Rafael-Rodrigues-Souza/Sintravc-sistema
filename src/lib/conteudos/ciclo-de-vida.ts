@@ -59,8 +59,7 @@ export async function ocultarNaTransacao(tx: Transacao, atual: Linha, motivoDigi
   if (atual.estado !== "publicado") throw new ErroConteudo("invalido", "Só o que está publicado pode ser ocultado. Atualize a página.");
   await tx.update(conteudo).set({ estado: "oculto", motivoOculto: motivo, ocultadoEm: new Date() }).where(eq(conteudo.id, atual.id));
   // A oculta sai do topo de Notícias e não volta fixada com "Mostrar no site" (E59).
-  const desafixada = atual.tipo === "noticia" && (await desafixarAoSairDoAr(tx, atual.id));
-  await registrarAtividadeConteudo(tx, atual, "ocultar", deps, desafixada ? { desafixada: true } : {}, motivo);
+  await registrarAtividadeConteudo(tx, atual, "ocultar", deps, await desafixarAoSairDoAr(tx, atual), motivo);
 }
 
 /**
@@ -100,11 +99,7 @@ export async function arquivarConteudos(entrada: { ids: string[] }, deps: { quem
       .set({ estado: "arquivado", estadoAntesDeArquivar: atual.estado })
       .where(eq(conteudo.id, atual.id));
     // Arquivada perde a fixação ou a intenção de fixar; o "Desfazer" não a devolve (E59).
-    const desafixada = atual.tipo === "noticia" && (await desafixarAoSairDoAr(tx, atual.id));
-    await registrarAtividadeConteudo(tx, atual, "arquivar", deps, {
-      estado_anterior: atual.estado,
-      ...(desafixada ? { desafixada: true } : {}),
-    });
+    await registrarAtividadeConteudo(tx, atual, "arquivar", deps, { estado_anterior: atual.estado, ...(await desafixarAoSairDoAr(tx, atual)) });
   });
 }
 

@@ -10,7 +10,7 @@ import { atividadesDe, noticiaCompleta, rascunhoSalvo } from "@/testes/noticias"
 
 import { agendarNoticia } from "./agendar";
 import { carregarNoticia } from "./carregar";
-import { arquivarConteudos, ocultarConteudos } from "./ciclo-de-vida";
+import { arquivarConteudos, excluirRascunho, ocultarConteudos, restaurarComoRascunho } from "./ciclo-de-vida";
 import { executarDesafixar } from "./desafixar";
 import { ErroConteudo } from "./erros";
 import { fixadaAtual, fixarNoticia, fimDaFixacao } from "./fixar";
@@ -105,6 +105,21 @@ describe("fixarNoticia na publicada: vale na hora (RN58, CA-US21.7)", () => {
       acao: "noticia.desafixar",
       detalhe: { substituida_por: nova },
     });
+  });
+
+  it("fixação vencida (a T05 ainda não rodou) não ganha substituida_por quando outra é fixada", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const vencida = await publicada(quem, "Vencida");
+    await fixarNoticia({ id: vencida, ate: DIA }, deps(quem).deps);
+    const nova = await publicada(quem, "Nova");
+    const depois = new Date("2031-11-12T12:00:00Z");
+
+    const r = await fixarNoticia({ id: nova, ate: "2031-11-20" }, deps(quem, depois).deps);
+
+    expect(r).toMatchObject({ tipo: "fixada", desafixadas: [] });
+    expect((await atividadesDe(vencida)).map((a) => a.detalhe)).not.toContainEqual(expect.objectContaining({ substituida_por: nova }));
+    // O campo vencido fica para a T05 limpar, com o registro dela.
+    expect(await fixadaAteDe(vencida)).toEqual(FIM);
   });
 
   it("dois pedidos de fixar ao mesmo tempo deixam só uma fixada", async () => {
@@ -239,12 +254,33 @@ describe("fixar no rascunho vale ao publicar (E59, CA-US21.6)", () => {
     );
     if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
     const antes = (await atividadesDe(id)).length;
+    const { deps: d, pedidos } = deps(quem);
 
-    await publicarNoticia({ id, revisaoBase: salvo.revisao }, deps(quem).deps);
+    await publicarNoticia({ id, revisaoBase: salvo.revisao }, d);
 
     expect(await fixadaAteDe(id)).toEqual(FIM);
     const novas = (await atividadesDe(id)).slice(antes);
     expect(novas.map((a) => a.acao)).toEqual(["noticia.publicar_alteracoes"]);
+    // Só age quando a fixação muda: nem a T05 de novo nem fixada_ate na Atividade.
+    expect(pedidos).toEqual([]);
+    expect(novas[0]!.detalhe).not.toHaveProperty("fixada_ate");
+  });
+
+  it("republicar a publicada cuja fixação já venceu (antes da T05) não registra fixacao_vencida", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const id = await publicada(quem, "Venceu");
+    await fixarNoticia({ id, ate: DIA }, deps(quem).deps);
+    const atual = (await carregarNoticia(id, { quem }))!;
+    const salvo = await salvarRascunhoNoticia(
+      { id, revisaoBase: atual.revisao, dados: { ...atual.dados, lide: "Lide revisado." } },
+      edicaoDe(quem),
+    );
+    if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
+    const depois = new Date("2031-11-12T12:00:00Z");
+
+    await publicarNoticia({ id, revisaoBase: salvo.revisao }, deps(quem, depois).deps);
+
+    expect((await atividadesDe(id)).at(-1)!.detalhe).not.toHaveProperty("fixacao_vencida");
   });
 
   it("intenção vencida ao publicar: publica sem fixar e limpa a intenção", async () => {
@@ -353,5 +389,33 @@ describe("ocultar e arquivar desafixam (E59)", () => {
     await arquivarConteudos({ ids: [id] }, { quem });
 
     expect(await fixadaAteDe(id)).toBeNull();
+  });
+
+  it("arquivar e depois restaurar volta sem fixação (a publicada fixada e o rascunho com intenção)", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const fixada = await publicada(quem, "Fixada");
+    await fixarNoticia({ id: fixada, ate: DIA }, deps(quem).deps);
+    const { id: intencao } = await rascunho(quem, "Intenção");
+    await fixarNoticia({ id: intencao, ate: DIA }, deps(quem).deps);
+
+    await arquivarConteudos({ ids: [fixada, intencao] }, { quem });
+    await restaurarComoRascunho({ id: fixada }, { quem });
+    await restaurarComoRascunho({ id: intencao }, { quem });
+
+    expect(await fixadaAteDe(fixada)).toBeNull();
+    expect(await fixadaAteDe(intencao)).toBeNull();
+  });
+
+  it("arquivar, restaurar e excluir o rascunho termina sem fixação nenhuma", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id } = await rascunho(quem);
+    await fixarNoticia({ id, ate: DIA }, deps(quem).deps);
+
+    await arquivarConteudos({ ids: [id] }, { quem });
+    await restaurarComoRascunho({ id }, { quem });
+    await excluirRascunho({ id }, { quem });
+
+    const linhas = await banco().select({ id: noticia.conteudoId }).from(noticia).where(eq(noticia.conteudoId, id));
+    expect(linhas).toEqual([]);
   });
 });

@@ -79,7 +79,7 @@ describe("agendarNoticia (CA-US21.2, RF39, RN10)", () => {
   it("notícia que já está no ar não é agendada", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     await expect(
       agendarNoticia({ id, revisaoBase: revisao, para: TRES_DE_NOVEMBRO_8H }, { quem, fila: filaEmMemoria().fila, agora: AGORA }),
@@ -176,7 +176,7 @@ describe("notícia agendada continua editável (E44)", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await agendada(quem);
 
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "publicado", agendadoPara: null, versao: 1 });
   });

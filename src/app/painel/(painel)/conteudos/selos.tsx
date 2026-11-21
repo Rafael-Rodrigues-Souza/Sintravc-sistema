@@ -21,8 +21,6 @@ export function SeloEstado({ estado, className }: { estado: EstadoConteudo; clas
   );
 }
 
-export { SeloCategoria } from "@/components/selo-categoria";
-
 /**
  * Selo de vigência do documento oficial (C2, E46): calculado pelas datas, separado do estado de
  * publicação. Mesmo visual dos selos do site (Figma 73:629 e 75:1438), com o prefixo "Vigência"

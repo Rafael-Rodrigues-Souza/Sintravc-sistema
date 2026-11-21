@@ -34,7 +34,7 @@ import { salvarRascunhoNoticia } from "./salvar";
 /** Notícia publicada (versão 1), como a tela faria. */
 async function publicada(quem: QuemDaEquipe, titulo = "Assembleia da categoria no sábado") {
   const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta({ titulo }));
-  await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+  await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
   return id;
 }
 
@@ -116,7 +116,7 @@ describe("mostrarNoSite (Oculto → Publicado, RN10, E45)", () => {
     if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
     expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(true);
 
-    const r = await descartarAlteracoes({ id, revisaoBase: salvo.revisao }, { quem });
+    const r = await descartarAlteracoes({ id, revisaoBase: salvo.revisao }, { quem});
 
     expect(r.tipo).toBe("descartada");
     const depois = (await carregarNoticia(id, { quem }))!;
@@ -216,7 +216,7 @@ describe("desfazerArquivamento (aviso “Desfazer”, CA-US22.2, E45)", () => {
     await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila, agora });
     await arquivarConteudos({ ids: [id] }, { quem });
 
-    expect(await executarPublicacaoAgendada(pedidos[0]!, { agora: para })).toEqual({ tipo: "ignorada" });
+    expect(await executarPublicacaoAgendada(pedidos[0]!, { agora: para, fila: filaEmMemoria().fila })).toEqual({ tipo: "ignorada" });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "arquivado", jaPublicado: false });
 
     await desfazerArquivamento({ ids: [id] }, { quem, fila, agora });
@@ -351,7 +351,7 @@ describe("restaurarVersao (CA-US21.9, E31, E42)", () => {
       const atual = (await carregarNoticia(id, { quem }))!;
       const salvo = await salvarRascunhoNoticia({ id, revisaoBase: atual.revisao, dados: { ...atual.dados, titulo } }, edicaoDe(quem));
       if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
-      await publicarNoticia({ id, revisaoBase: salvo.revisao }, { quem });
+      await publicarNoticia({ id, revisaoBase: salvo.revisao }, { quem, fila: filaEmMemoria().fila });
     }
     return id;
   }

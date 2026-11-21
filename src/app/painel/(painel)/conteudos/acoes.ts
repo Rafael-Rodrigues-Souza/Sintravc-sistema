@@ -167,7 +167,7 @@ export async function acaoPublicarNoticia(entrada: unknown, sessaoEdicao: unknow
   if (!validado.success || !sessao.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "publicar", { tipo: "noticia" })) return { tipo: "erro", mensagem: "Seu perfil não pode publicar notícias." };
   try {
-    const r = await publicarNoticia(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data });
+    const r = await publicarNoticia(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data, fila: await filaDoSistema() });
     if (r.tipo === "conflito") return { tipo: "conflito" };
     return { tipo: "publicada", versao: r.versao, revisaoPublicada: r.revisaoPublicada, publicadoEm: r.publicadoEm.toISOString() };
   } catch (erro) {

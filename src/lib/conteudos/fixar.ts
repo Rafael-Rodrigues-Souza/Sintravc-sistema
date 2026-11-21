@@ -1,12 +1,12 @@
-import { and, eq, gt, isNotNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, ne, sql } from "drizzle-orm";
 
 import { banco, type Banco, type Transacao } from "@/lib/db";
 import { registrarAtividade, type Ator } from "@/lib/atividade";
 import { conteudo, noticia } from "@/lib/db/schema";
-import { bahiaParaUtc, FUSO } from "@/lib/datas";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import type { Fila } from "@/lib/tarefas/fila";
 
+import { fimDaFixacao } from "./data-da-fixacao";
 import { rotuloDaNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
 import { registrarAtividadeNoticia, travarNoticia } from "./salvar";
@@ -14,7 +14,7 @@ import { registrarAtividadeNoticia, travarNoticia } from "./salvar";
 /**
  * Notícia fixada no topo da página Notícias (RN58, RF78, E14, E59).
  *
- * - `noticia.fixada_ate` é o fim **exclusivo**: “até 10/11” guarda 00:00 de 11/11 na Bahia.
+ * - `noticia.fixada_ate` é o fim **exclusivo** (data-da-fixacao.ts).
  * - Na publicada, fixar vale na hora. No rascunho e na agendada, é só a intenção, que vale ao
  *   publicar (aplicarFixacaoAoPublicar). A intenção fica fora da cópia de trabalho (E47).
  * - **O site segue o relógio:** a fixada é a publicada com `fixada_ate > agora` (fixadaAtual). A T05
@@ -23,39 +23,23 @@ import { registrarAtividadeNoticia, travarNoticia } from "./salvar";
  *   agendadas fica (ganha o último a publicar). Um lock serializa fixar e publicar.
  */
 
-/** O fim exclusivo da fixação escolhida na tela ("2026-11-10" → 00:00 de 11/11 na Bahia, em UTC). */
-export function fimDaFixacao(dia: string): Date | null {
-  const inicio = bahiaParaUtc(dia, "00:00");
-  if (!inicio) return null;
-  const [ano, mes, d] = dia.split("-").map(Number) as [number, number, number];
-  const seguinte = new Date(Date.UTC(ano, mes - 1, d + 1)).toISOString().slice(0, 10);
-  return bahiaParaUtc(seguinte, "00:00");
-}
-
-/** O dia escolhido na tela a partir do fim exclusivo guardado (o inverso de fimDaFixacao). */
-export function diaDaFixacao(fim: Date): string {
-  // O último instante que ainda vale é 1 ms antes do fim; o dia dele, na Bahia.
-  const ultimo = new Date(fim.getTime() - 1);
-  return new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric", month: "2-digit", day: "2-digit" }).format(ultimo);
-}
+export { diaDaFixacao, fimDaFixacao } from "./data-da-fixacao";
 
 export type NoticiaFixada = { id: string; titulo: string; fixadaAte: Date };
 
-/** A notícia fixada agora no site (publicada e dentro da data), ou null. `exceto` ignora uma notícia. */
-export async function fixadaAtual(db: Banco | Transacao, agora: Date, exceto?: string): Promise<NoticiaFixada | null> {
+/**
+ * A notícia fixada agora no site (publicada e dentro da data), ou null. É a única leitura da regra
+ * “o site segue o relógio” (E59): o Destaque da página Notícias e o aviso do painel usam esta.
+ */
+export async function fixadaAtual(db: Banco | Transacao, agora: Date): Promise<NoticiaFixada | null> {
   const [linha] = await db
     .select({ id: conteudo.id, titulo: conteudo.titulo, fixadaAte: noticia.fixadaAte })
     .from(noticia)
     .innerJoin(conteudo, eq(conteudo.id, noticia.conteudoId))
     .where(
-      and(
-        eq(conteudo.estado, "publicado"),
-        isNotNull(noticia.fixadaAte),
-        gt(noticia.fixadaAte, agora),
-        exceto ? ne(conteudo.id, exceto) : undefined,
-      ),
+      and(eq(conteudo.estado, "publicado"), isNotNull(noticia.fixadaAte), gt(noticia.fixadaAte, agora)),
     )
-    .orderBy(sql`${noticia.fixadaAte} desc`)
+    .orderBy(desc(noticia.fixadaAte))
     .limit(1);
   return linha ? { ...linha, fixadaAte: linha.fixadaAte! } : null;
 }
@@ -109,7 +93,7 @@ export async function fixarNoticia(entrada: { id: string; ate: string | null }, 
     if (vale) await travarFixacao(tx);
     await tx.update(noticia).set({ fixadaAte: fim }).where(eq(noticia.conteudoId, entrada.id));
     const desafixadas = vale
-      ? await assumirFixacao(tx, { id: atual.id, fim }, { ator: { tipo: "pessoa", id: deps.quem.id }, fila: deps.fila })
+      ? await assumirFixacao(tx, { id: atual.id, fim }, { ator: { tipo: "pessoa", id: deps.quem.id }, fila: deps.fila, agora })
       : [];
     await registrarAtividadeNoticia(tx, "noticia.fixar", atual.id, atual.titulo, deps, {
       fixada_ate: fim.toISOString(),
@@ -126,15 +110,19 @@ export type FixacaoAoPublicar =
   | { tipo: "vencida" };
 
 /**
- * Ao publicar (agora, pela Edição rápida ou pela T01), aplica a intenção de fixar, na transação da
- * publicação (E59). Sem intenção, não mexe em nada. Com intenção válida, desafixa as outras
- * publicadas e agenda a T05; republicar a própria fixada não desafixa ninguém (já não há outra).
+ * Ao publicar (agora, pela Edição rápida ou pela T01), aplica a intenção de fixar do rascunho ou da
+ * agendada, na transação da publicação (E59). Sem intenção, não mexe em nada. Com intenção válida,
+ * desafixa as outras publicadas e agenda a T05; vencida, publica sem fixar.
+ *
+ * Republicar o que **já estava no ar** não mexe na fixação: na publicada, fixar e desafixar valem
+ * na hora (fixarNoticia), então não há intenção pendente. Nem lock, nem T05, nem registro.
  */
 export async function aplicarFixacaoAoPublicar(
   tx: Transacao,
   id: string,
-  deps: { agora: Date; ator: Ator; fila?: Fila },
+  deps: { agora: Date; ator: Ator; fila: Fila; jaEstavaNoAr: boolean },
 ): Promise<FixacaoAoPublicar> {
+  if (deps.jaEstavaNoAr) return { tipo: "sem_fixacao" };
   const [linha] = await tx.select({ fixadaAte: noticia.fixadaAte }).from(noticia).where(eq(noticia.conteudoId, id));
   const fim = linha?.fixadaAte;
   if (!fim) return { tipo: "sem_fixacao" };
@@ -142,16 +130,17 @@ export async function aplicarFixacaoAoPublicar(
     await tx.update(noticia).set({ fixadaAte: null }).where(eq(noticia.conteudoId, id));
     return { tipo: "vencida" };
   }
-  const fila = deps.fila ?? (await import("@/lib/tarefas")).filaDoSistema();
-  const desafixadas = await assumirFixacao(tx, { id, fim }, { ator: deps.ator, fila: await fila });
+  const desafixadas = await assumirFixacao(tx, { id, fim }, deps);
   return { tipo: "fixada", fixadaAte: fim, desafixadas };
 }
 
 /**
- * A notícia (publicada, já travada) passa a ser a fixada: desafixa as outras publicadas, registra
- * a saída de cada uma e agenda a T05. O lock serializa dois pedidos ao mesmo tempo (só uma fixada).
+ * A notícia (publicada, já travada) passa a ser a fixada: desafixa as outras publicadas que ainda
+ * estavam fixadas (dentro da data), registra a saída de cada uma e agenda a T05. A fixação já
+ * vencida não é “substituída”: o relógio já a tirou, e a T05 limpa o campo com o registro dela. O
+ * lock serializa dois pedidos ao mesmo tempo (só uma fixada).
  */
-async function assumirFixacao(tx: Transacao, nova: { id: string; fim: Date }, deps: { ator: Ator; fila: Fila }) {
+async function assumirFixacao(tx: Transacao, nova: { id: string; fim: Date }, deps: { ator: Ator; fila: Fila; agora: Date }) {
   await travarFixacao(tx);
   const desafixadas = await tx
     .update(noticia)
@@ -162,6 +151,7 @@ async function assumirFixacao(tx: Transacao, nova: { id: string; fim: Date }, de
         eq(conteudo.id, noticia.conteudoId),
         eq(conteudo.estado, "publicado"),
         isNotNull(noticia.fixadaAte),
+        gt(noticia.fixadaAte, deps.agora),
         ne(noticia.conteudoId, nova.id),
       ),
     )
@@ -184,12 +174,16 @@ async function travarFixacao(tx: Transacao) {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext('noticia_fixada'))`);
 }
 
-/** Ocultar e arquivar tiram a fixação (e a intenção) na mesma transação. Devolve se havia. */
-export async function desafixarAoSairDoAr(tx: Transacao, id: string): Promise<boolean> {
+/**
+ * Ocultar e arquivar tiram a fixação (e a intenção) na mesma transação (E59). Devolve o que vai no
+ * detalhe da Atividade de quem chamou: `{ desafixada: true }` se havia, senão nada. Documento não tem.
+ */
+export async function desafixarAoSairDoAr(tx: Transacao, alvo: { id: string; tipo: string }): Promise<{ desafixada?: true }> {
+  if (alvo.tipo !== "noticia") return {};
   const linhas = await tx
     .update(noticia)
     .set({ fixadaAte: null })
-    .where(and(eq(noticia.conteudoId, id), isNotNull(noticia.fixadaAte)))
+    .where(and(eq(noticia.conteudoId, alvo.id), isNotNull(noticia.fixadaAte)))
     .returning({ id: noticia.conteudoId });
-  return linhas.length > 0;
+  return linhas.length > 0 ? { desafixada: true } : {};
 }

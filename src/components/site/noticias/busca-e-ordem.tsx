@@ -7,7 +7,7 @@ import { useRef } from "react";
 import { IconeFigma } from "@/components/icone-figma";
 import { Input } from "@/components/ui/input";
 import { NOTICIAS_PAGINA } from "@/conteudo/site";
-import { enderecoDaLista, type FiltrosDaUrl } from "@/lib/noticias-do-site/filtros";
+import { BUSCA_MAXIMA, enderecoDaLista, type FiltrosDaUrl } from "@/lib/noticias-do-site/filtros";
 
 /**
  * Busca e ordem da página Notícias (Figma 80:807 e 80:812; E59). Um formulário GET: Enter busca,
@@ -31,7 +31,7 @@ export function BuscaEOrdem({ filtros }: { filtros: FiltrosDaUrl }) {
           name="busca"
           defaultValue={filtros.busca}
           placeholder={t.buscaDica}
-          maxLength={100}
+          maxLength={BUSCA_MAXIMA}
           enterKeyHint="search"
           className="h-14 border-borda-padrao pr-12 pl-[52px]"
         />

@@ -1,13 +1,15 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, ne, notInArray, sql, type SQL } from "drizzle-orm";
+import { and, asc, between, desc, eq, inArray, isNotNull, lte, ne, notInArray, sql, type SQL } from "drizzle-orm";
 
 import { urlPublica } from "@/lib/armazenamento";
 import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { enderecoPublicoDoConteudo } from "@/lib/conteudos/enderecos";
 import { slugificar } from "@/lib/conteudos/publicar";
-import { bahiaEmCampos } from "@/lib/datas";
+import { ASSINATURA_PADRAO } from "@/lib/conteudos/dados";
+import { fixadaAtual } from "@/lib/conteudos/fixar";
+import { bahiaEmCampos, somarDias } from "@/lib/datas";
 import { banco } from "@/lib/db";
-import { categoria, conteudo, conteudoVersao, midia, noticia } from "@/lib/db/schema";
+import { categoria, conteudo, conteudoVersao, midia, visualizacaoDiaria } from "@/lib/db/schema";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { lerParametro } from "@/lib/parametros";
 
@@ -38,7 +40,7 @@ export type NoticiaDoSite = {
   categoria: CategoriaDoSite | null;
   capa: { url: string; alt: string } | null;
   minutosDeLeitura: number;
-  /** "Redação SINTRAVC" quando a assinatura está vazia. */
+  /** ASSINATURA_PADRAO quando a assinatura está vazia. */
   assinatura: string;
 };
 
@@ -91,7 +93,7 @@ function paraCartoes(lidas: LinhaDoCartao[]): NoticiaDoSite[] {
         : null,
     capa: l.capaChave && env ? { url: urlPublica(l.capaChave, env), alt: l.capaAlt ?? "" } : null,
     minutosDeLeitura: Math.max(1, tempoDeLeitura(contarPalavras(l.corpo ?? { type: "doc" }))),
-    assinatura: l.assinatura?.trim() || "Redação SINTRAVC",
+    assinatura: l.assinatura?.trim() || ASSINATURA_PADRAO,
   }));
 }
 
@@ -137,17 +139,20 @@ export type Destaque = NoticiaDoSite & { fixada: boolean };
  * recente. Segue o relógio: a fixação vencida já não vale, mesmo antes da T05 rodar (E59).
  */
 export async function noticiaEmDestaque(agora: Date = new Date()): Promise<Destaque | null> {
-  const [fixada] = paraCartoes(
-    await selecionarCartoes()
-      .innerJoin(noticia, eq(noticia.conteudoId, conteudo.id))
-      .where(and(noAr, isNotNull(noticia.fixadaAte), gt(noticia.fixadaAte, agora)))
-      .orderBy(desc(noticia.fixadaAte))
-      .limit(1),
-  );
+  // A regra “o site segue o relógio” fica num lugar só (fixadaAtual, E59).
+  const naFixacao = await fixadaAtual(banco(), agora);
+  const [fixada] = naFixacao
+    ? paraCartoes(
+        await selecionarCartoes()
+          .where(and(noAr, eq(conteudo.id, naFixacao.id)))
+          .limit(1),
+      )
+    : [];
   if (fixada) return { ...fixada, fixada: true };
+  // A mais recente até agora (o Destaque também segue o relógio).
   const [recente] = paraCartoes(
     await selecionarCartoes()
-      .where(noAr)
+      .where(and(noAr, lte(conteudo.publicadoEm, agora)))
       .orderBy(...maisRecentes)
       .limit(1),
   );
@@ -224,8 +229,7 @@ export function diaDaContagem(agora: Date): string {
 
 /** O primeiro dia da janela das Mais lidas: hoje e os `dias − 1` anteriores, no calendário da Bahia. */
 export function inicioDaJanela(agora: Date, dias: number): string {
-  const [ano, mes, dia] = diaDaContagem(agora).split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(ano, mes - 1, dia - (dias - 1))).toISOString().slice(0, 10);
+  return somarDias(diaDaContagem(agora), -(dias - 1));
 }
 
 /**
@@ -236,17 +240,15 @@ export async function maisLidas(agora: Date = new Date()): Promise<NoticiaDoSite
   const [dias, quantidade] = await Promise.all([lerParametro("noticias.mais_lidas_dias"), lerParametro("noticias.mais_lidas_quantidade")]);
   const inicio = inicioDaJanela(agora, dias);
   const hoje = diaDaContagem(agora);
-  const vistas = await banco().execute<{ conteudo_id: string }>(sql`
-    select v.conteudo_id
-    from visualizacao_diaria v
-    join conteudo c on c.id = v.conteudo_id
-    where v.dia between ${inicio}::date and ${hoje}::date
-      and c.tipo = 'noticia' and c.estado = 'publicado' and c.slug is not null and c.publicado_em is not null
-    group by v.conteudo_id, c.publicado_em
-    order by sum(v.total) desc, c.publicado_em desc, v.conteudo_id desc
-    limit ${quantidade}
-  `);
-  const ids = [...vistas].map((l) => l.conteudo_id);
+  const vistas = await banco()
+    .select({ id: visualizacaoDiaria.conteudoId })
+    .from(visualizacaoDiaria)
+    .innerJoin(conteudo, eq(conteudo.id, visualizacaoDiaria.conteudoId))
+    .where(and(noAr, between(visualizacaoDiaria.dia, inicio, hoje)))
+    .groupBy(visualizacaoDiaria.conteudoId, conteudo.publicadoEm)
+    .orderBy(desc(sql`sum(${visualizacaoDiaria.total})`), desc(conteudo.publicadoEm), desc(visualizacaoDiaria.conteudoId))
+    .limit(quantidade);
+  const ids = vistas.map((l) => l.id);
   const lidas = ids.length
     ? paraCartoes(await selecionarCartoes().where(and(noAr, inArray(conteudo.id, ids)))).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id))
     : [];
@@ -265,15 +267,18 @@ export async function maisLidas(agora: Date = new Date()): Promise<NoticiaDoSite
  * pessoa: só a notícia e o dia. Devolve se contou.
  */
 export async function registrarVisualizacao(conteudoId: string, agora: Date = new Date()): Promise<boolean> {
-  const linhas = await banco().execute<{ total: number }>(sql`
-    insert into visualizacao_diaria (conteudo_id, dia, total)
-    select c.id, ${diaDaContagem(agora)}::date, 1
-    from conteudo c
-    where c.id = ${conteudoId} and c.tipo = 'noticia' and c.estado = 'publicado' and c.slug is not null
-    on conflict (conteudo_id, dia) do update set total = visualizacao_diaria.total + 1
-    returning total
-  `);
-  return [...linhas].length > 0;
+  // O mesmo filtro “no ar” da lista: só soma o que o visitante consegue abrir.
+  const linhas = await banco()
+    .insert(visualizacaoDiaria)
+    .select(
+      banco()
+        .select({ conteudoId: conteudo.id, dia: sql<string>`${diaDaContagem(agora)}::date`.as("dia"), total: sql<number>`1`.as("total") })
+        .from(conteudo)
+        .where(and(noAr, eq(conteudo.id, conteudoId))),
+    )
+    .onConflictDoUpdate({ target: [visualizacaoDiaria.conteudoId, visualizacaoDiaria.dia], set: { total: sql`${visualizacaoDiaria.total} + 1` } })
+    .returning({ total: visualizacaoDiaria.total });
+  return linhas.length > 0;
 }
 
 /** A notícia aberta, pelo endereço: só a que está no ar (CA-US02.2). */
