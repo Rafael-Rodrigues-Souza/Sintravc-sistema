@@ -8,6 +8,7 @@ import { slugificar } from "@/lib/conteudos/publicar";
 import { banco } from "@/lib/db";
 import { categoria, episodio, midia } from "@/lib/db/schema";
 import { lerEnvArmazenamento } from "@/lib/env";
+import { conferirSessaoDaEquipe, sessaoRecusada } from "@/lib/acesso/sessao-da-equipe";
 import { pode } from "@/lib/permissoes";
 import { ehIdDoYoutube } from "@/lib/youtube/link";
 import type { Youtube } from "@/lib/youtube/youtube";
@@ -204,5 +205,25 @@ export async function responderTranscricao(pedido: { youtubeId: string }, deps: 
       "cache-control": "public, max-age=60",
       "x-content-type-options": "nosniff",
     },
+  });
+}
+
+/**
+ * A capa do vídeo no painel (`/painel/radio/capa/[youtubeId]`): a prévia do modal, antes de salvar.
+ * Só para quem gerencia o Rádio Chofer; também passa pelo servidor, para o painel não depender do
+ * i.ytimg.com no navegador. Sem capa no YouTube, a padrão.
+ */
+export async function responderCapaDoPainel(
+  pedido: { youtubeId: string; headers: Headers },
+  deps: { youtube: Youtube },
+): Promise<Response> {
+  const pessoa = await conferirSessaoDaEquipe(pedido.headers);
+  if (sessaoRecusada(pessoa)) return new Response(null, { status: 401 });
+  if (!pode(pessoa.quem, "gerenciar", { tipo: "radio" })) return new Response(null, { status: 403 });
+  if (!ehIdDoYoutube(pedido.youtubeId)) return new Response(null, { status: 404 });
+  const capa = await deps.youtube.baixarCapa(pedido.youtubeId);
+  const bytes = capa?.bytes ?? new Uint8Array(await readFile(CAPA_PADRAO));
+  return new Response(bytes as BodyInit, {
+    headers: { "content-type": capa?.tipo ?? "image/jpeg", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" },
   });
 }

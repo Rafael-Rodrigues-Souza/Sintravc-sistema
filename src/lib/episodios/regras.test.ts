@@ -71,5 +71,8 @@ describe("situação e botão do modal", () => {
     expect(botaoDoModal("rascunho", new Date("2026-11-20T16:00:00Z"), agora)).toBe("Publicar episódio");
     expect(botaoDoModal("rascunho", null, agora)).toBe("Agendar episódio");
     expect(botaoDoModal("no_ar", new Date("2026-11-20T16:00:00Z"), agora)).toBe("Salvar alterações");
+    expect(botaoDoModal("no_ar", new Date("2026-11-22T16:00:00Z"), agora)).toBe("Agendar episódio");
+    expect(botaoDoModal("agendado", new Date("2026-11-22T16:00:00Z"), agora)).toBe("Salvar alterações");
+    expect(botaoDoModal("agendado", new Date("2026-11-20T16:00:00Z"), agora)).toBe("Publicar episódio");
   });
 });

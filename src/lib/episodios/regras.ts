@@ -58,9 +58,10 @@ export function situacaoDo(e: ComExibicao, agora: Date): Situacao {
 
 /** O rótulo do botão principal do modal (E61). */
 export function botaoDoModal(situacaoAntes: Situacao, exibicao: Date | null, agora: Date): string {
-  if (situacaoAntes === "no_ar" && exibicao && exibicao.getTime() <= agora.getTime()) return "Salvar alterações";
-  if (exibicao && exibicao.getTime() <= agora.getTime()) return "Publicar episódio";
-  return "Agendar episódio";
+  const passou = !!exibicao && exibicao.getTime() <= agora.getTime();
+  // Continua onde está (no ar, ou agendado para o futuro): só salva.
+  if ((situacaoAntes === "no_ar" && passou) || (situacaoAntes === "agendado" && exibicao && !passou)) return "Salvar alterações";
+  return passou ? "Publicar episódio" : "Agendar episódio";
 }
 
 /** “Ep. 42 — Saúde mental no volante”, o rótulo da Atividade e dos avisos. */

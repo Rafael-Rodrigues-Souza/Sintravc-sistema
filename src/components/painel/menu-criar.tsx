@@ -12,7 +12,7 @@ type Item = { rotulo: string; descricao: string; icone: typeof FileText; href: s
 const ITENS: Item[] = [
   { rotulo: "Notícia", descricao: "Texto, fotos e vídeos. Pode citar editais e acordos.", icone: FileText, href: "/painel/conteudos/noticia/nova" },
   { rotulo: "Comunicado", descricao: "Faixa de aviso no topo do site", icone: Megaphone, href: "/painel/comunicados?novo=1" },
-  { rotulo: "Episódio da Rádio Chofer", descricao: "Vídeo do YouTube", icone: SquarePlay, href: "/painel/radio" },
+  { rotulo: "Episódio da Rádio Chofer", descricao: "Vídeo do YouTube", icone: SquarePlay, href: "/painel/radio?novo=1" },
 ];
 
 const DOCUMENTOS: Item[] = [
