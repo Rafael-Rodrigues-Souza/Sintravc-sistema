@@ -4,12 +4,14 @@
  * Notícias, Benefícios, Documentos e Rádio Chofer chegam nas issues #15 a #18.
  */
 export type ItemDeMenu = { rotulo: string; href: string };
-export type GrupoDeMenu = { rotulo: string; itens: ItemDeMenu[]; base: string };
+/** `id` nomeia o submenu no menu do celular (`submenu-<id>`); o grupo fica ativo pelos itens (`estaAtivo`). */
+export type GrupoDeMenu = { rotulo: string; itens: ItemDeMenu[]; id: string };
 export type EntradaDoMenu = ItemDeMenu | GrupoDeMenu;
 
 export const LINKS = {
   inicio: { rotulo: "Início", href: "/" },
   noticias: { rotulo: "Notícias", href: "/noticias" },
+  comunicados: { rotulo: "Comunicados", href: "/comunicados" },
   instituicao: { rotulo: "Instituição", href: "/sindicato/instituicao" },
   diretoria: { rotulo: "Diretoria", href: "/sindicato/diretoria" },
   beneficios: { rotulo: "Benefícios", href: "/sindicato/beneficios" },
@@ -21,27 +23,37 @@ export const LINKS = {
   termos: { rotulo: "Termos de uso", href: "/termos-de-uso" },
 } as const satisfies Record<string, ItemDeMenu>;
 
+/**
+ * Notícias e Comunicados (E58): Comunicados não está no Figma e fica dentro de Notícias, para a pessoa
+ * achar de novo o aviso que fechou na faixa sem mais um item no primeiro nível.
+ */
+export const NOTICIAS: GrupoDeMenu = {
+  rotulo: "Notícias",
+  id: "noticias",
+  itens: [LINKS.noticias, LINKS.comunicados],
+};
+
 export const SINDICATO: GrupoDeMenu = {
   rotulo: "Sindicato",
-  base: "/sindicato",
+  id: "sindicato",
   itens: [LINKS.instituicao, LINKS.diretoria, LINKS.beneficios],
 };
 
 export const DOCUMENTOS: GrupoDeMenu = {
   rotulo: "Documentos",
-  base: "/documentos",
+  id: "documentos",
   itens: [LINKS.acordos, LINKS.editais],
 };
 
-export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, LINKS.noticias, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
+export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, NOTICIAS, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
 
 export function ehGrupo(entrada: EntradaDoMenu): entrada is GrupoDeMenu {
   return "itens" in entrada;
 }
 
-/** O item (ou grupo) está ativo no caminho atual? */
+/** O item (ou grupo) está ativo no caminho atual? O grupo está ativo quando um dos itens dele está. */
 export function estaAtivo(entrada: EntradaDoMenu, caminho: string): boolean {
-  if (ehGrupo(entrada)) return caminho === entrada.base || caminho.startsWith(`${entrada.base}/`);
+  if (ehGrupo(entrada)) return entrada.itens.some((item) => estaAtivo(item, caminho));
   if (entrada.href === "/") return caminho === "/";
   return caminho === entrada.href || caminho.startsWith(`${entrada.href}/`);
 }

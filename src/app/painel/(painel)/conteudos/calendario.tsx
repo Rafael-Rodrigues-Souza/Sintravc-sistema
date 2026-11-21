@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, GripVertical, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
@@ -26,6 +26,22 @@ export type ItemDoCalendarioNaTela = {
   revisao: number;
 };
 export type RascunhoNaTela = { id: string; titulo: string; revisao: number };
+/** Comunicado no calendário (E17): só para consulta, do primeiro ao último dia no ar. */
+export type ComunicadoNaTela = {
+  id: string;
+  titulo: string;
+  situacao: "agendado" | "no_ar" | "encerrado";
+  primeiroDia: string;
+  ultimoDia: string;
+};
+
+/**
+ * Onde o clique na barra leva: o comunicado aberto na área Comunicados (E17); o encerrado, que não se
+ * edita, na aba Encerrados, rolado até a vista e destacado (E58).
+ */
+const hrefDoComunicado = (c: ComunicadoNaTela) =>
+  c.situacao === "encerrado" ? `/painel/comunicados?aba=encerrados&ver=${c.id}` : `/painel/comunicados?abrir=${c.id}`;
+const COR_DA_BARRA = "bg-destaque-marinho-fixo text-texto-invertido dark:ring-1 dark:ring-inset dark:ring-sobre-escuro-borda";
 
 type Arrastado = { tipo: "agendado"; item: ItemDoCalendarioNaTela } | { tipo: "rascunho"; item: RascunhoNaTela };
 type Pendente = { arrastado: Arrastado; data: string; hora: string };
@@ -69,7 +85,8 @@ function nomeDoDia(data: string): string {
  * horário da Bahia. Arrastar uma notícia agendada muda o dia (mantém a hora); arrastar um
  * rascunho sem data agenda. Os dois pedem confirmação. Não dá para soltar num dia que passou nem
  * arrastar o que já está no ar. Sem mouse, a data muda pela Edição rápida (clique no item).
- * Comunicados (E17) chegam no #14.
+ * Comunicados aparecem só para consulta (E17, C3): barras marinho do período, sem arrastar, com o
+ * botão da legenda para esconder; o clique abre o comunicado na área Comunicados.
  */
 export function Calendario({
   ano,
@@ -82,6 +99,7 @@ export function Calendario({
   hrefMesAnterior,
   hrefProximoMes,
   hrefHoje,
+  comunicados = [],
 }: {
   ano: number;
   mes: number;
@@ -93,10 +111,18 @@ export function Calendario({
   hrefMesAnterior: string;
   hrefProximoMes: string;
   hrefHoje: string;
+  comunicados?: ComunicadoNaTela[];
 }) {
   const router = useRouter();
+  const [mostrarComunicados, setMostrarComunicados] = React.useState(true);
+  const comunicadosDoDia = (data: string) =>
+    mostrarComunicados ? comunicados.filter((c) => c.primeiroDia <= data && data <= c.ultimoDia) : [];
   const parametros = useSearchParams();
   const grade = React.useMemo(() => gradeDoMes(ano, mes), [ano, mes]);
+  const linhasDasBarras = React.useMemo(
+    () => (mostrarComunicados ? linhasPorSemana(grade, comunicados) : new Map<string, (ComunicadoNaTela | null)[]>()),
+    [grade, comunicados, mostrarComunicados],
+  );
   const mesDeHoje = hoje.slice(0, 7) === `${ano}-${String(mes).padStart(2, "0")}`;
   const [diaEscolhido, setDiaEscolhido] = React.useState(() => (mesDeHoje ? hoje : grade.find((d) => d.doMes)!.data));
   const [arrastando, setArrastando] = React.useState<Arrastado | null>(null);
@@ -200,6 +226,22 @@ export function Calendario({
               <span aria-hidden className="size-2 rounded-full bg-destaque-azul" />
               Agendado
             </li>
+            {comunicados.length > 0 ? (
+              <li>
+                <button
+                  type="button"
+                  aria-pressed={mostrarComunicados}
+                  onClick={() => setMostrarComunicados((m) => !m)}
+                  className={cn(
+                    "alvo-toque flex items-center gap-1.5 rounded-full border px-2.5 py-1 outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                    mostrarComunicados ? "border-destaque-marinho-fixo text-texto-primario" : "border-borda-padrao text-texto-terciario line-through",
+                  )}
+                >
+                  <span aria-hidden className="h-2 w-3.5 rounded-full bg-destaque-marinho-fixo dark:ring-1 dark:ring-sobre-escuro-borda" />
+                  Comunicados <span className="texto-etiqueta">{comunicados.length}</span>
+                </button>
+              </li>
+            ) : null}
           </ul>
           <Button asChild variant="secundario" size="pequeno" className="ml-auto">
             <Link href={hrefHoje} scroll={false}>
@@ -225,6 +267,7 @@ export function Calendario({
                 hoje={hoje}
                 escolhido={dia.data === diaEscolhido}
                 itens={dias[dia.data] ?? []}
+                comunicados={linhasDasBarras.get(dia.data) ?? []}
                 soltavel={podeSoltar(dia.data)}
                 sobre={sobre === dia.data}
                 podeArrastar={podeAgendar}
@@ -250,6 +293,7 @@ export function Calendario({
 
         {/* Celular: lista por dia, sem arrastar (a data muda pela Edição rápida). */}
         <ListaDoMes grade={grade} dias={dias} hoje={hoje} hrefEditar={hrefEditar} />
+        {mostrarComunicados ? <ComunicadosDoMes comunicados={comunicados} /> : null}
       </section>
 
       <aside className="flex flex-col gap-6 xl:w-[320px]">
@@ -257,6 +301,24 @@ export function Calendario({
           <h2 id="titulo-do-dia" className="texto-titulo-card text-texto-primario">
             {nomeDoDia(diaEscolhido)}
           </h2>
+          {comunicadosDoDia(diaEscolhido).length > 0 ? (
+            <ul aria-label="Comunicados no ar neste dia" className="flex flex-col gap-2">
+              {comunicadosDoDia(diaEscolhido).map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={hrefDoComunicado(c)}
+                    className={cn("flex items-start gap-2 rounded-[12px] p-3 texto-pequeno outline-none hover:brightness-125 focus-visible:ring-[3px] focus-visible:ring-ring", COR_DA_BARRA)}
+                  >
+                    <Megaphone aria-hidden className="mt-0.5 size-4 shrink-0" />
+                    <span className="min-w-0">
+                      <span className="sr-only">Comunicado: </span>
+                      {c.titulo}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {itensDoDia.length === 0 ? (
             <p className="flex items-center gap-2 texto-pequeno text-texto-secundario">
               <CalendarDays aria-hidden className="size-4" />
@@ -385,6 +447,7 @@ function Dia({
   aoEntrar,
   aoSair,
   aoSoltar,
+  comunicados,
 }: {
   dia: DiaDaGrade;
   hoje: string;
@@ -400,8 +463,11 @@ function Dia({
   aoEntrar: () => void;
   aoSair: () => void;
   aoSoltar: (e: React.DragEvent, data: string) => void;
+  /** Uma posição por linha da semana: o comunicado daquele dia, ou vazio para manter as barras alinhadas. */
+  comunicados: (ComunicadoNaTela | null)[];
 }) {
   const ehHoje = dia.data === hoje;
+  const domingo = new Date(`${dia.data}T12:00:00Z`).getUTCDay() === 0;
   const passado = dia.data < hoje;
   const visiveis = itens.slice(0, ITENS_POR_DIA);
   const resto = itens.length - visiveis.length;
@@ -439,6 +505,39 @@ function Dia({
       >
         {dia.dia}
       </button>
+      {comunicados.map((c, linha) => {
+        if (!c) return <span key={`vazio-${linha}`} aria-hidden className="h-6" />;
+        const comeca = c.primeiroDia === dia.data;
+        const termina = c.ultimoDia === dia.data;
+        // O texto e o foco ficam no começo da barra e no começo de cada semana; o resto é só a cor.
+        const comTexto = comeca || domingo;
+        return (
+          <Link
+            key={c.id}
+            href={hrefDoComunicado(c)}
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            data-testid="barra-comunicado"
+            title={c.titulo}
+            aria-hidden={comTexto ? undefined : true}
+            tabIndex={comTexto ? undefined : -1}
+            className={cn(
+              "flex h-6 items-center gap-1 truncate px-2 texto-etiqueta outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+              COR_DA_BARRA,
+              comeca ? "rounded-l-[6px]" : "-ml-2 pl-4",
+              termina ? "rounded-r-[6px]" : "-mr-2",
+            )}
+          >
+            {comTexto ? (
+              <>
+                <Megaphone aria-hidden className="size-3 shrink-0" />
+                <span className="sr-only">Comunicado: </span>
+                <span className="truncate">{c.titulo}</span>
+              </>
+            ) : null}
+          </Link>
+        );
+      })}
       {visiveis.map((item) => {
         const arrastavel = podeArrastar && item.estado === "agendado";
         return (
@@ -520,4 +619,61 @@ function ListaDoMes({
       )}
     </div>
   );
+}
+
+/** Celular: os comunicados do mês numa lista, com o período (E17). */
+function ComunicadosDoMes({ comunicados }: { comunicados: ComunicadoNaTela[] }) {
+  if (comunicados.length === 0) return null;
+  const dia = (data: string) => `${data.slice(8, 10)}/${data.slice(5, 7)}`;
+  return (
+    <section aria-labelledby="comunicados-do-mes" className="flex flex-col gap-2 md:hidden">
+      <h3 id="comunicados-do-mes" className="texto-titulo-card-pequeno text-texto-primario">
+        Comunicados
+      </h3>
+      <ul className="flex flex-col gap-2">
+        {comunicados.map((c) => (
+          <li key={c.id}>
+            <Link
+              href={hrefDoComunicado(c)}
+              className={cn("alvo-toque flex flex-col gap-1 rounded-[10px] px-3 py-2.5 texto-pequeno outline-none focus-visible:ring-[3px] focus-visible:ring-ring", COR_DA_BARRA)}
+            >
+              <span className="font-semibold">
+                {dia(c.primeiroDia)} <span aria-hidden>→</span>
+                <span className="sr-only">até</span> {dia(c.ultimoDia)}
+              </span>
+              <span className="min-w-0">{c.titulo}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * As barras de comunicado de cada dia, em linhas fixas por semana (E17): o mesmo comunicado fica na
+ * mesma altura do domingo ao sábado, e um dia sem ele naquela linha recebe um espaço vazio. A linha é
+ * a primeira livre, na ordem de início.
+ */
+function linhasPorSemana(grade: DiaDaGrade[], comunicados: ComunicadoNaTela[]) {
+  const porDia = new Map<string, (ComunicadoNaTela | null)[]>();
+  for (let inicio = 0; inicio < grade.length; inicio += 7) {
+    const semana = grade.slice(inicio, inicio + 7).map((d) => d.data);
+    const primeiro = semana[0]!;
+    const ultimo = semana.at(-1)!;
+    const daSemana = comunicados.filter((c) => c.primeiroDia <= ultimo && c.ultimoDia >= primeiro);
+    const linhas: ComunicadoNaTela[][] = [];
+    for (const c of daSemana) {
+      const livre = linhas.find((l) => l.every((outro) => outro.ultimoDia < c.primeiroDia || outro.primeiroDia > c.ultimoDia));
+      if (livre) livre.push(c);
+      else linhas.push([c]);
+    }
+    for (const data of semana) {
+      const doDia = linhas.map((l) => l.find((c) => c.primeiroDia <= data && data <= c.ultimoDia) ?? null);
+      // Sem nada nas últimas linhas, não reserva espaço à toa.
+      while (doDia.length > 0 && doDia.at(-1) === null) doDia.pop();
+      porDia.set(data, doDia);
+    }
+  }
+  return porDia;
 }

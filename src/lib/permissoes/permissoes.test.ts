@@ -95,6 +95,18 @@ describe("pode(): linhas condicionais (◐)", () => {
     expect(pode(adm, "excluir", { tipo: "noticia" })).toBe(false);
   });
 
+  it("Comunicado: o ADM exclui rascunho nunca publicado de qualquer pessoa; a COM, só o que criou (E07)", () => {
+    expect(pode(adm, "excluir", { tipo: "comunicado", criadoPorId: "com-1", jaPublicado: false })).toBe(true);
+    expect(pode(com, "excluir", { tipo: "comunicado", criadoPorId: "com-1", jaPublicado: false })).toBe(true);
+    expect(pode(com, "excluir", { tipo: "comunicado", criadoPorId: "com-2", jaPublicado: false })).toBe(false);
+  });
+
+  it("Comunicado: ninguém exclui o que já foi ao ar, e o ATD não exclui nada", () => {
+    expect(pode(adm, "excluir", { tipo: "comunicado", criadoPorId: "adm-1", jaPublicado: true })).toBe(false);
+    expect(pode(atd, "excluir", { tipo: "comunicado", criadoPorId: "atd-1", jaPublicado: false })).toBe(false);
+    expect(pode(adm, "excluir", { tipo: "comunicado" })).toBe(false);
+  });
+
   it("Mídia: não se exclui mídia em uso, nem sem saber se está em uso", () => {
     expect(pode(adm, "excluir", { tipo: "midia", emUso: true })).toBe(false);
     expect(pode(adm, "excluir", { tipo: "midia" })).toBe(false);

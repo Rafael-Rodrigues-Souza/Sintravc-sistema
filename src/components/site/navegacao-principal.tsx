@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { ehGrupo, estaAtivo, MENU_PRINCIPAL, type GrupoDeMenu, type ItemDeMenu } from "./navegacao";
 
 const rotulo =
-  "texto-navegacao flex items-center gap-1 rounded-md pt-[9px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
+  "texto-navegacao flex items-center gap-1 rounded-md pt-[9px] whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
 
 function Indicador({ ativo }: { ativo: boolean }) {
   return <span aria-hidden className={cn("mt-1.5 h-[3px] w-full rounded-[2px]", ativo && "bg-destaque-amarelo")} />;
@@ -76,7 +76,7 @@ function Grupo({ grupo, caminho }: { grupo: GrupoDeMenu; caminho: string }) {
   );
 }
 
-/** Menu principal do desktop (Figma 295:51110). Sindicato e Documentos abrem no clique, no toque e no teclado. */
+/** Menu principal do desktop (Figma 295:51110). Notícias, Sindicato e Documentos abrem no clique, no toque e no teclado. */
 export function NavegacaoPrincipal() {
   const caminho = usePathname();
   return (

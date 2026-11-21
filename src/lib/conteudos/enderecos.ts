@@ -38,3 +38,13 @@ export function normalizarEndereco(digitado: string, opcoes: { aceitarEmail?: bo
   const completo = temEsquema ? texto : `https://${texto}`;
   return ehEnderecoDaWeb(completo) ? completo : null;
 }
+
+/**
+ * Endereço público de um conteúdo publicado no site: a notícia aberta e os documentos (as páginas
+ * chegam na #15 e na #16). Usado pelo “Saiba mais” dos comunicados e pelas notícias recentes.
+ */
+export function enderecoPublicoDoConteudo(tipo: "noticia" | "edital" | "acordo", slug: string): string {
+  if (tipo === "noticia") return `/noticias/${slug}`;
+  if (tipo === "edital") return `/documentos/editais/${slug}`;
+  return `/documentos/acordos-coletivos/${slug}`;
+}

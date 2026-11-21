@@ -18,22 +18,28 @@ export type ItemDoCalendario = {
   revisao: number;
 };
 
+/** Do primeiro instante do primeiro dia ao último instante do último dia da grade (horário da Bahia). */
+export function intervaloDaGrade(ano: number, mes: number): { de: Date; ate: Date } {
+  const grade = gradeDoMes(ano, mes);
+  const de = bahiaParaUtc(grade[0]!.data, "00:00")!;
+  const ate = new Date(bahiaParaUtc(grade.at(-1)!.data, "00:00")!.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return { de, ate };
+}
+
 /** Quantos rascunhos sem data aparecem ao lado do calendário. */
 export const RASCUNHOS_NA_LATERAL = 20;
 
 /**
  * Calendário de publicações (RF36, Figma 115:2992): os publicados pela data em que foram ao ar
  * e os agendados pela data marcada, agrupados pelo dia da Bahia (RNF06), nos 42 dias da grade.
- * Comunicados (E17) entram no #14; o fim de vigência dos documentos, no #12.
+ * Os comunicados (E17) vêm de comunicadosDoCalendario(), na mesma grade.
  */
 export async function itensDoCalendario(
   filtros: { ano: number; mes: number; tipo?: TipoConteudo },
   deps: { quem: QuemDaEquipe },
 ): Promise<{ dias: Record<string, ItemDoCalendario[]> }> {
   exigir(deps.quem, "ver", { tipo: "noticia" });
-  const grade = gradeDoMes(filtros.ano, filtros.mes);
-  const de = bahiaParaUtc(grade[0]!.data, "00:00")!;
-  const ate = new Date(bahiaParaUtc(grade.at(-1)!.data, "00:00")!.getTime() + 24 * 60 * 60 * 1000 - 1);
+  const { de, ate } = intervaloDaGrade(filtros.ano, filtros.mes);
 
   const linhas = await banco()
     .select({

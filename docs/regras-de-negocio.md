@@ -69,7 +69,7 @@ Regras de negócio descrevem decisões do sindicato que valem em qualquer tela o
 
 | **ID** | **Regra** | **Descrição** |
 |---|---|---|
-| RN14 | **Comunicado é faixa** | Comunicado é uma faixa no topo de todas as páginas, com período de início e fim. Rascunho não aparece; agendado entra sozinho no início; publicado aparece em todas as páginas; encerra sozinho no fim. Vários no ar se alternam na ordem da fila. Encerrar antes pede confirmação e fica em Atividade. Encerrado pode ser duplicado. |
+| RN14 | **Comunicado é faixa** | Comunicado é uma faixa no topo de todas as páginas, com período de início e fim. Tem título (até 140 caracteres), que é o que a faixa mostra, e texto (até 1.000 caracteres, texto simples com quebras de linha), que aparece com o título ao abrir o comunicado; os dois são obrigatórios (E58). Rascunho não aparece; agendado entra sozinho no início; publicado aparece em todas as páginas; encerra sozinho no fim. Vários no ar se alternam na ordem da fila. Encerrar antes pede confirmação e fica em Atividade. Encerrado pode ser duplicado. No ar, o título, o texto, o link e o fim podem mudar; o começo, não (E58). |
 | RN17 | **Rádio Chofer sem vídeo no servidor** | Episódios são cadastrados por link do YouTube; nenhum vídeo é guardado no servidor do site. Título, capa e duração são preenchidos a partir do YouTube; o player é carregado só no clique. |
 | RN43 | **Configurações como fonte única** | Endereço, horários, telefones, WhatsApp e redes sociais exibidos no site vêm de Configurações › Site. |
 | RN57 | **Período do parceiro** (E12) | O parceiro tem “Começa em” (opcional; vazio = entra ao publicar) e “Válido até” (opcional; vazio = sem prazo). Com início futuro, fica Agendado e entra sozinho. Ao vencer, sai do site e vai para Arquivado. |
@@ -142,6 +142,8 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Última consulta válida da API | 24 horas | E22 |
 | Tempo de bloqueio após tentativas | 15 minutos | RN05 |
 | Tempo de aviso rápido na tela | 6 segundos | RN42 |
+| Troca da faixa com vários comunicados no ar | 8 segundos | E58 |
+| Validade do X do visitante na faixa de comunicado | 365 dias | E58 |
 | Atualização do site após Configurações | até 1 minuto | RN43 |
 | Validade da escolha no aviso de cookies | 365 dias | RN45, E56 |
 | Alerta de vigência de documento | 2 dias antes | RN44 |
@@ -164,7 +166,7 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Publicado | Sim | Oculto (com motivo), Arquivado |
 | Oculto | Não | Publicado (a versão que estava no ar, E45), Arquivado |
 | Arquivado | Não (nem nas listas) | Rascunho (restaurar); logo depois de arquivar, “Desfazer” volta ao estado de antes (E45) |
-| Encerrado (só comunicado) | Não | Duplicar como novo comunicado |
+| Encerrado (só comunicado) | Não | Duplicar como novo comunicado (rascunho sem período, E58) |
 
 ### 4.2 Agendamento
 

@@ -34,7 +34,7 @@ function ItemDoMenu({ item, caminho, aoNavegar }: { item: ItemDeMenu; caminho: s
 
 function GrupoDoMenu({ grupo, caminho, aoNavegar }: { grupo: GrupoDeMenu; caminho: string; aoNavegar: () => void }) {
   const [aberto, setAberto] = useState(() => estaAtivo(grupo, caminho));
-  const id = `submenu-${grupo.base.slice(1)}`;
+  const id = `submenu-${grupo.id}`;
   return (
     <li>
       <button type="button" aria-expanded={aberto} aria-controls={id} onClick={() => setAberto((a) => !a)} className={cn(linha, "text-[18px] font-bold text-texto-primario")}>

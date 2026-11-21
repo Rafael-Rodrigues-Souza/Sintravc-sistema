@@ -60,7 +60,7 @@ test.describe("barra de baixo do painel", { tag: "@responsivo" }, () => {
 
     await apertar(barra(page).getByRole("link", { name: "Comunicados" }), hasTouch);
     await expect(page).toHaveURL(/\/painel\/comunicados$/);
-    await expect(page.getByRole("heading", { name: "Esta área chega em breve" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Comunicados" })).toBeVisible();
 
     // “Mais”: folha de altura parcial com o resto do menu; fecha ao tocar fora.
     const mais = barra(page).getByRole("button", { name: "Mais" });

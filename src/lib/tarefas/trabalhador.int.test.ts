@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { salvarComunicado } from "@/lib/comunicados/comunicados";
 import { agendarNoticia, cancelarAgendamento, reagendarConteudo } from "@/lib/conteudos/agendar";
 import { carregarNoticia } from "@/lib/conteudos/carregar";
 import { salvarRascunhoNoticia } from "@/lib/conteudos/salvar";
 import { banco } from "@/lib/db";
-import { notificacaoEquipe } from "@/lib/db/schema";
+import { comunicado, notificacaoEquipe } from "@/lib/db/schema";
 import type { Enviar, Mensagem } from "@/lib/email";
 import { edicaoDe, pessoaDaEquipe } from "@/testes/equipe";
 import { atividadesDe, noticiaCompleta, rascunhoSalvo } from "@/testes/noticias";
@@ -115,4 +116,26 @@ describe("fila real (pg-boss): a notícia agendada entra no ar sozinha (CA-US21.
     expect(publicacao).toMatchObject({ acao: "noticia.publicar_agendado", detalhe: { marcado_para: para.toISOString() } });
     expect((publicacao.detalhe as { atraso_segundos: number }).atraso_segundos).toBeGreaterThan(0);
   }, 40_000);
+});
+
+describe("fila real (pg-boss): o comunicado entra e sai do ar sozinho (T02, CA-US24.1)", () => {
+  it("agendado para daqui a 1 s e fim daqui a 3 s: vira Publicado e depois Encerrado, com Atividade do sistema", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const trabalhador = await ligar();
+    const inicio = new Date(Date.now() + 1000);
+    const fim = new Date(Date.now() + 3000);
+    const { id } = await salvarComunicado(
+      { dados: { titulo: "Sede fechada no feriado.", texto: "A sede fecha no feriado.", link: null, inicio, fim }, modo: "programar" },
+      { quem, fila: trabalhador.fila },
+    );
+
+    const estado = async () => (await banco().select({ estado: comunicado.estado }).from(comunicado).where(eq(comunicado.id, id)))[0]?.estado;
+    await vi.waitFor(async () => expect(await estado()).toBe("encerrado"), { timeout: 20_000, interval: 250 });
+    expect((await atividadesDe(id)).map((a) => [a.acao, a.atorTipo])).toEqual([
+      ["comunicado.criar", "pessoa"],
+      ["comunicado.agendar", "pessoa"],
+      ["comunicado.entrar_no_ar", "sistema"],
+      ["comunicado.sair_do_ar", "sistema"],
+    ]);
+  }, 30_000);
 });

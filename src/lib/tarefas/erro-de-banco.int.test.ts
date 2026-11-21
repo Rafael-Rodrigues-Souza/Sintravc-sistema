@@ -13,6 +13,7 @@ import type { Enviar, Mensagem } from "@/lib/email";
 import { pessoaDaEquipe } from "@/testes/equipe";
 import { atividadesDe, noticiaCompleta, rascunhoSalvo } from "@/testes/noticias";
 
+import { filaEmMemoria } from "./fila";
 import { criarTrabalhador, type Trabalhador } from "./trabalhador";
 
 // O banco "falha" uma vez ao travar o conteúdo na tarefa (tempo de lock esgotado, conexão caída...).
@@ -44,7 +45,7 @@ describe("erro de banco na publicação agendada (RNF13): nunca fica Agendada se
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
     const para = new Date(Date.now() + 60_000);
-    await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: { agendarPublicacao: async () => {} } });
+    await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: filaEmMemoria().fila });
     travarConteudo.mockRejectedValueOnce(ERRO_DE_BANCO);
 
     await expect(executarPublicacaoAgendada({ conteudoId: id, para: para.toISOString() }, { agora: para })).rejects.toBe(ERRO_DE_BANCO);

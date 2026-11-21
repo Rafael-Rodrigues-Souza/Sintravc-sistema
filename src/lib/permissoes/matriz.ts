@@ -25,7 +25,7 @@ export type Recurso =
   | { tipo: "site_publico" }
   | { tipo: "noticia"; autorId?: string; jaPublicado?: boolean }
   | { tipo: "documento"; jaPublicado?: boolean }
-  | { tipo: "comunicado" }
+  | { tipo: "comunicado"; criadoPorId?: string; jaPublicado?: boolean }
   | { tipo: "radio" }
   | { tipo: "pagina_inicial" }
   | { tipo: "midia"; emUso?: boolean }
@@ -67,6 +67,13 @@ const ehResponsavel = (quem: Quem, servico: DoServico | undefined) =>
 const admOuAtdResponsavel = (quem: Quem, servico: DoServico | undefined) =>
   SO_ADM(quem) || (perfis("ATD")(quem) && ehResponsavel(quem, servico));
 
+/** ◐ Excluir de vez: só o que nunca foi ao ar; o ADM de qualquer autor, a COM só o seu (RN54, E07). */
+const excluiRascunho = (quem: Quem, autorId: string | undefined, jaPublicado: boolean | undefined) => {
+  if (jaPublicado !== false || autorId === undefined) return false;
+  if (SO_ADM(quem)) return true;
+  return perfis("COM")(quem) && quem.tipo === "equipe" && quem.id === autorId;
+};
+
 // --- A matriz -----------------------------------------------------------------
 
 export const matriz = {
@@ -88,11 +95,7 @@ export const matriz = {
     ver_versoes: ADM_COM,
     restaurar_versao: ADM_COM,
     // Só rascunho nunca publicado (RN54). ADM: de qualquer autor. COM: ◐ só o autor.
-    excluir: (quem, noticia) => {
-      if (noticia.jaPublicado !== false || noticia.autorId === undefined) return false;
-      if (SO_ADM(quem)) return true;
-      return perfis("COM")(quem) && quem.tipo === "equipe" && quem.id === noticia.autorId;
-    },
+    excluir: (quem, noticia) => excluiRascunho(quem, noticia.autorId, noticia.jaPublicado),
   },
 
   // Edital, acordo e convenção: só o ADM altera; a COM vê e baixa (RN07, RN08, E46).
@@ -113,7 +116,12 @@ export const matriz = {
     baixar: ADM_COM,
   },
 
-  comunicado: { ver: ADM_COM, gerenciar: ADM_COM },
+  comunicado: {
+    ver: ADM_COM,
+    gerenciar: ADM_COM,
+    // Só rascunho nunca publicado, pelo ADM ou por quem criou (E07, como na notícia).
+    excluir: (quem, comunicado) => excluiRascunho(quem, comunicado.criadoPorId, comunicado.jaPublicado),
+  },
   radio: { ver: ADM_COM, gerenciar: ADM_COM },
   pagina_inicial: { ver: ADM_COM, gerenciar: ADM_COM },
 
