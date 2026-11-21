@@ -40,9 +40,14 @@ export function MaisLidas({ noticias, sobreEscuro = false, id = "mais-lidas" }: 
               >
                 {String(i + 1).padStart(2, "0")}
               </span>
-              {sobreEscuro && n.capa ? (
-                // eslint-disable-next-line @next/next/no-img-element -- miniatura da capa
-                <img src={n.capa.url} alt="" loading="lazy" className="size-[72px] shrink-0 rounded-[14px] object-cover lg:size-[84px]" />
+              {/* Miniatura só sobre o marinho e fora do celular (81:995 não tem); sem capa, o quadro vazio mantém o alinhamento. */}
+              {sobreEscuro ? (
+                n.capa ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- miniatura da capa
+                  <img src={n.capa.url} alt="" loading="lazy" className="hidden size-[84px] shrink-0 rounded-[14px] object-cover sm:block" />
+                ) : (
+                  <span aria-hidden className="hidden size-[84px] shrink-0 rounded-[14px] bg-sobre-escuro-chip sm:block" />
+                )
               ) : null}
               <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
                 {n.categoria ? <SeloCategoria nome={n.categoria.nome} cor={n.categoria.cor} /> : null}
