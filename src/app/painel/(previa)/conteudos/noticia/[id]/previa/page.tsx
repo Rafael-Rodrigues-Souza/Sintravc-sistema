@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { forbidden, notFound } from "next/navigation";
 
 import { ListaAntesDePublicar } from "@/components/painel/antes-de-publicar";
-import { NoticiaAberta, type NoticiaParaLer } from "@/components/site/noticia-aberta";
+import { NoticiaAberta } from "@/components/site/noticia-aberta";
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { urlPublica } from "@/lib/armazenamento";
 import { carregarNoticia } from "@/lib/conteudos/carregar";
-import { contarPalavras, tempoDeLeitura } from "@/lib/conteudos/corpo";
 import { listarCategorias } from "@/lib/conteudos/listar";
+import { noticiaParaLer } from "@/lib/conteudos/para-ler";
 import { temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
 import { versoesDaNoticia } from "@/lib/conteudos/publicar";
 import { seloDaPrevia } from "@/lib/conteudos/selo-da-previa";
@@ -56,26 +56,12 @@ export default async function PaginaPrevia({
 
   const publicada = noticia.estado === "publicado";
   const comAlteracoes = temAlteracoesNaoPublicadas(noticia);
-  const capaUrl = dados.capaMidiaId ? enderecoDe.get(dados.capaMidiaId) : undefined;
-
-  const paraLer: NoticiaParaLer = {
-    titulo: dados.titulo || "Notícia sem manchete",
-    linhaFina: dados.linhaFina,
-    lide: dados.lide,
-    corpo: dados.corpo,
-    capa: capaUrl ? { url: capaUrl, alt: dados.capaAlt, legenda: dados.capaLegenda } : null,
+  const paraLer = noticiaParaLer(dados, {
     categoria: categorias.find((c) => c.id === dados.categoriaId)?.nome ?? null,
-    assinatura: dados.assinatura || "Redação SINTRAVC",
-    local: dados.local,
     publicadoEm: noticia.publicadoEm,
     atualizadoEm: versao ? null : comAlteracoes ? noticia.atualizadoEm : null,
-    minutosDeLeitura: Math.max(1, tempoDeLeitura(contarPalavras(dados.corpo))),
-    palavrasChave: dados.palavrasChave,
-    links: dados.links
-      .filter((l) => l.visivel)
-      .map((l) => ({ tipo: l.tipo, titulo: l.titulo, href: l.midiaId ? (enderecoDe.get(l.midiaId) ?? "") : (l.url ?? "") }))
-      .filter((l) => l.href),
-  };
+    enderecoDe,
+  });
 
   return (
     <MolduraPrevia
