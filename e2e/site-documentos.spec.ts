@@ -213,6 +213,51 @@ test.describe("Documentos no site", () => {
 });
 
 test.describe("Documentos no celular e no tablet", { tag: "@responsivo" }, () => {
+  // Nos perfis do CI rodam só os @responsivo: sem o primeiro describe, pode não haver edital nem
+  // acordo no ar. Então o ADM publica um de cada pela tela, numa janela de computador.
+  test.beforeAll(async ({ browser, baseURL }, testInfo) => {
+    testInfo.setTimeout(120_000);
+    const contexto = await browser.newContext({ baseURL, viewport: { width: 1280, height: 800 } });
+    const page = await contexto.newPage();
+    try {
+      const vazias: string[] = [];
+      for (const endereco of ["/documentos/editais", "/documentos/acordos-coletivos"]) {
+        await page.goto(endereco);
+        if ((await lista(page).count()) === 0) vazias.push(endereco);
+      }
+      if (vazias.length === 0) return;
+      const marca = `${testInfo.project.name.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+      await entrarComo(page, pessoas.adm, "/painel");
+      if (vazias.includes("/documentos/editais")) {
+        await publicarDocumentoPelaTela(page, {
+          tipo: "edital",
+          titulo: `Assembleia de prestação de contas ${marca}`,
+          numero: `Edital nº 090/2026-${marca}`,
+          subtipo: "Convocação",
+          categoria: "Assembleias",
+          resumo: "Convoca a categoria para a prestação de contas.",
+          prazo: { dia: diaNaBahiaDaquiA(3), hora: "19:00" },
+          pdf: { nome: `edital-${marca}.pdf`, linhas: ["EDITAL DE CONVOCACAO"] },
+        });
+      }
+      if (vazias.includes("/documentos/acordos-coletivos")) {
+        await publicarDocumentoPelaTela(page, {
+          tipo: "acordo",
+          titulo: `Acordo coletivo da oficina ${marca}`,
+          numero: `ACT ${marca}`,
+          subtipo: "ACT · Acordo coletivo de trabalho",
+          categoria: "Acordos e convenções",
+          resumo: "Reajuste e cláusulas sociais da oficina.",
+          vigencia: { inicio: diaNaBahiaDaquiA(-5), fim: diaNaBahiaDaquiA(360) },
+          abrangencia: "Oficina de exemplo",
+          pdf: { nome: `act-${marca}.pdf`, linhas: ["ACORDO COLETIVO DE TRABALHO"] },
+        });
+      }
+    } finally {
+      await contexto.close();
+    }
+  });
+
   test.beforeEach(async ({ page, baseURL }) => {
     await semAviso(page, baseURL);
   });
