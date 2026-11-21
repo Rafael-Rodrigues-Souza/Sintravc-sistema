@@ -26,6 +26,11 @@ const SUBTIPO_NA_URL: Record<SubtipoDocumento, string> = {
   cct: "cct",
 };
 
+/** O valor de `?tipo=` de um subtipo. */
+export function subtipoNaUrl(subtipo: SubtipoDocumento): string {
+  return SUBTIPO_NA_URL[subtipo];
+}
+
 export type FiltrosDeDocumentos = {
   busca: string;
   subtipo: SubtipoDocumento | null;

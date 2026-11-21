@@ -3,8 +3,19 @@ import { and, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
 import { banco } from "@/lib/db";
 import { conteudo, conteudoVersao, midia } from "@/lib/db/schema";
 import type { DadosDocumento, TipoDocumento } from "@/lib/documentos/dados";
+import { lerParametro } from "@/lib/parametros";
 
-import type { DocumentoNoAr } from "./pagina";
+import { TIPO_DA_ABA, temFiltro, type AbaDocumentos, type FiltrosDeDocumentos } from "./filtros";
+import {
+  acordoVigente,
+  anosDisponiveis,
+  contadoresDeEditais,
+  contagemPorSubtipo,
+  destaqueDeEditais,
+  documentoNaLista,
+  montarLista,
+  type DocumentoNoAr,
+} from "./pagina";
 
 /**
  * Leituras públicas dos documentos oficiais (RF04, E60). Tudo vem do **retrato da versão no ar**
@@ -78,4 +89,29 @@ export async function documentoPeloSlug(tipo: TipoDocumento, slug: string): Prom
   if (!/^[a-z0-9-]{1,200}$/.test(slug)) return null;
   const [linha] = await selecionar(and(noAr(tipo), eq(conteudo.slug, slug)));
   return linha ? paraDocumento(linha) : null;
+}
+
+/**
+ * Tudo o que uma aba de Documentos mostra (E60), numa leitura: a lista com os filtros da URL, os
+ * chips, os anos, e o topo (contadores e destaque em Editais; o acordo vigente em Acordos).
+ */
+export async function paginaDaAba(aba: AbaDocumentos, filtros: FiltrosDeDocumentos, agora = new Date()) {
+  const tipo = TIPO_DA_ABA[aba];
+  const [docs, novoDias, busca] = await Promise.all([
+    documentosNoAr(tipo),
+    lerParametro("documento.novo_dias"),
+    filtros.busca ? idsDaBusca(tipo, filtros.busca) : Promise.resolve(null),
+  ]);
+  const destaque = tipo === "edital" ? destaqueDeEditais(docs, agora) : null;
+  const vigente = tipo === "acordo" ? acordoVigente(docs, agora) : null;
+  return {
+    totalNoAr: docs.length,
+    filtrando: temFiltro(filtros),
+    lista: montarLista(docs, filtros, busca, agora, novoDias),
+    subtipos: contagemPorSubtipo(tipo, docs),
+    anos: anosDisponiveis(docs),
+    contadores: tipo === "edital" ? contadoresDeEditais(docs, agora) : null,
+    destaque: destaque ? documentoNaLista(destaque, agora, novoDias) : null,
+    vigente: vigente ? documentoNaLista(vigente, agora, novoDias) : null,
+  };
 }
