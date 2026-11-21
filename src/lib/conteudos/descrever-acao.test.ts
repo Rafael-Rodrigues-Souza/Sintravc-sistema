@@ -28,6 +28,17 @@ describe("descreverAcao: as Últimas ações da Edição rápida (Figma 115:2324
     expect(descreverAcao("noticia.restaurar_versao", { versao: 1 })).toBe("Versão 1 restaurada como rascunho");
   });
 
+  it("notícia fixada (E59): o dia escolhido, a intenção e a saída", () => {
+    // Fim exclusivo 00:00 de 11/11 na Bahia = "até 10/11".
+    expect(descreverAcao("noticia.fixar", { fixada_ate: "2026-11-11T03:00:00.000Z", ao_publicar: false })).toBe(
+      "Fixada no topo de Notícias até 10/11/2026",
+    );
+    expect(descreverAcao("noticia.fixar", { fixada_ate: "2026-11-11T03:00:00.000Z", ao_publicar: true })).toBe("Fixar até 10/11/2026 ao publicar");
+    expect(descreverAcao("noticia.desafixar", { automatico: true })).toBe("Saiu do topo de Notícias na data marcada");
+    expect(descreverAcao("noticia.desafixar", { substituida_por: "x" })).toBe("Saiu do topo de Notícias: outra notícia foi fixada");
+    expect(descreverAcao("noticia.desafixar", {})).toBe("Deixou de ser fixada");
+  });
+
   it("ação desconhecida não quebra a tela", () => {
     expect(descreverAcao("noticia.algo_novo", {})).toBe("Alteração registrada");
   });

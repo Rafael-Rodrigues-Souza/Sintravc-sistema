@@ -3,10 +3,12 @@ import { and, desc, eq, like, or } from "drizzle-orm";
 import { banco, type Transacao } from "@/lib/db";
 import { conteudo, conteudoVersao, pessoaEquipe } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
+import type { Fila } from "@/lib/tarefas/fila";
 
 import { lerNoticia, retratoNoAr, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import type { DadosNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
+import { aplicarFixacaoAoPublicar, type FixacaoAoPublicar } from "./fixar";
 import { jaFoiAoAr } from "./publicacao";
 import { copiaDeTrabalho, type CopiaDeTrabalho } from "./copia-de-trabalho";
 import { gravarPorCima, registrarAtividadeNoticia, travarNoticia } from "./salvar";
@@ -17,6 +19,9 @@ export type DepsDaPublicacao = {
   quem: QuemDaEquipe;
   /** Sessão do editor, só para a Atividade (E40). */
   sessaoEdicao?: string;
+  /** Para a T05 da notícia fixada (E59). Sem ela, usa a fila do sistema, se precisar. */
+  fila?: Fila;
+  agora?: Date;
 };
 
 export type ResultadoPublicar =
@@ -56,15 +61,17 @@ export async function publicarNaTransacao(
   if (atual.estado === "publicado" && atual.revisaoPublicada === atual.revisao) {
     return publicada(atual);
   }
+  const agora = deps.agora ?? new Date();
   const copia = await copiaDeTrabalho(tx, atual);
-  const { gravado, versao, primeira } = await irAoAr(tx, atual, copia, { criadoPor: deps.quem.id, agora: new Date() });
+  const { gravado, versao, primeira } = await irAoAr(tx, atual, copia, { criadoPor: deps.quem.id, agora });
+  const fixacao = await aplicarFixacaoAoPublicar(tx, atual.id, { agora, ator: { tipo: "pessoa", id: deps.quem.id }, fila: deps.fila });
   await registrarAtividadeNoticia(
     tx,
     primeira ? "noticia.publicar" : "noticia.publicar_alteracoes",
     atual.id,
     copia.titulo,
     { quem: deps.quem, sessaoEdicao: deps.sessaoEdicao },
-    { versao },
+    { versao, ...detalheDaFixacao(fixacao) },
   );
   return publicada(gravado);
 }
@@ -109,6 +116,13 @@ export async function irAoAr(
   // A versão anterior saiu do ar: o que só ela usava deixa de contar como uso da Mídia.
   await copia.gravarUsos(tx);
   return { gravado: gravado!, versao, primeira };
+}
+
+/** O que a fixação aplicada ao publicar acrescenta ao registro da publicação na Atividade (E59). */
+export function detalheDaFixacao(fixacao: FixacaoAoPublicar): Record<string, unknown> {
+  if (fixacao.tipo === "fixada") return { fixada_ate: fixacao.fixadaAte.toISOString() };
+  if (fixacao.tipo === "vencida") return { fixacao_vencida: true };
+  return {};
 }
 
 function publicada(linha: typeof conteudo.$inferSelect): Extract<ResultadoPublicar, { tipo: "publicada" }> {

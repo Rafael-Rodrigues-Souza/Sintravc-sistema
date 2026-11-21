@@ -5,6 +5,8 @@ export const FILA_PUBLICAR_AGENDADO = "publicar-agendado";
 export const FILA_PUBLICAR_AGENDADO_FALHOU = "publicar-agendado-falhou";
 /** Fila da T02 (spec §6): o comunicado entra no ar no início e sai no fim do período. */
 export const FILA_COMUNICADO = "comunicado-periodo";
+/** Fila da T05 (spec §6): a notícia fixada deixa de ser fixada na data escolhida (E59). */
+export const FILA_DESAFIXAR = "noticia-desafixar";
 
 /**
  * O pedido guardado na fila: a notícia e a hora marcada, em texto ISO (UTC). A hora vai junto
@@ -20,18 +22,26 @@ export type PedidoPublicacao = { conteudoId: string; para: string };
 export type PedidoComunicado = { comunicadoId: string; virada: "entrar" | "sair"; para: string };
 
 /**
+ * T05: a notícia e o fim da fixação, em ISO (UTC). Se a data mudou depois (fixou de novo, desafixou),
+ * o pedido não faz nada (E59).
+ */
+export type PedidoDesafixar = { conteudoId: string; para: string };
+
+/**
  * A fila de tarefas (pg-boss, E44). O pedido entra **na mesma transação** da ação que agendou:
  * se a ação falhar, o pedido também não fica na fila.
  */
 export interface Fila {
   agendarPublicacao(tx: Transacao, pedido: { conteudoId: string; para: Date }): Promise<void>;
   agendarComunicado(tx: Transacao, pedido: { comunicadoId: string; virada: PedidoComunicado["virada"]; para: Date }): Promise<void>;
+  agendarDesafixar(tx: Transacao, pedido: { conteudoId: string; para: Date }): Promise<void>;
 }
 
 /** Fila em memória, para os testes das regras (sem o pg-boss). */
 export function filaEmMemoria() {
   const pedidos: PedidoPublicacao[] = [];
   const pedidosComunicado: PedidoComunicado[] = [];
+  const pedidosDesafixar: PedidoDesafixar[] = [];
   const fila: Fila = {
     async agendarPublicacao(_tx, { conteudoId, para }) {
       pedidos.push({ conteudoId, para: para.toISOString() });
@@ -39,6 +49,9 @@ export function filaEmMemoria() {
     async agendarComunicado(_tx, { comunicadoId, virada, para }) {
       pedidosComunicado.push({ comunicadoId, virada, para: para.toISOString() });
     },
+    async agendarDesafixar(_tx, { conteudoId, para }) {
+      pedidosDesafixar.push({ conteudoId, para: para.toISOString() });
+    },
   };
-  return { fila, pedidos, pedidosComunicado };
+  return { fila, pedidos, pedidosComunicado, pedidosDesafixar };
 }

@@ -111,7 +111,9 @@ export type AcaoDaNoticia =
   | "noticia.desfazer_arquivamento"
   | "noticia.restaurar"
   | "noticia.restaurar_versao"
-  | "noticia.excluir";
+  | "noticia.excluir"
+  | "noticia.fixar"
+  | "noticia.desafixar";
 
 export async function registrarAtividadeNoticia(
   tx: Transacao,
