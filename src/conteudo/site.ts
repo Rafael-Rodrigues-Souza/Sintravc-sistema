@@ -244,12 +244,15 @@ export const DOCUMENTOS_PAGINA = {
   semResultadoAcao: "Limpar filtros",
   vazioAcao: "Voltar ao início",
   baixarPdf: "Baixar PDF",
+  abrirDocumento: "Abrir documento",
+  buscar: "Buscar",
+  limparBusca: "Limpar a busca",
   abrirPdf: "Abrir PDF",
   editais: {
     eyebrow: "Transparência",
     titulo: "Editais",
     texto:
-      "Acompanhe os editais, convocações e acordos coletivos do SINTRAVC, sempre em PDF, em um só lugar. Confira os prazos e abra os arquivos para ler todas as orientações.",
+      "Acompanhe os editais do SINTRAVC, como convocações de assembleia, eleições e prestações de contas, sempre em PDF e em um só lugar. Confira os prazos e abra os arquivos para ler todas as orientações.",
     publicacoes: "publicações",
     prazos: "prazos em aberto",
     prazosCurto: "prazos abertos",

@@ -1,10 +1,10 @@
+import { naBahia } from "@/testes/datas";
 import { describe, expect, it } from "vitest";
 
 import { documentoVazio, type DadosDocumento, type TipoDocumento } from "@/lib/documentos/dados";
 
 import { acordoVigente, anosDisponiveis, contadoresDeEditais, contagemPorSubtipo, destaqueDeEditais, gruposPorMes, montarLista, type DocumentoNoAr } from "./pagina";
 
-const naBahia = (dia: string, hora = "10:00") => new Date(`${dia}T${hora}:00-03:00`);
 const AGORA = naBahia("2026-11-21");
 
 let n = 0;
@@ -95,6 +95,17 @@ describe("lista", () => {
       { subtipo: "cct", total: 1 },
     ]);
     expect(contagemPorSubtipo("edital", [doc("edital", "2026-01-01")])).toEqual([{ subtipo: "convocacao", total: 1 }]);
+  });
+
+  it("o tipo e o ano da URL sem documento no ar aparecem no seletor, com (0): seletor e lista nunca discordam", () => {
+    const docs = [doc("edital", "2026-03-01", { subtipo: "convocacao" })];
+    expect(contagemPorSubtipo("edital", docs, "eleicao")).toEqual([
+      { subtipo: "convocacao", total: 1 },
+      { subtipo: "eleicao", total: 0 },
+    ]);
+    expect(anosDisponiveis(docs, 2019)).toEqual([2026, 2019]);
+    // A lista, com esse filtro, vem vazia: a página mostra o vazio com “Limpar filtros”.
+    expect(montarLista(docs, { ...vazio, subtipo: "eleicao" }, null, AGORA, 7).total).toBe(0);
   });
 });
 

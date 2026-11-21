@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { DOCUMENTOS_PAGINA } from "@/conteudo/site";
 import type { DocumentoNoCartao } from "@/lib/documentos/cartao";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ export function CartaoDocumento({
   href,
   novo = false,
   ano,
-  rotuloAbrir = "Abrir documento",
+  rotuloAbrir = DOCUMENTOS_PAGINA.abrirDocumento,
   className,
 }: {
   documento: DocumentoNoCartao;

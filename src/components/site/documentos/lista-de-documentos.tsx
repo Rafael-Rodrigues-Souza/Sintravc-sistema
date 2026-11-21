@@ -5,7 +5,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { CartaoDocumento } from "@/components/site/cartao-documento";
 import { Button } from "@/components/ui/button";
 import { DOCUMENTOS_PAGINA } from "@/conteudo/site";
-import { enderecoDaAba, type AbaDocumentos, type FiltrosDeDocumentos } from "@/lib/documentos-do-site/filtros";
+import { ABAS, enderecoDaAba, type AbaDocumentos, type FiltrosDeDocumentos } from "@/lib/documentos-do-site/filtros";
 import { gruposPorMes, type ListaDeDocumentos } from "@/lib/documentos-do-site/pagina";
 
 /**
@@ -65,7 +65,7 @@ export function ListaDeDocumentos({ aba, filtros, lista }: { aba: AbaDocumentos;
 /** Estado vazio do E23: ícone, frase e ação. Sem resultado nos filtros, “Limpar filtros”. */
 export function VazioDeDocumentos({ aba, filtrando }: { aba: AbaDocumentos; filtrando: boolean }) {
   const t = DOCUMENTOS_PAGINA;
-  const daAba = aba === "editais" ? t.editais : t.acordos;
+  const daAba = t[ABAS[aba].textos];
   return (
     <div className="flex flex-col items-center gap-3 rounded-[16px] border border-borda-padrao bg-fundo-superficie px-6 py-10 text-center">
       <span aria-hidden className="flex size-16 items-center justify-center rounded-full bg-status-neutro-fundo text-texto-secundario">

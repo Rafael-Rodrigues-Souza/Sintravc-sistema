@@ -5,7 +5,7 @@ import { conteudo, conteudoVersao, midia } from "@/lib/db/schema";
 import type { DadosDocumento, TipoDocumento } from "@/lib/documentos/dados";
 import { lerParametro } from "@/lib/parametros";
 
-import { TIPO_DA_ABA, temFiltro, type AbaDocumentos, type FiltrosDeDocumentos } from "./filtros";
+import { ABAS, temFiltro, type AbaDocumentos, type FiltrosDeDocumentos } from "./filtros";
 import {
   acordoVigente,
   anosDisponiveis,
@@ -28,6 +28,9 @@ import {
 
 const dados = sql`${conteudoVersao.snapshot} -> 'dados'`;
 
+/** A versão no ar de cada conteúdo (o JOIN de toda leitura pública). */
+const versaoNoAr = and(eq(conteudoVersao.conteudoId, conteudo.id), eq(conteudoVersao.versao, conteudo.versao));
+
 /** O documento está no ar: publicado, com endereço e data. */
 const noAr = (tipo: TipoDocumento) =>
   and(eq(conteudo.tipo, tipo), eq(conteudo.estado, "publicado"), isNotNull(conteudo.slug), isNotNull(conteudo.publicadoEm));
@@ -44,7 +47,7 @@ function selecionar(condicao: SQL | undefined) {
       pdfBytes: midia.bytes,
     })
     .from(conteudo)
-    .innerJoin(conteudoVersao, and(eq(conteudoVersao.conteudoId, conteudo.id), eq(conteudoVersao.versao, conteudo.versao)))
+    .innerJoin(conteudoVersao, versaoNoAr)
     .leftJoin(midia, sql`${midia.id}::text = ${dados} ->> 'pdfMidiaId'`)
     .where(condicao)
     .orderBy(desc(conteudo.publicadoEm), desc(conteudo.id));
@@ -79,7 +82,7 @@ export async function idsDaBusca(tipo: TipoDocumento, busca: string): Promise<Se
   const linhas = await banco()
     .select({ id: conteudo.id })
     .from(conteudo)
-    .innerJoin(conteudoVersao, and(eq(conteudoVersao.conteudoId, conteudo.id), eq(conteudoVersao.versao, conteudo.versao)))
+    .innerJoin(conteudoVersao, versaoNoAr)
     .where(and(noAr(tipo), sql`unaccent(${campos}) ilike unaccent(${padrao})`));
   return new Set(linhas.map((l) => l.id));
 }
@@ -96,21 +99,21 @@ export async function documentoPeloSlug(tipo: TipoDocumento, slug: string): Prom
  * tipos (o seletor), os anos, e o topo (contadores e destaque em Editais; o acordo vigente em Acordos).
  */
 export async function paginaDaAba(aba: AbaDocumentos, filtros: FiltrosDeDocumentos, agora = new Date()) {
-  const tipo = TIPO_DA_ABA[aba];
+  const { tipo, topo } = ABAS[aba];
   const [docs, novoDias, busca] = await Promise.all([
     documentosNoAr(tipo),
     lerParametro("documento.novo_dias"),
     filtros.busca ? idsDaBusca(tipo, filtros.busca) : Promise.resolve(null),
   ]);
-  const destaque = tipo === "edital" ? destaqueDeEditais(docs, agora) : null;
-  const vigente = tipo === "acordo" ? acordoVigente(docs, agora) : null;
+  const destaque = topo === "destaque" ? destaqueDeEditais(docs, agora) : null;
+  const vigente = topo === "vigente" ? acordoVigente(docs, agora) : null;
   return {
     totalNoAr: docs.length,
     filtrando: temFiltro(filtros),
     lista: montarLista(docs, filtros, busca, agora, novoDias),
-    subtipos: contagemPorSubtipo(tipo, docs),
-    anos: anosDisponiveis(docs),
-    contadores: tipo === "edital" ? contadoresDeEditais(docs, agora) : null,
+    subtipos: contagemPorSubtipo(tipo, docs, filtros.subtipo),
+    anos: anosDisponiveis(docs, filtros.ano),
+    contadores: topo === "destaque" ? contadoresDeEditais(docs, agora) : null,
     destaque: destaque ? documentoNaLista(destaque, agora, novoDias) : null,
     vigente: vigente ? documentoNaLista(vigente, agora, novoDias) : null,
   };

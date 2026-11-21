@@ -1,3 +1,4 @@
+import { naBahia } from "@/testes/datas";
 import { describe, expect, it } from "vitest";
 
 import { documentoVazio, type DadosDocumento } from "@/lib/documentos/dados";
@@ -8,7 +9,6 @@ import { contagemDoPrazo, ehNovo, prazoEmAberto } from "./prazo";
 /** Edital com prazo em 20/11/2026 às 19h00 na Bahia (22h00 UTC). */
 const edital: DadosDocumento = { ...documentoVazio("edital"), eventoData: "2026-11-20", eventoHora: "19:00" };
 /** Um instante dado no relógio da Bahia (UTC-3). */
-const naBahia = (dia: string, hora: string) => new Date(`${dia}T${hora}:00-03:00`);
 
 describe("contagemDoPrazo (E60)", () => {
   it("conta os dias pelo calendário da Bahia", () => {

@@ -8,7 +8,7 @@ import { IconeFigma } from "@/components/icone-figma";
 import { Input } from "@/components/ui/input";
 import { DOCUMENTOS_PAGINA } from "@/conteudo/site";
 import type { SubtipoDocumento } from "@/lib/documentos/dados";
-import { BUSCA_MAXIMA, enderecoDaAba, subtipoNaUrl, type AbaDocumentos, type FiltrosDeDocumentos } from "@/lib/documentos-do-site/filtros";
+import { ABAS, BUSCA_MAXIMA, enderecoDaAba, SUBTIPO_NA_URL, type AbaDocumentos, type FiltrosDeDocumentos } from "@/lib/documentos-do-site/filtros";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,14 +44,17 @@ export function BuscaEFiltros({
     consulta.addEventListener("change", atualizar);
     return () => consulta.removeEventListener("change", atualizar);
   }, []);
-  const daAba = aba === "editais" ? t.editais : t.acordos;
+  const daAba = t[ABAS[aba].textos];
   const rotulos: Partial<Record<SubtipoDocumento, string>> = daAba.tipos;
   const idBusca = `busca-${aba}`;
   const enviar = () => formulario.current?.requestSubmit();
   return (
     <Form
+      // Recriado a cada endereço: depois de “Limpar a busca”, “Limpar filtros” ou Voltar, os campos
+      // mostram o que a URL diz (`defaultValue` não muda num componente que continua montado).
+      key={enderecoDaAba(aba, filtros)}
       ref={formulario}
-      action={`/documentos/${aba}`}
+      action={enderecoDaAba(aba, {})}
       role="search"
       aria-label={daAba.buscaRotulo}
       className={cn(
@@ -78,7 +81,7 @@ export function BuscaEFiltros({
           {filtros.busca ? (
             <Link
               href={enderecoDaAba(aba, { subtipo: filtros.subtipo, ano: filtros.ano })}
-              aria-label="Limpar a busca"
+              aria-label={t.limparBusca}
               className="alvo-toque flex size-8 items-center justify-center rounded-full text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
             >
               <IconeFigma src="/site/icone-fechar.svg" tamanho={16} />
@@ -88,7 +91,7 @@ export function BuscaEFiltros({
             type="submit"
             className="hidden h-[25px] items-center rounded-[8px] bg-fundo-superficie-alt px-2.5 texto-etiqueta text-texto-secundario uppercase outline-none hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring sm:flex"
           >
-            Buscar
+            {t.buscar}
           </button>
         </div>
       </div>
@@ -98,12 +101,12 @@ export function BuscaEFiltros({
         rotulo={t.tipoRotulo}
         icone="/site/icone-filtro.svg"
         area="[grid-area:tipo]"
-        valor={filtros.subtipo ? subtipoNaUrl(filtros.subtipo) : ""}
+        valor={filtros.subtipo ? SUBTIPO_NA_URL[filtros.subtipo] : ""}
         aoMudar={enviar}
       >
         <option value="">{`${t.todosOsTipos} (${total})`}</option>
         {subtipos.map((s) => (
-          <option key={s.subtipo} value={subtipoNaUrl(s.subtipo)}>
+          <option key={s.subtipo} value={SUBTIPO_NA_URL[s.subtipo]}>
             {`${rotulos[s.subtipo] ?? s.subtipo} (${s.total})`}
           </option>
         ))}
@@ -126,7 +129,7 @@ export function BuscaEFiltros({
       </Seletor>
       <noscript>
         <button type="submit" className="col-span-2 h-12 w-full rounded-[14px] border border-borda-padrao px-5 texto-botao sm:hidden">
-          Buscar
+          {t.buscar}
         </button>
       </noscript>
     </Form>

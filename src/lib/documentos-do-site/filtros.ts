@@ -4,10 +4,24 @@
  */
 import { SUBTIPOS, type SubtipoDocumento, type TipoDocumento } from "@/lib/documentos/dados";
 
-export type AbaDocumentos = "editais" | "acordos-coletivos";
+/**
+ * As duas abas de Documentos, num mapa só (E60): o segmento da URL, o tipo de documento, a chave
+ * dos textos em `DOCUMENTOS_PAGINA` e o que o topo mostra (contadores e destaque em Editais; o
+ * acordo vigente em Acordos).
+ */
+export const ABAS = {
+  editais: { tipo: "edital", textos: "editais", topo: "destaque" },
+  "acordos-coletivos": { tipo: "acordo", textos: "acordos", topo: "vigente" },
+} as const satisfies Record<string, { tipo: TipoDocumento; textos: string; topo: "destaque" | "vigente" }>;
 
-export const ABA_DO_TIPO: Record<TipoDocumento, AbaDocumentos> = { edital: "editais", acordo: "acordos-coletivos" };
-export const TIPO_DA_ABA: Record<AbaDocumentos, TipoDocumento> = { editais: "edital", "acordos-coletivos": "acordo" };
+export type AbaDocumentos = keyof typeof ABAS;
+
+export const ABA_DO_TIPO = Object.fromEntries(Object.entries(ABAS).map(([aba, a]) => [a.tipo, aba])) as Record<TipoDocumento, AbaDocumentos>;
+
+/** Os subtipos de um tipo, na ordem do painel. */
+export function subtiposDoTipo(tipo: TipoDocumento): readonly SubtipoDocumento[] {
+  return SUBTIPOS[tipo];
+}
 
 /** Quantos documentos aparecem de cada vez (“Carregar mais publicações”). */
 export const DOCUMENTOS_POR_VEZ = 10;
@@ -17,7 +31,7 @@ export const BUSCA_MAXIMA = 100;
 const MAIS_MAXIMO = 50;
 
 /** O subtipo na URL, sem sublinhado: `?tipo=prestacao-de-contas`. */
-const SUBTIPO_NA_URL: Record<SubtipoDocumento, string> = {
+export const SUBTIPO_NA_URL: Record<SubtipoDocumento, string> = {
   convocacao: "convocacao",
   eleicao: "eleicao",
   prestacao_contas: "prestacao-de-contas",
@@ -25,11 +39,6 @@ const SUBTIPO_NA_URL: Record<SubtipoDocumento, string> = {
   act: "act",
   cct: "cct",
 };
-
-/** O valor de `?tipo=` de um subtipo. */
-export function subtipoNaUrl(subtipo: SubtipoDocumento): string {
-  return SUBTIPO_NA_URL[subtipo];
-}
 
 export type FiltrosDeDocumentos = {
   busca: string;
@@ -44,9 +53,8 @@ function primeiro(valor: string | string[] | undefined): string {
 }
 
 export function lerFiltros(aba: AbaDocumentos, params: Record<string, string | string[] | undefined>): FiltrosDeDocumentos {
-  const tipo = TIPO_DA_ABA[aba];
-  const subtipoNaUrl = primeiro(params.tipo).trim().toLowerCase();
-  const subtipo = (SUBTIPOS[tipo] as readonly SubtipoDocumento[]).find((s) => SUBTIPO_NA_URL[s] === subtipoNaUrl) ?? null;
+  const naUrl = primeiro(params.tipo).trim().toLowerCase();
+  const subtipo = subtiposDoTipo(ABAS[aba].tipo).find((s) => SUBTIPO_NA_URL[s] === naUrl) ?? null;
   const ano = Number(primeiro(params.ano));
   const mais = Number(primeiro(params.mais));
   return {
@@ -74,5 +82,5 @@ export function enderecoDaAba(aba: AbaDocumentos, f: Partial<FiltrosDeDocumentos
 
 /** A aba de um segmento da URL (`/documentos/[aba]/…`); nulo para qualquer outro. */
 export function abaDoSegmento(segmento: string): AbaDocumentos | null {
-  return segmento === "editais" || segmento === "acordos-coletivos" ? segmento : null;
+  return Object.hasOwn(ABAS, segmento) ? (segmento as AbaDocumentos) : null;
 }

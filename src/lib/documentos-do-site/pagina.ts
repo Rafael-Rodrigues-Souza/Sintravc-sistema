@@ -4,10 +4,10 @@
  */
 import { cartaoDoDocumento, type DocumentoNoCartao } from "@/lib/documentos/cartao";
 import { anoNaBahia, dataNaBahia, mesNaBahia } from "@/lib/datas";
-import { instanteDoEvento, SUBTIPOS, type DadosDocumento, type SubtipoDocumento, type TipoDocumento } from "@/lib/documentos/dados";
+import { instanteDoEvento, type DadosDocumento, type SubtipoDocumento, type TipoDocumento } from "@/lib/documentos/dados";
 import { seloDosDados } from "@/lib/documentos/selo";
 
-import { ABA_DO_TIPO, DOCUMENTOS_POR_VEZ, type FiltrosDeDocumentos } from "./filtros";
+import { ABA_DO_TIPO, DOCUMENTOS_POR_VEZ, subtiposDoTipo, type FiltrosDeDocumentos } from "./filtros";
 import { contagemDoPrazo, ehNovo, prazoEmAberto } from "./prazo";
 
 /** Um documento como está no ar: o retrato da versão publicada (sem o texto pesquisável, que é grande). */
@@ -127,16 +127,25 @@ export function gruposPorMes(itens: DocumentoNaLista[]): { chave: string; rotulo
   return grupos;
 }
 
-/** O seletor de tipo: todos os subtipos da aba com pelo menos um documento, com a contagem. */
-export function contagemPorSubtipo(tipo: TipoDocumento, docs: DocumentoNoAr[]): { subtipo: SubtipoDocumento; total: number }[] {
-  return (SUBTIPOS[tipo] as readonly SubtipoDocumento[])
+/**
+ * O seletor de tipo: os subtipos da aba com pelo menos um documento, com a contagem. O escolhido na
+ * URL entra mesmo sem documento, com (0): o seletor mostra o filtro que a lista está usando.
+ */
+export function contagemPorSubtipo(
+  tipo: TipoDocumento,
+  docs: DocumentoNoAr[],
+  escolhido: SubtipoDocumento | null = null,
+): { subtipo: SubtipoDocumento; total: number }[] {
+  return subtiposDoTipo(tipo)
     .map((subtipo) => ({ subtipo, total: docs.filter((d) => d.dados.subtipo === subtipo).length }))
-    .filter((c) => c.total > 0);
+    .filter((c) => c.total > 0 || c.subtipo === escolhido);
 }
 
-/** Os anos do seletor, do mais recente ao mais antigo. */
-export function anosDisponiveis(docs: DocumentoNoAr[]): number[] {
-  return [...new Set(docs.map(anoDoDocumento))].sort((a, b) => b - a);
+/** Os anos do seletor, do mais recente ao mais antigo. O escolhido na URL entra mesmo sem documento. */
+export function anosDisponiveis(docs: DocumentoNoAr[], escolhido: number | null = null): number[] {
+  const anos = new Set(docs.map(anoDoDocumento));
+  if (escolhido !== null) anos.add(escolhido);
+  return [...anos].sort((a, b) => b - a);
 }
 
 /** Os contadores do topo de Editais (Figma 73:629). */
