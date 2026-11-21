@@ -66,6 +66,8 @@ describe("Parametro: valores iniciais do regras-de-negocio.md §3", () => {
     ["documento.extracao_paginas_maximas", 200], // P3, E46
     ["comunicados.alternar_segundos", 8], // E58: troca da faixa com vários comunicados no ar
     ["comunicados.cookie_fechados_dias", 365], // E58: validade do cookie dos comunicados fechados no X
+    ["noticias.mais_lidas_dias", 7], // E30, E59: janela das Mais lidas
+    ["noticias.mais_lidas_quantidade", 3], // E30, E59: quantas Mais lidas
   ])("%s = %j", async (chave, valor) => {
     expect(await lerParametro(chave as keyof typeof CATALOGO)).toEqual(valor);
   });

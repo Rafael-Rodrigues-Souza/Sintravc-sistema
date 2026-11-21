@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { dataHora, datas, idUuid } from "./comum";
 import { pessoaEquipe } from "./equipe";
@@ -81,7 +81,9 @@ export const conteudo = pgTable(
 );
 
 /** Dados próprios da notícia (1:1 com Conteudo). Manchete = `conteudo.titulo` (≤ 110). */
-export const noticia = pgTable("noticia", {
+export const noticia = pgTable(
+  "noticia",
+  {
   conteudoId: uuid()
     .primaryKey()
     .references(() => conteudo.id, { onDelete: "cascade" }),
@@ -98,9 +100,16 @@ export const noticia = pgTable("noticia", {
     .array()
     .notNull()
     .default(sql`'{}'::text[]`),
+  /**
+   * Fim exclusivo da fixação no topo de Notícias (RN58, E59): 00:00 na Bahia do dia seguinte ao
+   * escolhido. No rascunho e na agendada é só a intenção, que vale ao publicar. O site segue o
+   * relógio (publicada e `fixada_ate > agora`); a T05 só limpa o campo.
+   */
   fixadaAte: dataHora(),
   ...datas,
-});
+},
+(tabela) => [index("noticia_fixada_ate").on(tabela.fixadaAte).where(sql`${tabela.fixadaAte} is not null`)],
+);
 
 /**
  * Documento oficial, edital ou acordo (1:1 com Conteudo; spec §2.2, RF41, RN12, E46). Só o ADM
@@ -181,4 +190,20 @@ export const conteudoVersao = pgTable(
     criadoEm: dataHora().notNull().defaultNow(),
   },
   (tabela) => [unique().on(tabela.conteudoId, tabela.versao)],
+);
+
+/**
+ * Contador anônimo das "Mais lidas" (E30, E59, T17): +1 por visualização, por notícia e por dia
+ * (data na Bahia). Sem cookie, sem IP e sem pessoa: não há coluna para isso, de propósito.
+ */
+export const visualizacaoDiaria = pgTable(
+  "visualizacao_diaria",
+  {
+    conteudoId: uuid()
+      .notNull()
+      .references(() => conteudo.id, { onDelete: "cascade" }),
+    dia: date({ mode: "string" }).notNull(),
+    total: integer().notNull().default(0),
+  },
+  (tabela) => [primaryKey({ columns: [tabela.conteudoId, tabela.dia] }), index().on(tabela.dia)],
 );
