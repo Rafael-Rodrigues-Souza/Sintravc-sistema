@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { documentoVazio, type DadosDocumento, type TipoDocumento } from "@/lib/documentos/dados";
 
-import { acordoVigente, anosDisponiveis, contadoresDeEditais, contagemPorSubtipo, destaqueDeEditais, gruposPorMes, montarLista, type DocumentoNoAr } from "./pagina";
+import { acordoVigente, anosDisponiveis, contadoresDeEditais, contagemPorSubtipo, destaqueDeEditais, gruposPorMes, montarLista, quadroDoVigente, type DocumentoNoAr } from "./pagina";
 
 const AGORA = naBahia("2026-11-21");
 
@@ -116,5 +116,6 @@ describe("acordo vigente (topo de Acordos)", () => {
     const encerrado = doc("acordo", "2024-05-02", { vigenciaInicio: "2024-05-01", vigenciaFim: "2025-04-30" });
     expect(acordoVigente([antigo, encerrado, novo], AGORA)?.id).toBe(novo.id);
     expect(acordoVigente([encerrado], AGORA)).toBeNull();
+    expect(quadroDoVigente(novo)).toEqual({ href: `/documentos/acordos-coletivos/${novo.slug}`, sigla: "ACT", ano: 2026, validoAte: "30/04/2027" });
   });
 });

@@ -177,8 +177,15 @@ export function acordoVigente(docs: DocumentoNoAr[], agora: Date): DocumentoNoAr
   return ordenar(docs).find((d) => seloDosDados(d.tipo, "publicado", d.dados, agora) === "vigente") ?? null;
 }
 
-/** "Válido até 30/04/2027", a partir do dia final da vigência. */
+/** "30/04/2027", o dia final da vigência; nulo sem ele. */
 export function validoAte(dados: Pick<DadosDocumento, "vigenciaFim">): string | null {
   return dados.vigenciaFim ? dados.vigenciaFim.split("-").reverse().join("/") : null;
+}
+
+/** O quadro amarelo do topo de Acordos (Figma 75:1548): “ACT 2026 em vigor · Válido até 30/04/2027”. */
+export type QuadroDoVigente = { href: string; sigla: string; ano: number; validoAte: string | null };
+
+export function quadroDoVigente(doc: DocumentoNoAr): QuadroDoVigente {
+  return { href: enderecoDoDocumento(doc.tipo, doc.slug), sigla: doc.dados.subtipo ? doc.dados.subtipo.toUpperCase() : "Acordo", ano: anoDoDocumento(doc), validoAte: validoAte(doc.dados) };
 }
 

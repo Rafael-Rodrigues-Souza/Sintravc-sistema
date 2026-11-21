@@ -14,6 +14,7 @@ import {
   destaqueDeEditais,
   documentoNaLista,
   montarLista,
+  quadroDoVigente,
   type DocumentoNoAr,
 } from "./pagina";
 
@@ -115,6 +116,6 @@ export async function paginaDaAba(aba: AbaDocumentos, filtros: FiltrosDeDocument
     anos: anosDisponiveis(docs, filtros.ano),
     contadores: topo === "destaque" ? contadoresDeEditais(docs, agora) : null,
     destaque: destaque ? documentoNaLista(destaque, agora, novoDias) : null,
-    vigente: vigente ? documentoNaLista(vigente, agora, novoDias) : null,
+    vigente: vigente ? quadroDoVigente(vigente) : null,
   };
 }

@@ -43,6 +43,7 @@ export function CartaoDocumento({
 }) {
   const d = documento;
   const seloComPonto = d.selo && d.selo.tom !== "prazo" ? { rotulo: d.selo.rotulo, tom: d.selo.tom } : null;
+  const encerrado = d.selo?.tom === "encerrado";
   return (
     <article
       className={cn(
@@ -53,9 +54,15 @@ export function CartaoDocumento({
       )}
     >
       {ano ? (
-        <span className="flex size-16 flex-col items-center justify-center rounded-[14px] bg-destaque-marinho-fixo [grid-area:marca] sm:size-24 sm:rounded-[18px]">
-          <span className="texto-etiqueta text-white/60 uppercase">Ano</span>
-          <span className="font-condensed text-[24px] leading-[1.12] font-bold text-destaque-amarelo sm:text-[32px]">{ano}</span>
+        // Encerrado: o quadro fica cinza, como no Figma (72:1504); vigente, marinho com o ano em amarelo.
+        <span
+          className={cn(
+            "flex size-16 flex-col items-center justify-center rounded-[14px] [grid-area:marca] sm:size-24 sm:rounded-[18px]",
+            encerrado ? "bg-fundo-superficie-alt" : "bg-destaque-marinho-fixo",
+          )}
+        >
+          <span className={cn("texto-etiqueta uppercase", encerrado ? "text-texto-terciario" : "text-white/60")}>Ano</span>
+          <span className={cn("font-condensed text-[24px] leading-[1.12] font-bold sm:text-[32px]", encerrado ? "text-texto-secundario" : "text-destaque-amarelo")}>{ano}</span>
         </span>
       ) : (
         <span aria-hidden className="flex size-12 items-center justify-center rounded-[14px] bg-destaque-azul-suave text-destaque-azul [grid-area:marca] sm:size-14 sm:rounded-[16px]">
