@@ -121,7 +121,7 @@ function Indicador({
   primeiro?: boolean;
 }) {
   return (
-    <div className={primeiro ? "flex flex-col-reverse gap-0.5 pr-5 sm:pr-7" : "flex flex-col-reverse gap-0.5 border-l border-sobre-escuro-chip px-5 sm:px-7"}>
+    <div className={primeiro ? "flex flex-col-reverse gap-0.5 pr-4 sm:pr-7" : "flex flex-col-reverse gap-0.5 border-l border-sobre-escuro-chip px-4 sm:px-7"}>
       <dt className="texto-pequeno text-texto-invertido-sec">
         {rotuloCurto ? (
           <>

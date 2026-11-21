@@ -36,7 +36,7 @@ export function DestaqueEdital({ documento, className }: { documento: DocumentoN
           ) : null}
         </div>
         <h2 id="destaque-edital" className="texto-titulo-destaque-mobile text-texto-primario lg:texto-titulo-card-grande">
-          <Link href={documento.href} className="rounded-sm outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring">
+          <Link href={documento.href} className="alvo-toque rounded-sm outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring">
             {d.titulo}
           </Link>
         </h2>
