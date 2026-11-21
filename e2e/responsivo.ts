@@ -338,6 +338,9 @@ export async function usarFerramentaDoCorpo(page: Page, nome: (typeof FERRAMENTA
  * à mostra; se não (do lg ao 2xl, a coluna Ações só tem o ⋯, #51), o item do ⋯ da linha.
  */
 export async function acaoDaLinha(linha: Locator, nome: string | RegExp, toque = false) {
+  // Espera a linha aparecer (a lista pode estar no Skeleton): sem ela, o isVisible() do ícone, que não
+  // espera, dava falso e o teste procurava o item no ⋯, onde ele não existe quando o ícone está à mostra.
+  await expect(linha.getByRole("cell").first()).toBeVisible();
   const icone = linha.getByRole("link", { name: nome });
   if (await icone.isVisible()) return apertar(icone, toque);
   // Clicado antes de a página hidratar, o ⋯ não abre o menu: tenta de novo até o item aparecer.
