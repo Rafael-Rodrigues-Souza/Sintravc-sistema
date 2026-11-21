@@ -244,14 +244,18 @@ function Linha({
                 linha.semTitulo ? "text-texto-terciario italic" : "text-texto-primario",
               )}
             >
-              <span className="line-clamp-2 lg:line-clamp-1">{linha.titulo}</span>
+              {/* Texto de quem escreve: quebra em qualquer ponto (uma palavra longa não alarga a coluna) e, cortado, o
+                  título inteiro fica no title (#16). */}
+              <span title={linha.titulo} className="line-clamp-2 [overflow-wrap:anywhere] lg:line-clamp-1">
+                {linha.titulo}
+              </span>
             </Link>
           ) : (
-            <span className="texto-titulo-card-pequeno text-texto-primario">{linha.titulo}</span>
+            <span className="texto-titulo-card-pequeno text-texto-primario [overflow-wrap:anywhere]">{linha.titulo}</span>
           )}
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 texto-pequeno text-texto-secundario">
-            {linha.categoria ? <SeloCategoria nome={linha.categoria.nome} cor={linha.categoria.cor} /> : null}
-            {linha.autorNome}
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 texto-pequeno text-texto-secundario [overflow-wrap:anywhere]">
+            {linha.categoria ? <SeloCategoria nome={linha.categoria.nome} cor={linha.categoria.cor} className="max-w-full" /> : null}
+            <span className="min-w-0">{linha.autorNome}</span>
           </span>
         </div>
       </td>
@@ -262,8 +266,10 @@ function Linha({
         </span>
       </td>
       <td className="col-start-3 row-start-1 justify-self-end lg:px-2 lg:py-4 2xl:px-3">
-        {/* Na tabela, estado e vigência ficam numa linha: quem cede o espaço é o título (line-clamp-1) (#51). */}
-        <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:flex-nowrap lg:justify-start lg:whitespace-nowrap">
+        {/* Na tabela, do lg até antes do 2xl, estado e vigência ficam um embaixo do outro (“Publicado” e, embaixo,
+            “Vigente”): numa linha só, o acordo vigente deixava a tabela mais larga que a caixa. Do 2xl em diante, numa
+            linha (#51, #16). */}
+        <span className="inline-flex flex-wrap items-center justify-end gap-1.5 lg:flex-col lg:flex-nowrap lg:items-start lg:justify-start lg:gap-1 2xl:flex-row 2xl:items-center 2xl:gap-1.5 2xl:whitespace-nowrap">
           <SeloEstado estado={linha.estado} />
           <SeloVigencia selo={linha.seloVigencia ?? null} />
         </span>

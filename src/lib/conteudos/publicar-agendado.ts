@@ -8,7 +8,7 @@ import { quandoNaBahia } from "@/lib/datas";
 import type { Enviar } from "@/lib/email";
 import { mensagemPublicacaoAgendadaFalhou } from "@/lib/email/modelos";
 import { lerEnvSite } from "@/lib/env";
-import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
+import { revalidarSitePublico } from "@/lib/site/revalidar";
 import type { Fila, PedidoPublicacao } from "@/lib/tarefas/fila";
 
 import { voltarARascunho } from "./agendar";
@@ -65,7 +65,7 @@ export async function executarPublicacaoAgendada(
     return { tipo: "publicada", versao };
   });
   // Fora de um pedido o Next recusa; o site dinâmico já mostra a notícia na próxima visita (E59).
-  if (resultado.tipo === "publicada") revalidarNoticiasDoSite();
+  if (resultado.tipo === "publicada") revalidarSitePublico();
   return resultado;
 }
 

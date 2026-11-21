@@ -168,6 +168,29 @@ async function alvosDoTopo(page: Page, toque: boolean, caso: string) {
 }
 
 /** Quanto os centros dos elementos, na vertical, ficam longe um do outro (perto: estão na mesma linha). */
+/** Cada coluna visível da tabela: o cabeçalho, a largura e a célula de maior largura mínima (o texto que segura a coluna). */
+async function larguraDasColunas(page: Page) {
+  return page.getByRole("table").evaluate((tabela) => {
+    const cabecalhos = [...tabela.querySelectorAll("thead th")];
+    return cabecalhos
+      .map((th, i) => {
+        let maior = { largura: 0, texto: "" };
+        for (const linha of tabela.querySelectorAll("tbody tr")) {
+          const celula = linha.children[i] as HTMLElement | undefined;
+          if (!celula || celula.getClientRects().length === 0) continue;
+          const copia = celula.cloneNode(true) as HTMLElement;
+          Object.assign(copia.style, { position: "absolute", visibility: "hidden", width: "min-content", display: "block" });
+          document.body.appendChild(copia);
+          const largura = Math.round(copia.getBoundingClientRect().width);
+          copia.remove();
+          if (largura > maior.largura) maior = { largura, texto: (celula.textContent ?? "").trim().slice(0, 80) };
+        }
+        return { coluna: th.textContent?.trim() || "(seleção)", largura: Math.round(th.getBoundingClientRect().width), minimoDaCelulaMaisLarga: maior };
+      })
+      .filter((c) => c.largura > 0);
+  });
+}
+
 async function distanciaDosCentros(...elementos: Locator[]) {
   const centros = await Promise.all(
     elementos.map(async (el) => {
@@ -303,7 +326,7 @@ for (const tema of ["claro", "escuro"] as const) {
       });
     });
 
-    test("Conteúdos, lista: “Publicado” e “Prazo” ficam numa linha (#51)", async ({ page, hasTouch }, testInfo) => {
+    test("Conteúdos, lista: “Publicado” e “Prazo” um embaixo do outro até o 2xl e numa linha a partir dele (#51, #16)", async ({ page, hasTouch }, testInfo) => {
       await entrarComoAdm(page, DOCUMENTO.endereco, { toque: hasTouch });
       test.skip(telaEstreita(page), "no celular e no tablet em pé, a linha vira cartão, sem a coluna Estado");
       // Um edital publicado pela tela, com o evento daqui a 5 dias: o selo de vigência é “Prazo” (C2).
@@ -322,7 +345,13 @@ for (const tema of ["claro", "escuro"] as const) {
 
       await emCadaLargura(page, testInfo, async (largura) => {
         if (largura < RESPONSIVO.menuLateralAPartirDe) return;
-        expect.soft(await distanciaDosCentros(publicado, prazo), `a ${largura} px, “Publicado” e “Prazo” ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+        if (largura < RESPONSIVO.estadoNumaLinhaAPartirDe) {
+          // Um embaixo do outro: numa linha só, o acordo vigente deixava a tabela mais larga que a caixa (#16).
+          const [caixaPublicado, caixaPrazo] = [(await publicado.boundingBox())!, (await prazo.boundingBox())!];
+          expect.soft(caixaPrazo.y, `a ${largura} px, “Prazo” fica embaixo de “Publicado”`).toBeGreaterThanOrEqual(caixaPublicado.y + caixaPublicado.height - TOLERANCIA.arredondamento);
+        } else {
+          expect.soft(await distanciaDosCentros(publicado, prazo), `a ${largura} px, “Publicado” e “Prazo” ficam numa linha`).toBeLessThan(TOLERANCIA.mesmaLinha);
+        }
         // O título não fica espremido: as 3 primeiras palavras ficam inteiras na 1ª linha, a única que aparece
         // (line-clamp: o resto do texto quebra para linhas escondidas).
         const titulo = linha.getByRole("link").first().locator("span").first();
@@ -339,6 +368,10 @@ for (const tema of ["claro", "escuro"] as const) {
         // A tabela não fica mais larga que a caixa dela (a caixa esconde o que passa, sem rolar a página). Mede-se a
         // caixa da tabela, e não o scrollWidth, que no toque conta a área invisível dos ícones (alvo-toque).
         const medida = await page.getByRole("table").evaluate((tabela) => ({ tabela: tabela.getBoundingClientRect().width, caixa: tabela.parentElement!.clientWidth }));
+        if (medida.tabela > medida.caixa + TOLERANCIA.arredondamento) {
+          // Para o erro já dizer qual coluna passou: a largura de cada coluna e o texto mais largo de cada uma.
+          await testInfo.attach(`colunas a ${largura} px`, { body: JSON.stringify({ ...medida, colunas: await larguraDasColunas(page) }, null, 2), contentType: "application/json" });
+        }
         expect.soft(medida.tabela, `a ${largura} px, a tabela cabe na caixa`).toBeLessThanOrEqual(medida.caixa + TOLERANCIA.arredondamento);
         await semRolagemLateral(page);
       });

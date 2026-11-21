@@ -39,7 +39,7 @@ Home, Notícias, Sindicato (Instituição, Diretoria, Benefícios), Documentos, 
 | RF01 | Exibir a Home com faixa de comunicado, carrossel “Em destaque”, acesso rápido (Acordos coletivos, Benefícios, Editais, WhatsApp), últimas notícias com filtro por categoria, último programa do Rádio Chofer, redes sociais e seção Filie-se. | VIS, ASS | 1 | RN14, RN41 |
 | RF02 | Listar notícias com filtro por categoria, busca e paginação, e abrir a notícia com título, data, autor, tempo de leitura, imagens com legenda e notícias relacionadas. | VIS, ASS | 1 | — |
 | RF03 | Exibir a página Sindicato com as abas Instituição (missão e história), Diretoria e Benefícios (parceiros com logo e desconto). | VIS, ASS | 1 | RN40 |
-| RF04 | Exibir Documentos com as abas Editais e Acordos coletivos: destaque com prazo, contadores, busca por título, palavra-chave ou número, filtro por tipo, agrupamento por mês, abrir e baixar PDF. | VIS, ASS | 1 | RN13 |
+| RF04 | Exibir Documentos com as abas Editais e Acordos coletivos: destaque com prazo, contadores, busca por título, palavra-chave ou número, filtro por tipo e ano, agrupamento por mês nos Editais (Acordos pelo ano da vigência, E60), abrir e baixar PDF. | VIS, ASS | 1 | RN13 |
 | RF05 | Exibir a página Rádio Chofer com o programa (seg. a sex., 13h), último episódio e lista de episódios, usando o player do YouTube carregado só no clique. | VIS, ASS | 1 | RN17 |
 | RF06 | Exibir a página Contato com telefone, WhatsApp, e-mail, endereço, horário, mapa com rota e redes sociais, todos vindos de Configurações › Site. | VIS, ASS | 1 | RN43 |
 | RF07 | Mostrar o botão “Filiar-se pelo WhatsApp” (seção Filie-se, menu mobile e rodapé), abrindo conversa com a recepção e mensagem pronta. | VIS | 1 | RN03 |

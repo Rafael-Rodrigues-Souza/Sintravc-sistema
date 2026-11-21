@@ -50,6 +50,7 @@ Os IDs são do Figma (`node-id`). “D” é desktop e “M” é mobile. A fase
 | Sindicato · Benefícios | 59:1455 / 59:2002 | Carteirinha ilustrativa, serviços do sindicato (jurídico, salões, exames indisponíveis, Passe Livre) e parceiros com desconto. | [FATO] |
 | Documentos · Editais | 73:629 / 74:1085 | Contadores, destaque com “Faltam N dias”, busca, filtro por tipo, agrupamento por mês e PDF. | [FATO] |
 | Documentos · Acordos coletivos | 75:1438 / 76:1801 | Acordo vigente, explicação ACT × CCT, lista por ano com selos Vigente e Encerrado. | [FATO] |
+| Documento aberto (sem frame) | — | Um edital ou acordo com o resumo inteiro, “Abrir PDF” e “Baixar PDF”; destino do link do comunicado e do compartilhado (N18, E60). | [FATO] |
 | Rádio Chofer | 157:8305 / 157:8607 | Programa (seg. a sex., 13h), player do YouTube, busca, filtro por tema e grade de episódios. | [FATO] |
 | Contato | 87:629 / 89:964 | Telefone, WhatsApp, e-mail, endereço, horário, mapa e redes. | [FATO] |
 | Menu mobile · visitante / conectado | 159:8305 · 159:8374 | Navegação mobile. A versão conectada mostra o associado, “Abrir minha área” e “Sair”. | [FATO] |

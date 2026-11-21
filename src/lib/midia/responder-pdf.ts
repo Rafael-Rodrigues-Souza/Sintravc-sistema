@@ -42,10 +42,11 @@ export async function conferirPedidoDePdf(
 /**
  * Serve um PDF da Mídia pelo painel. O objeto no armazenamento é gravado para baixar (`attachment`,
  * E39); aqui quem chama escolhe o modo, e o nome do arquivo vai junto. Quem chama já passou pelo
- * `conferirPedidoDePdf`. `semPdf` é a mensagem do 404 quando o arquivo não existe ou não é PDF.
+ * `conferirPedidoDePdf` (ou, no site, conferiu que o documento está no ar). `semPdf` é a mensagem
+ * do 404 quando o arquivo não existe ou não é PDF. `cache` troca o padrão `private, no-store`.
  */
 export async function responderPdfDaMidia(
-  pedido: { midiaId: string; modo: ModoPdf; semPdf: string },
+  pedido: { midiaId: string; modo: ModoPdf; semPdf: string; cache?: string },
   deps: { armazenamento?: Armazenamento } = {},
 ): Promise<Response> {
   const [arquivo] = await banco()
@@ -62,7 +63,7 @@ export async function responderPdfDaMidia(
       "content-type": "application/pdf",
       "content-length": String(arquivo.bytes),
       "content-disposition": contentDisposition({ tipo: pedido.modo === "abrir" ? "inline" : "attachment", nome: arquivo.nome }),
-      "cache-control": "private, no-store",
+      "cache-control": pedido.cache ?? "private, no-store",
       "x-content-type-options": "nosniff",
     },
   });

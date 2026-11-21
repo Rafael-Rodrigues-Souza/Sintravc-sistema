@@ -23,6 +23,14 @@ export function dataCurtaNaBahia(data: Date): string {
   return `${parte("day")} ${MESES_CURTOS[Number(parte("month")) - 1]} ${parte("year")}`;
 }
 
+const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+/** O mês de uma data no horário da Bahia: `chave` "2026-10" (para agrupar) e `rotulo` "Outubro de 2026". */
+export function mesNaBahia(data: Date): { chave: string; rotulo: string } {
+  const parte = partesNaBahia(data, { month: "2-digit", year: "numeric" });
+  return { chave: `${parte("year")}-${parte("month")}`, rotulo: `${MESES[Number(parte("month")) - 1]} de ${parte("year")}` };
+}
+
 /**
  * Um dia do calendário da Bahia ("2026-11-10") somado de `dias` (negativo volta): "2026-11-11".
  * Conta só o calendário, sem hora: serve ao fim da fixação e à janela das Mais lidas (E59).

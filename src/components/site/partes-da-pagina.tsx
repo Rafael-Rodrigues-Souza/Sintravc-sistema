@@ -109,8 +109,8 @@ export function TopoComFoto({
   texto: ReactNode;
   /** Abaixo do texto, como o horário no Contato. */
   complemento?: ReactNode;
-  /** O conteúdo do quadro amarelo sobre a foto. */
-  destaqueDaFoto: ReactNode;
+  /** O conteúdo do quadro amarelo sobre a foto; sem ele, a foto fica sem quadro. */
+  destaqueDaFoto?: ReactNode;
   acoes: ReactNode;
 }) {
   return (
@@ -129,7 +129,9 @@ export function TopoComFoto({
         </div>
         <div className="relative lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">
           <FotoPendente className="aspect-[358/250] w-full justify-start rounded-[24px] pt-8 lg:aspect-[4/3]" />
-          <div className="absolute right-5 bottom-5 left-5 max-w-[300px] rounded-[16px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto">{destaqueDaFoto}</div>
+          {destaqueDaFoto ? (
+            <div className="absolute right-5 bottom-5 left-5 max-w-[300px] rounded-[16px] bg-destaque-amarelo p-4 text-destaque-amarelo-texto">{destaqueDaFoto}</div>
+          ) : null}
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:gap-3 lg:col-start-1 lg:row-start-3 lg:mt-5">{acoes}</div>
       </div>
