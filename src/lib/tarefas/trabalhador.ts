@@ -3,6 +3,7 @@ import { PgBoss, type Db } from "pg-boss";
 
 import { executarViradaDoComunicado } from "@/lib/comunicados/tarefa";
 import { executarDesafixar } from "@/lib/conteudos/desafixar";
+import { executarEntradaDoEpisodio } from "@/lib/episodios/tarefa";
 import { executarPublicacaoAgendada, registrarFalhaDaPublicacao } from "@/lib/conteudos/publicar-agendado";
 import { motivoDaFalha } from "@/lib/conteudos/motivo-da-falha";
 import type { Transacao } from "@/lib/db";
@@ -12,11 +13,13 @@ import { lerParametro } from "@/lib/parametros";
 import {
   FILA_COMUNICADO,
   FILA_DESAFIXAR,
+  FILA_EPISODIO,
   FILA_PUBLICAR_AGENDADO,
   FILA_PUBLICAR_AGENDADO_FALHOU,
   type Fila,
   type PedidoComunicado,
   type PedidoDesafixar,
+  type PedidoEpisodio,
   type PedidoPublicacao,
 } from "./fila";
 
@@ -91,6 +94,14 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
           db: bancoDaTransacao(tx),
         });
       },
+      async agendarEpisodio(tx, { episodioId, para }) {
+        const pedido: PedidoEpisodio = { episodioId, para: para.toISOString() };
+        await boss.send(FILA_EPISODIO, pedido, {
+          startAfter: para,
+          singletonKey: `${episodioId}:${pedido.para}`,
+          db: bancoDaTransacao(tx),
+        });
+      },
   };
   try {
     await boss.start();
@@ -112,6 +123,7 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
       await boss.offWork(FILA_PUBLICAR_AGENDADO_FALHOU, { wait: true });
       await boss.offWork(FILA_COMUNICADO, { wait: true });
       await boss.offWork(FILA_DESAFIXAR, { wait: true });
+      await boss.offWork(FILA_EPISODIO, { wait: true });
     },
     async parar() {
       await boss.stop({ graceful: true, timeout: ESPERA_AO_DESLIGAR_MS });
@@ -119,7 +131,7 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
   };
 }
 
-/** Cria as filas da T01, da T02 e da T05 e começa a pegar as tarefas. */
+/** Cria as filas da T01, da T02, da T03 e da T05 e começa a pegar as tarefas. */
 async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador, fila: Fila) {
   const tentativas = opcoes.tentativas ?? (await lerParametro("tarefas.tentativas"));
   const intervalo = opcoes.intervaloSegundos ?? (await lerParametro("tarefas.intervalo_segundos"));
@@ -154,6 +166,11 @@ async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador, fila: Fi
   await garantirFila(boss, FILA_DESAFIXAR, { policy: "short", retryLimit: tentativas, retryDelay: intervalo });
   await boss.work<PedidoDesafixar>(FILA_DESAFIXAR, busca, async ([job]) => {
     if (job) await executarDesafixar(job.data);
+  });
+  // T03: o site já segue o relógio (E61); aqui só o estado do episódio e a Atividade.
+  await garantirFila(boss, FILA_EPISODIO, { policy: "short", retryLimit: tentativas, retryDelay: intervalo });
+  await boss.work<PedidoEpisodio>(FILA_EPISODIO, busca, async ([job]) => {
+    if (job) await executarEntradaDoEpisodio(job.data);
   });
   // Rede de segurança: a tarefa que nem chegou a terminar (servidor caiu no meio, tempo esgotado).
   await boss.work<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO_FALHOU, busca, async ([job]) => {
