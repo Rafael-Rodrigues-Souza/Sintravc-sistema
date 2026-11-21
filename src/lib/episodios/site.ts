@@ -2,7 +2,8 @@ import { and, asc, desc, eq, or, sql, type SQL } from "drizzle-orm";
 
 import { slugificar } from "@/lib/conteudos/publicar";
 import { banco } from "@/lib/db";
-import { categoria, episodio, midia } from "@/lib/db/schema";
+import { esquemaProgramaAoVivo, type ProgramaAoVivo } from "@/lib/config-site/esquema";
+import { categoria, configSite, episodio, midia } from "@/lib/db/schema";
 import { pode } from "@/lib/permissoes";
 import { ehIdDoYoutube } from "@/lib/youtube/link";
 import type { Youtube } from "@/lib/youtube/youtube";
@@ -174,4 +175,25 @@ export async function responderTranscricao(pedido: { youtubeId: string }, deps: 
   const ep = await noArPeloYoutubeId(pedido.youtubeId, deps.agora ?? new Date());
   if (!ep?.transcricao) return naoEncontrado();
   return new Response(ep.transcricao, { headers: { ...TEXTO_PURO, "cache-control": "public, max-age=60" } });
+}
+
+/** Quantos episódios estão no ar (o “Todos os temas” do seletor). */
+export async function totalNoAr(agora: Date = new Date()): Promise<number> {
+  const [linha] = await banco()
+    .select({ total: sql<number>`count(*)::int` })
+    .from(episodio)
+    .where(filtroNoAr(agora));
+  return linha?.total ?? 0;
+}
+
+/**
+ * O programa ao vivo para o site (E61), lido direto do banco, sem o cache de 60 s da ConfigSite
+ * (RN43): ligar ou desligar no painel aparece na próxima visita. É uma leitura pequena, só do campo.
+ */
+export async function programaDoSite(): Promise<ProgramaAoVivo> {
+  const [linha] = await banco()
+    .select({ programa: sql<unknown>`${configSite.dados} -> 'programa'` })
+    .from(configSite)
+    .where(eq(configSite.id, "site"));
+  return esquemaProgramaAoVivo.parse(linha?.programa);
 }

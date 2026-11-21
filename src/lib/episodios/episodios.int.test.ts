@@ -23,7 +23,7 @@ import {
 } from "./episodios";
 import { gravarProgramaAoVivo, lerProgramaAoVivo } from "./gravar-programa";
 import { ConfirmarSaidaDoSite, ErroEpisodio, type CamposEpisodio } from "./regras";
-import { episodiosDoSite, responderCapa, responderTranscricao, temasDoSite, ultimoPrograma } from "./site";
+import { episodiosDoSite, programaDoSite, responderCapa, responderTranscricao, temasDoSite, ultimoPrograma } from "./site";
 import { executarEntradaDoEpisodio } from "./tarefa";
 
 /** 21/11/2026 às 12h00 na Bahia. */
@@ -463,6 +463,8 @@ describe("Programa ao vivo (E61, P10)", () => {
 
     await gravarProgramaAoVivo(novo, { quem: com });
     expect(await lerProgramaAoVivo({ quem: com })).toEqual({ ...novo, dias: [1, 5] });
+    // O site lê na hora, sem o cache de 60 s da ConfigSite.
+    expect(await programaDoSite()).toEqual({ ...novo, dias: [1, 5] });
     const [registro] = await atividadesDe("programa").then((l) => l.filter((a) => a.acao === "radio.programa_editar").slice(-1));
     expect(registro).toMatchObject({ atorId: com.id, detalhe: { de: antes, para: { ...novo, dias: [1, 5] } } });
 
