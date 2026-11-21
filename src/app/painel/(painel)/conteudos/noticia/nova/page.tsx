@@ -3,6 +3,7 @@ import { forbidden } from "next/navigation";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { noticiaVazia } from "@/lib/conteudos/dados";
+import { situacaoDaFixacao } from "@/lib/conteudos/fixar";
 import { pode } from "@/lib/permissoes";
 
 import { EditorNoticia } from "../editor-noticia";
@@ -14,7 +15,10 @@ export const metadata: Metadata = { title: "Nova notícia" };
 export default async function PaginaNovaNoticia() {
   const pessoa = await exigirArea("conteudos");
   if (!pode(pessoa.quem, "criar", { tipo: "noticia" })) forbidden();
-  const { categorias, intervaloMs, limites, arquivos } = await prepararEditor(pessoa.quem, []);
+  const [{ categorias, intervaloMs, limites, arquivos }, fixacao] = await Promise.all([
+    prepararEditor(pessoa.quem, []),
+    pode(pessoa.quem, "fixar", { tipo: "noticia" }) ? situacaoDaFixacao(null) : null,
+  ]);
 
   return (
     <EditorNoticia
@@ -33,6 +37,7 @@ export default async function PaginaNovaNoticia() {
         dados: noticiaVazia(),
         salvoEm: null,
         servidor: null,
+        fixacao,
       }}
       categorias={categorias}
       arquivosIniciais={arquivos}

@@ -6,7 +6,7 @@ import { conteudo, noticia } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import type { Fila } from "@/lib/tarefas/fila";
 
-import { fimDaFixacao } from "./data-da-fixacao";
+import { diaDaFixacao, fimDaFixacao } from "./data-da-fixacao";
 import { rotuloDaNoticia } from "./dados";
 import { ErroConteudo } from "./erros";
 import { registrarAtividadeNoticia, travarNoticia } from "./salvar";
@@ -42,6 +42,21 @@ export async function fixadaAtual(db: Banco | Transacao, agora: Date): Promise<N
     .orderBy(desc(noticia.fixadaAte))
     .limit(1);
   return linha ? { ...linha, fixadaAte: linha.fixadaAte! } : null;
+}
+
+/** O que o editor e a Edição rápida mostram da fixação: a data desta (dia na Bahia) e a outra fixada agora. */
+export type SituacaoDaFixacao = { ate: string | null; outra: { id: string; titulo: string; ate: string } | null };
+
+export async function situacaoDaFixacao(id: string | null, agora: Date = new Date()): Promise<SituacaoDaFixacao> {
+  const [propria, atual] = await Promise.all([
+    id ? banco().select({ fixadaAte: noticia.fixadaAte }).from(noticia).where(eq(noticia.conteudoId, id)) : Promise.resolve([]),
+    fixadaAtual(banco(), agora),
+  ]);
+  const fim = propria[0]?.fixadaAte ?? null;
+  return {
+    ate: fim ? diaDaFixacao(fim) : null,
+    outra: atual && atual.id !== id ? { id: atual.id, titulo: rotuloDaNoticia(atual.titulo), ate: diaDaFixacao(atual.fixadaAte) } : null,
+  };
 }
 
 export type DepsDaFixacao = { quem: QuemDaEquipe; fila: Fila; agora?: Date; sessaoEdicao?: string };

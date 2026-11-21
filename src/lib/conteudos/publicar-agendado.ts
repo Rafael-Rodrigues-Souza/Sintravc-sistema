@@ -8,6 +8,7 @@ import { quandoNaBahia } from "@/lib/datas";
 import type { Enviar } from "@/lib/email";
 import { mensagemPublicacaoAgendadaFalhou } from "@/lib/email/modelos";
 import { lerEnvSite } from "@/lib/env";
+import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
 import type { Fila, PedidoPublicacao } from "@/lib/tarefas/fila";
 
 import { voltarARascunho } from "./agendar";
@@ -34,7 +35,7 @@ export async function executarPublicacaoAgendada(
   deps: { agora?: Date; fila: Fila },
 ): Promise<ResultadoPublicacaoAgendada> {
   const marcadoPara = new Date(pedido.para);
-  return banco().transaction(async (tx) => {
+  const resultado = await banco().transaction(async (tx): Promise<ResultadoPublicacaoAgendada> => {
     const atual = await travarSeAindaExiste(tx, pedido.conteudoId);
     if (!atual || !aindaAgendada(atual, marcadoPara)) return { tipo: "ignorada" };
 
@@ -63,6 +64,9 @@ export async function executarPublicacaoAgendada(
     });
     return { tipo: "publicada", versao };
   });
+  // Fora de um pedido o Next recusa; o site dinâmico já mostra a notícia na próxima visita (E59).
+  if (resultado.tipo === "publicada") revalidarNoticiasDoSite();
+  return resultado;
 }
 
 /** O pedido ainda vale: a notícia está agendada exatamente para esta hora. */

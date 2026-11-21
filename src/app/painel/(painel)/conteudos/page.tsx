@@ -26,6 +26,7 @@ import {
   type TipoConteudo,
 } from "@/lib/conteudos/listar";
 import { rotuloDaNoticia } from "@/lib/conteudos/dados";
+import { situacaoDaFixacao } from "@/lib/conteudos/fixar";
 import { rotuloDoDocumento } from "@/lib/documentos/dados";
 import { seloDosDados } from "@/lib/documentos/selo";
 import { bahiaEmCampos, dataHoraNaBahia, quandoNaBahia } from "@/lib/datas";
@@ -389,9 +390,10 @@ async function dadosDaEdicaoRapida(id: string, quem: Parameters<typeof carregarN
   const noticia = await carregarNoticia(id, { quem });
   if (!noticia || noticia.estado === "arquivado") return null;
   // "Últimas ações" vêm da Atividade, que só o ADM vê (spec §2.3): para os outros, o quadro não aparece.
-  const [acoes, categorias] = await Promise.all([
+  const [acoes, categorias, fixacao] = await Promise.all([
     pode(quem, "ver", { tipo: "atividade" }) ? ultimasAcoes(id, { quem }) : [],
     listarCategorias(["noticias"], { quem }),
+    pode(quem, "fixar", { tipo: "noticia" }) ? situacaoDaFixacao(id) : null,
   ]);
   return {
     categorias: categorias.map(({ id: idCategoria, nome }) => ({ id: idCategoria, nome })),
@@ -409,6 +411,7 @@ async function dadosDaEdicaoRapida(id: string, quem: Parameters<typeof carregarN
       sugestaoDeData: noticia.agendadoPara
         ? bahiaEmCampos(noticia.agendadoPara)
         : { data: bahiaEmCampos(new Date(Date.now() + 24 * 60 * 60 * 1000)).data, hora: "08:00" },
+      fixacao,
     },
     acoes: acoes.map((a, i) => ({
       id: `${i}`,

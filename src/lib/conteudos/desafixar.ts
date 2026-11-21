@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { registrarAtividade } from "@/lib/atividade";
 import { banco } from "@/lib/db";
 import { conteudo, noticia } from "@/lib/db/schema";
+import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
 import type { PedidoDesafixar } from "@/lib/tarefas/fila";
 
 import { rotuloDaNoticia } from "./dados";
@@ -19,7 +20,7 @@ export type ResultadoDesafixar = { tipo: "desafixada" } | { tipo: "ignorada" };
  */
 export async function executarDesafixar(pedido: PedidoDesafixar): Promise<ResultadoDesafixar> {
   const marcadoPara = new Date(pedido.para);
-  return banco().transaction(async (tx) => {
+  const resultado = await banco().transaction(async (tx): Promise<ResultadoDesafixar> => {
     const [atual] = await tx
       .select({ fixadaAte: noticia.fixadaAte, titulo: conteudo.titulo })
       .from(noticia)
@@ -38,4 +39,6 @@ export async function executarDesafixar(pedido: PedidoDesafixar): Promise<Result
     });
     return { tipo: "desafixada" };
   });
+  if (resultado.tipo === "desafixada") revalidarNoticiasDoSite();
+  return resultado;
 }

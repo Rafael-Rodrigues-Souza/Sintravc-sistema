@@ -3,6 +3,7 @@ import { forbidden, notFound } from "next/navigation";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { carregarNoticia, versaoDoServidor } from "@/lib/conteudos/carregar";
+import { situacaoDaFixacao } from "@/lib/conteudos/fixar";
 import { midiasDaNoticia } from "@/lib/conteudos/validar";
 import { pode } from "@/lib/permissoes";
 import { ehUuid } from "@/lib/uuid";
@@ -33,7 +34,10 @@ export default async function PaginaEditarNoticia({ params }: { params: Promise<
     );
   }
 
-  const { categorias, intervaloMs, limites, arquivos } = await prepararEditor(pessoa.quem, midiasDaNoticia(noticia.dados));
+  const [{ categorias, intervaloMs, limites, arquivos }, fixacao] = await Promise.all([
+    prepararEditor(pessoa.quem, midiasDaNoticia(noticia.dados)),
+    pode(pessoa.quem, "fixar", { tipo: "noticia" }) ? situacaoDaFixacao(noticia.id) : null,
+  ]);
 
   return (
     <EditorNoticia
@@ -53,6 +57,7 @@ export default async function PaginaEditarNoticia({ params }: { params: Promise<
         dados: noticia.dados,
         salvoEm: noticia.atualizadoEm.toISOString(),
         servidor: versaoDoServidor(noticia),
+        fixacao,
       }}
       categorias={categorias}
       arquivosIniciais={arquivos}

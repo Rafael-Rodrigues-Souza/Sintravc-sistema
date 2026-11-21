@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
 import { z } from "zod";
 
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
@@ -51,11 +53,13 @@ function erro(e: unknown, contexto: string): { tipo: "erro"; mensagem: string; c
 }
 
 /**
- * Só a lista é revalidada. O editor atualiza o próprio estado: montar a tela de novo perderia o
- * desfazer do texto (como no salvamento, ver acoes.ts).
+ * Só a lista é revalidada no painel. O editor atualiza o próprio estado: montar a tela de novo
+ * perderia o desfazer do texto (como no salvamento, ver acoes.ts). As páginas públicas das
+ * notícias também (RNF08, E59): ocultar, mostrar e arquivar mudam o que está no ar.
  */
 function atualizarTelas() {
   revalidatePath("/painel/conteudos");
+  revalidarNoticiasDoSite();
 }
 
 /** Ocultar do site (RN11): uma ou várias, com o mesmo motivo. */
