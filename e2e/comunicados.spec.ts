@@ -8,6 +8,7 @@ import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { bahiaEmCampos } from "../src/lib/datas";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { apertar } from "./entrar";
+import { publicarNoticiaPelaTela } from "./noticias";
 import { entrarComo, semRolagemLateral, telaEstreita } from "./responsivo";
 
 // Comunicados (US24, CA-US01.1, CA-US01.2, CA-US24.1, CA-US24.2) pela tela, como uma pessoa faria:
@@ -264,23 +265,6 @@ test("depois de fechar a janela com o mouse, a faixa volta a trocar sozinha com 
 /** Os comunicados da página /comunicados, na ordem em que aparecem. */
 const naPagina = (page: Page) => page.getByRole("main").getByRole("list", { name: /ordem da fila/ }).getByRole("article");
 const colunaDeNoticias = (page: Page) => page.getByRole("complementary", { name: "Notícias recentes" });
-
-/** Escreve e publica uma notícia pelo editor, como a pessoa faria (para a coluna “Notícias recentes”). */
-async function publicarNoticiaPelaTela(page: Page, manchete: string) {
-  await page.goto("/painel/conteudos/noticia/nova");
-  const salvo = () => expect(page.getByTestId("status-do-salvamento")).toContainText("Salvo automaticamente às");
-  await page.getByLabel("Manchete").fill(manchete);
-  await salvo();
-  await page.getByLabel("Lide").fill("O plantão funciona das 8h às 17h, na sede do sindicato.");
-  await page.getByRole("textbox", { name: "Corpo da notícia" }).click();
-  await page.keyboard.type("Leve contracheques e documento com foto.");
-  await page.getByLabel("Assinatura").fill("Redação SINTRAVC");
-  await page.getByLabel("Categoria").selectOption({ label: "Jurídico" });
-  await salvo();
-  await page.getByRole("button", { name: "Publicar…" }).click();
-  await page.getByRole("dialog", { name: "Publicar notícia?" }).getByRole("button", { name: "Publicar agora" }).click();
-  await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
-}
 
 test("“Ver todos” leva à página Comunicados: cartões na ordem da fila, com título, “No ar até…” e o texto inteiro", async ({ page }) => {
   const marca = Date.now();
