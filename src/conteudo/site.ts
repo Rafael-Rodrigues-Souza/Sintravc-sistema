@@ -180,3 +180,51 @@ export const COMUNICADOS_PAGINA = {
   vazioAcao: "Voltar ao início",
   noticiasTitulo: "Notícias recentes",
 };
+
+/** Página Notícias (Figma 80:629 / 81:995; E59). */
+export const NOTICIAS_PAGINA = {
+  eyebrow: "Fique por dentro",
+  titulo: "Notícias do SINTRAVC",
+  texto: "Informação, direitos e acontecimentos que impactam a nossa categoria. Acompanhe e fique por dentro.",
+  destaque: "Destaque",
+  maisLidas: "Mais lidas da semana",
+  listaEyebrow: "Todas as notícias",
+  listaTitulo: "Últimas notícias",
+  buscaRotulo: "Buscar notícias",
+  buscaDica: "Buscar notícias por título ou palavra-chave",
+  ordemRotulo: "Ordenar",
+  categoriasRotulo: "Assuntos",
+  todas: "Todas",
+  carregarMais: "Carregar mais notícias",
+  vazioTitulo: "Nenhuma notícia publicada ainda",
+  vazioTexto: "Quando o sindicato publicar uma notícia, ela aparece aqui.",
+  vazioAcao: "Voltar ao início",
+  semResultadoTitulo: "Nenhuma notícia encontrada",
+  semResultadoTexto: "Tente outra palavra ou escolha outro assunto.",
+  semResultadoAcao: "Limpar filtros",
+};
+
+/** “Tem uma sugestão de pauta?” (Figma 80:991): abre o WhatsApp da recepção, sem mensagem pronta (E59). */
+export const SUGESTAO_DE_PAUTA = {
+  titulo: "Tem uma sugestão de pauta?",
+  texto: "Quer compartilhar uma informação relevante para a categoria? Mande para a gente — a notícia pode ser sua.",
+  acao: "Enviar sugestão",
+};
+
+/**
+ * Lateral da notícia aberta (Figma 100:15159; E59). O texto do “Precisa de orientação?” depende do
+ * sindicato (D10): até lá, o marcador visível.
+ */
+export const NOTICIA_LATERAL = {
+  orientacaoTitulo: "Precisa de orientação?",
+  orientacaoTexto: "[Conteúdo a definir pelo sindicato]",
+  orientacaoAcao: "Falar com o sindicato",
+  canalTitulo: "Receba as notícias no WhatsApp",
+  canalTexto: "Entre no canal oficial e receba comunicados, editais e notícias da categoria.",
+  canalAcao: "Entrar no canal",
+  maisNoticiasEyebrow: "Continue lendo",
+  maisNoticiasTitulo: "Mais notícias",
+  verTodas: "Ver todas as notícias",
+  gostou: "Gostou da notícia?",
+  gostouTexto: "Compartilhe e ajude a informação a chegar a mais trabalhadores.",
+};

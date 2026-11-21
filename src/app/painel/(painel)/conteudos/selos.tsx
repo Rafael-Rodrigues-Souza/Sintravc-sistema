@@ -21,27 +21,7 @@ export function SeloEstado({ estado, className }: { estado: EstadoConteudo; clas
   );
 }
 
-/** Cores dos selos de categoria (Figma 117:3030). O nome da cor fica na tabela `categoria`. */
-const COR_DA_CATEGORIA: Record<string, string> = {
-  azul: "bg-destaque-azul-suave text-destaque-azul",
-  marinho: "bg-destaque-marinho-fixo text-texto-invertido",
-  amarelo: "bg-destaque-amarelo text-destaque-amarelo-texto",
-  vermelho: "bg-status-perigo-fundo text-status-perigo-texto",
-  aviso: "bg-status-aviso-fundo text-status-aviso-texto",
-};
-
-export function SeloCategoria({ nome, cor }: { nome: string; cor: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 texto-etiqueta uppercase",
-        COR_DA_CATEGORIA[cor] ?? COR_DA_CATEGORIA.azul,
-      )}
-    >
-      {nome}
-    </span>
-  );
-}
+export { SeloCategoria } from "@/components/selo-categoria";
 
 /**
  * Selo de vigência do documento oficial (C2, E46): calculado pelas datas, separado do estado de

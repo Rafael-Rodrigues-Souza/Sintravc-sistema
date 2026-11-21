@@ -38,6 +38,8 @@ export type NoticiaDoSite = {
   categoria: CategoriaDoSite | null;
   capa: { url: string; alt: string } | null;
   minutosDeLeitura: number;
+  /** "Redação SINTRAVC" quando a assinatura está vazia. */
+  assinatura: string;
 };
 
 export type OrdemDaLista = "recentes" | "antigas";
@@ -56,6 +58,7 @@ const colunasDoCartao = {
   lide: sql<string | null>`${dados} ->> 'lide'`,
   corpo: sql<DadosNoticia["corpo"]>`${dados} -> 'corpo'`,
   capaAlt: sql<string | null>`${dados} ->> 'capaAlt'`,
+  assinatura: sql<string | null>`${dados} ->> 'assinatura'`,
   capaChave: midia.chaveR2,
   categoriaId: categoria.id,
   categoriaNome: categoria.nome,
@@ -88,6 +91,7 @@ function paraCartoes(lidas: LinhaDoCartao[]): NoticiaDoSite[] {
         : null,
     capa: l.capaChave && env ? { url: urlPublica(l.capaChave, env), alt: l.capaAlt ?? "" } : null,
     minutosDeLeitura: Math.max(1, tempoDeLeitura(contarPalavras(l.corpo ?? { type: "doc" }))),
+    assinatura: l.assinatura?.trim() || "Redação SINTRAVC",
   }));
 }
 
