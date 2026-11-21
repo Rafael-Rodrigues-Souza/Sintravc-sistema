@@ -7,6 +7,30 @@ import { z } from "zod";
 const texto = z.string().trim().min(1);
 const linkDaRede = z.url({ protocol: /^https$/ }).nullable();
 
+const hora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora: no formato 13:00");
+
+/** Canal do programa: só endereço https do YouTube. */
+export const linkDeCanalDoYoutube = z
+  .url({ protocol: /^https$/, error: "Use o endereço do canal, começando por https://" })
+  .refine((u) => /^(www\.|m\.)?youtube\.com$/i.test(new URL(u).hostname), "Use um endereço do YouTube (youtube.com/…)");
+
+export const esquemaProgramaAoVivo = z
+  .object({
+    ativo: z.boolean(),
+    canal: linkDeCanalDoYoutube.nullable(),
+    /** Dias da semana, de 0 (domingo) a 6 (sábado). */
+    dias: z
+      .array(z.number().int().min(0).max(6))
+      .min(1, "Marque pelo menos um dia")
+      .refine((d) => new Set(d).size === d.length, "Dia repetido"),
+    /** Início e fim no horário da Bahia (RNF06). */
+    inicio: hora,
+    fim: hora,
+  })
+  .refine((p) => p.fim > p.inicio, { message: "O fim tem de ser depois do início", path: ["fim"] });
+
+export type ProgramaAoVivo = z.infer<typeof esquemaProgramaAoVivo>;
+
 export const esquemaConfigSite = z.object({
   contato: z.object({
     endereco: texto,
@@ -29,6 +53,8 @@ export const esquemaConfigSite = z.object({
     canalWhatsapp: linkDaRede,
   }),
   missao: texto,
+  /** Programa ao vivo do Rádio Chofer (E61, P10): editável por ADM e COM, na área Rádio Chofer. */
+  programa: esquemaProgramaAoVivo,
   historia: z.object({
     /** Cada marco é um destaque da linha do tempo e um subtítulo do texto, com a âncora `id`. */
     marcos: z

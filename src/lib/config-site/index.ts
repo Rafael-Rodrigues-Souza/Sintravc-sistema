@@ -6,7 +6,7 @@ import { lerParametro } from "@/lib/parametros";
 
 import { esquemaConfigSite, type ConfigSite } from "./esquema";
 
-export { ehMarcador, esquemaConfigSite, type ConfigSite } from "./esquema";
+export { ehMarcador, esquemaConfigSite, esquemaProgramaAoVivo, type ConfigSite, type ProgramaAoVivo } from "./esquema";
 
 /**
  * Cache em memória (RN43): uma mudança na ConfigSite aparece no site depois de, no máximo,
