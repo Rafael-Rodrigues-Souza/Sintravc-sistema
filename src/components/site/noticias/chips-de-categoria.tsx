@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 /**
  * Assuntos (Figma 80:820; CA-US02.1): um chip por categoria com notícia no ar, com a contagem. São
  * links (o endereço muda e pode ser compartilhado); o escolhido tem `aria-current`. No celular, a
- * fileira rola para o lado, sem rolar a página (81:995).
+ * fileira rola para o lado, sem rolar a página (81:995). O chip é `relative`: sem isso, o texto só
+ * para leitor de tela (absoluto) dos chips fora da tela alargava a página.
  */
 export function ChipsDeCategoria({
   categorias,
@@ -31,7 +32,7 @@ export function ChipsDeCategoria({
                 href={enderecoDaLista({ categoria: item.slug, busca: filtros.busca, ordem: filtros.ordem })}
                 aria-current={ativo ? "page" : undefined}
                 className={cn(
-                  "inline-flex h-11 items-center gap-2 rounded-full px-[18px] texto-navegacao whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+                  "relative inline-flex h-11 items-center gap-2 rounded-full px-[18px] texto-navegacao whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
                   ativo
                     ? "bg-destaque-amarelo text-destaque-marinho-fixo"
                     : "border border-borda-padrao bg-fundo-superficie text-texto-primario hover:bg-fundo-superficie-alt",

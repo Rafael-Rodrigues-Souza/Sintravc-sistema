@@ -204,16 +204,23 @@ test.describe("Notícias no site", () => {
   });
 });
 
-/** Garante notícias no ar suficientes para a lista ter mais de uma página (o volume viria de dias de uso). */
+/**
+ * Garante notícias no ar suficientes para a lista ter mais de uma página, com pelo menos uma em cada
+ * categoria de notícias (os assuntos passam da largura do celular, como no site de verdade). O volume
+ * viria de dias de uso.
+ */
 async function garantirVolume(minimo: number) {
+  const categorias = await consultar((sql) => sql<{ id: string; total: number }[]>`
+    select cat.id, count(c.id)::int as total from categoria cat
+    left join conteudo c on c.categoria_id = cat.id and c.tipo = 'noticia' and c.estado = 'publicado' and c.slug is not null
+    where cat.escopos @> array['noticias']::escopo_categoria[] group by cat.id order by cat.ordem`);
   const [linha] = await consultar((sql) => sql<{ total: number }[]>`
     select count(*)::int as total from conteudo where tipo = 'noticia' and estado = 'publicado' and slug is not null`);
-  const faltam = minimo - (linha?.total ?? 0);
-  if (faltam <= 0) return;
-  const [geral] = await consultar((sql) => sql<{ id: string }[]>`select id from categoria where nome = 'Geral'`);
-  const categoriaId = geral!.id;
+  const semNoticia = categorias.filter((c) => c.total === 0).map((c) => c.id);
+  const faltam = Math.max(minimo - (linha?.total ?? 0), semNoticia.length);
   const autor = pessoas.com.id;
   for (let i = 0; i < faltam; i++) {
+    const categoriaId = semNoticia[i] ?? categorias[i % categorias.length]!.id;
     const titulo = `Notícia para paginar ${i + 1} (${Date.now()})`;
     const dados = {
       titulo,

@@ -86,14 +86,17 @@ export default async function PaginaNoticia({ params }: { params: Promise<{ slug
           },
           compartilhar: <Compartilhar url={url} titulo={paraLer.titulo} tom="sobre-escuro" />,
           rodape: (
-            <section aria-labelledby="gostou-da-noticia" className="flex flex-col gap-4 border-t border-borda-padrao pt-7 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-1">
-                <h2 id="gostou-da-noticia" className="texto-titulo-card text-texto-primario">
-                  {t.gostou}
-                </h2>
-                <p className="texto-pequeno text-texto-secundario">{t.gostouTexto}</p>
+            // Texto e botões lado a lado só quando a coluna da matéria tem espaço (não no iPad deitado).
+            <section aria-labelledby="gostou-da-noticia" className="@container border-t border-borda-padrao pt-7">
+              <div className="flex flex-col gap-4 @min-[700px]:flex-row @min-[700px]:items-center @min-[700px]:justify-between">
+                <div className="flex flex-col gap-1">
+                  <h2 id="gostou-da-noticia" className="texto-titulo-card text-texto-primario">
+                    {t.gostou}
+                  </h2>
+                  <p className="texto-pequeno text-texto-secundario">{t.gostouTexto}</p>
+                </div>
+                <Compartilhar url={url} titulo={paraLer.titulo} tom="claro" />
               </div>
-              <Compartilhar url={url} titulo={paraLer.titulo} tom="claro" />
             </section>
           ),
           lateral: (
