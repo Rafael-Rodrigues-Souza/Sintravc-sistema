@@ -7,17 +7,16 @@ import { banco } from "@/lib/db";
 import { configSite } from "@/lib/db/schema";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 
-import { ErroEpisodio } from "./regras";
+import { ErroDoRadio } from "./regras";
 
 /** Erro do formulário do programa ao vivo, com o campo onde mostrar. */
-export class ErroPrograma extends Error {
-  constructor(
-    mensagem: string,
-    readonly campo?: "canal" | "dias" | "inicio" | "fim",
-  ) {
-    super(mensagem);
-    this.name = "ErroPrograma";
-  }
+export class ErroPrograma extends ErroDoRadio<"canal" | "dias" | "inicio" | "fim"> {}
+
+/** “youtube.com/@sintravc”, sem o https://, também vale: o canal é guardado com o endereço completo. */
+export function completarCanal(digitado: string | null): string | null {
+  const texto = digitado?.trim() ?? "";
+  if (!texto) return null;
+  return /^https?:\/\//i.test(texto) ? texto : `https://${texto}`;
 }
 
 /** Lê o programa ao vivo para o painel (sem o cache do site: quem edita vê o que está gravado). */
@@ -34,7 +33,7 @@ export async function lerProgramaAoVivo(deps: { quem: QuemDaEquipe }): Promise<P
  */
 export async function gravarProgramaAoVivo(novo: ProgramaAoVivo, deps: { quem: QuemDaEquipe }): Promise<void> {
   exigir(deps.quem, "gerenciar", { tipo: "radio" });
-  const conferido = esquemaProgramaAoVivo.safeParse(novo);
+  const conferido = esquemaProgramaAoVivo.safeParse({ ...novo, canal: completarCanal(novo.canal) });
   if (!conferido.success) {
     const problema = conferido.error.issues[0];
     const campo = problema?.path[0];
@@ -47,7 +46,7 @@ export async function gravarProgramaAoVivo(novo: ProgramaAoVivo, deps: { quem: Q
 
   await banco().transaction(async (tx) => {
     const [linha] = await tx.select({ dados: configSite.dados }).from(configSite).where(eq(configSite.id, "site")).for("update");
-    if (!linha) throw new ErroEpisodio("nao_encontrado", "Os dados do site não foram encontrados.");
+    if (!linha) throw new ErroPrograma("Os dados do site não foram encontrados. Atualize a página.");
     const antes = (linha.dados as { programa?: ProgramaAoVivo }).programa ?? null;
     if (JSON.stringify(antes) === JSON.stringify(programa)) return;
 

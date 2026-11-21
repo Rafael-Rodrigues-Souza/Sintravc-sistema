@@ -4,19 +4,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Computador e tablet deitado: modal. Abaixo de lg: folha inferior (E49, E50). */
-export function useTelaGrande() {
-  const [grande, setGrande] = React.useState(true);
-  React.useEffect(() => {
-    const consulta = window.matchMedia("(min-width: 1024px)");
-    const mudar = () => setGrande(consulta.matches);
-    mudar();
-    consulta.addEventListener("change", mudar);
-    return () => consulta.removeEventListener("change", mudar);
-  }, []);
-  return grande;
-}
-
 /** Interruptor (Figma 166:17373 e 166:17629): botão com role="switch", como o do editor de documento. */
 export function Interruptor({
   ligado,
@@ -56,8 +43,3 @@ export function Interruptor({
     </button>
   );
 }
-
-export const SEM_CONEXAO: { tipo: "erro"; mensagem: string; campo?: string } = {
-  tipo: "erro",
-  mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo.",
-};

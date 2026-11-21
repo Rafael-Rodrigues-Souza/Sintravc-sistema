@@ -1,4 +1,4 @@
-import type { ProgramaAoVivo } from "@/lib/config-site/esquema";
+import { minutosDoDia, type ProgramaAoVivo } from "@/lib/config-site/esquema";
 import { FUSO } from "@/lib/datas";
 
 /**
@@ -56,8 +56,8 @@ export function linhaAoVivo(p: Pick<ProgramaAoVivo, "dias" | "inicio">): string 
   return `Ao vivo às ${juntar(marcados.map((d) => `${NOME_DO_DIA[d]}s`))} · ${hora}`;
 }
 
-/** O dia da semana (0 = domingo) e a hora "HH:MM" de um instante, no horário da Bahia. */
-function agoraNaBahia(instante: Date): { dia: number; hora: string } {
+/** O dia da semana (0 = domingo) e os minutos do dia de um instante, no horário da Bahia. */
+function agoraNaBahia(instante: Date): { dia: number; minutos: number } {
   const partes = new Intl.DateTimeFormat("en-US", {
     timeZone: FUSO,
     weekday: "short",
@@ -67,14 +67,14 @@ function agoraNaBahia(instante: Date): { dia: number; hora: string } {
   }).formatToParts(instante);
   const valor = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? "";
   const dia = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(valor("weekday"));
-  return { dia, hora: `${valor("hour")}:${valor("minute")}` };
+  return { dia, minutos: minutosDoDia(`${valor("hour")}:${valor("minute")}`) };
 }
 
 /** O programa está no ar agora? Ligado, num dia marcado, do início (incluído) ao fim (excluído), na Bahia. A Home usa (#18). */
 export function programaNoAr(p: ProgramaAoVivo, instante: Date): boolean {
   if (!p.ativo) return false;
-  const { dia, hora } = agoraNaBahia(instante);
-  return p.dias.includes(dia) && hora >= p.inicio && hora < p.fim;
+  const { dia, minutos } = agoraNaBahia(instante);
+  return p.dias.includes(dia) && minutos >= minutosDoDia(p.inicio) && minutos < minutosDoDia(p.fim);
 }
 
 /** Os links do topo: o canal e o “inscrever-se” do YouTube (`?sub_confirmation=1`). Sem canal, nenhum. */

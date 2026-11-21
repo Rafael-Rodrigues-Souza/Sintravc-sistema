@@ -9,6 +9,12 @@ const linkDaRede = z.url({ protocol: /^https$/ }).nullable();
 
 const hora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora: no formato 13:00");
 
+/** "13:30" → 810: os horários do programa são comparados em minutos do dia, não como texto. */
+export function minutosDoDia(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
 /** Canal do programa: só endereço https do YouTube. */
 export const linkDeCanalDoYoutube = z
   .url({ protocol: /^https$/, error: "Use o endereço do canal, começando por https://" })
@@ -27,7 +33,7 @@ export const esquemaProgramaAoVivo = z
     inicio: hora,
     fim: hora,
   })
-  .refine((p) => p.fim > p.inicio, { message: "O fim tem de ser depois do início", path: ["fim"] });
+  .refine((p) => minutosDoDia(p.fim) > minutosDoDia(p.inicio), { message: "O fim tem de ser depois do início", path: ["fim"] });
 
 export type ProgramaAoVivo = z.infer<typeof esquemaProgramaAoVivo>;
 

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
-import { urlPublica } from "@/lib/armazenamento";
 import { bahiaEmCampos, dataNaBahia } from "@/lib/datas";
-import { lerEnvArmazenamento } from "@/lib/env";
+import { enderecoDaCapa } from "@/lib/episodios/capa";
 import { listarEpisodios, proximoNumero, temasDoRadio, ultimoProgramaMarcado } from "@/lib/episodios/episodios";
 import { lerProgramaAoVivo } from "@/lib/episodios/gravar-programa";
 import { textoDaHora } from "@/lib/episodios/programa";
@@ -38,13 +37,12 @@ export default async function PaginaRadio({ searchParams }: { searchParams: Prom
     ultimoProgramaMarcado(deps),
     limitesDaMidia(),
   ]);
-  const env = lista.itens.some((e) => e.capaChave) ? lerEnvArmazenamento() : null;
 
   const episodios: EpisodioNaLista[] = lista.itens.map((e) => ({
     id: e.id,
     numero: e.numero,
     titulo: e.titulo,
-    capaUrl: e.capaChave && env ? urlPublica(e.capaChave, env) : `/painel/radio/capa/${e.youtubeId}`,
+    capaUrl: enderecoDaCapa(e, "painel"),
     exibicao: e.exibicaoEm ? `${dataNaBahia(e.exibicaoEm)} · ${textoDaHora(bahiaEmCampos(e.exibicaoEm).hora)}` : null,
     duracao: e.duracaoSeg ? textoDaDuracao(e.duracaoSeg) : null,
     duracaoSeg: e.duracaoSeg,

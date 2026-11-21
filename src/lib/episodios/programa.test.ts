@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { esquemaProgramaAoVivo, minutosDoDia } from "@/lib/config-site/esquema";
+
+import { completarCanal } from "./gravar-programa";
 import { linhaAoVivo, linksDoCanal, programaNoAr, textoDaHora, textoDoHorario, textoDosDias } from "./programa";
 
 const programa = {
@@ -52,6 +55,15 @@ describe("programa ao vivo: no ar agora (horário da Bahia, UTC−3)", () => {
   });
 });
 
+describe("horários em minutos", () => {
+  it("compara pelo relógio, não pelo texto", () => {
+    expect(minutosDoDia("13:30")).toBe(810);
+    expect(minutosDoDia("09:05")).toBe(545);
+    expect(esquemaProgramaAoVivo.safeParse({ ...programa, inicio: "09:00", fim: "13:00" }).success).toBe(true);
+    expect(esquemaProgramaAoVivo.safeParse({ ...programa, inicio: "13:00", fim: "13:00" }).success).toBe(false);
+  });
+});
+
 describe("links do canal", () => {
   it("assistir abre o canal; inscrever acrescenta o sub_confirmation", () => {
     expect(linksDoCanal("https://www.youtube.com/@sintravc")).toEqual({
@@ -59,5 +71,12 @@ describe("links do canal", () => {
       inscrever: "https://www.youtube.com/@sintravc?sub_confirmation=1",
     });
     expect(linksDoCanal(null)).toBeNull();
+  });
+
+  it("completa o https:// do canal digitado sem ele", () => {
+    expect(completarCanal("youtube.com/@sintravc")).toBe("https://youtube.com/@sintravc");
+    expect(completarCanal("https://www.youtube.com/@sintravc")).toBe("https://www.youtube.com/@sintravc");
+    expect(completarCanal("  ")).toBeNull();
+    expect(completarCanal(null)).toBeNull();
   });
 });

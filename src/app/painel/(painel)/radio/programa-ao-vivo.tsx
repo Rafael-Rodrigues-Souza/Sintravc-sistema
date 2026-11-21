@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { SEM_CONEXAO } from "@/components/painel/sem-conexao";
+import { useTelaGrande } from "@/components/painel/use-tela-grande";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,12 +14,12 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ProgramaAoVivo as Programa } from "@/lib/config-site/esquema";
+import { minutosDoDia, type ProgramaAoVivo as Programa } from "@/lib/config-site/esquema";
 import { DIAS_DA_SEMANA, NOME_CURTO_DO_DIA, NOME_DO_DIA, textoDoHorario } from "@/lib/episodios/programa";
 import { cn } from "@/lib/utils";
 
 import { acaoGravarPrograma } from "./acoes";
-import { Interruptor, SEM_CONEXAO, useTelaGrande } from "./pecas";
+import { Interruptor } from "./pecas";
 
 /** "https://www.youtube.com/@sintravc" → "youtube.com/@sintravc", como no Figma. */
 function canalCurto(canal: string) {
@@ -186,7 +188,7 @@ function CorpoDoPrograma({
         ? { mensagem: "Marque pelo menos um dia.", campo: "dias" }
         : !inicio
           ? { mensagem: "Escolha a hora de início.", campo: "inicio" }
-          : !fim || fim <= inicio
+          : !fim || minutosDoDia(fim) <= minutosDoDia(inicio)
             ? { mensagem: "O fim tem de ser depois do início.", campo: "fim" }
             : null;
     if (local) {
@@ -199,7 +201,7 @@ function CorpoDoPrograma({
     const r = await acaoGravarPrograma({ ativo: programa.ativo, canal, dias, inicio, fim }).catch(() => SEM_CONEXAO);
     setGravando(false);
     if (r.tipo === "erro") {
-      const campo = (["canal", "dias", "inicio", "fim"] as const).find((c) => c === r.campo);
+      const campo = (["canal", "dias", "inicio", "fim"] as const).find((c) => "campo" in r && c === r.campo);
       setErro({ mensagem: r.mensagem, campo });
       if (campo) document.getElementById(`programa-${campo}`)?.focus();
       return;

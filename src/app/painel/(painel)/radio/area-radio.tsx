@@ -7,6 +7,7 @@ import { DropdownMenu } from "radix-ui";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { SEM_CONEXAO } from "@/components/painel/sem-conexao";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type { ProgramaAoVivo as Programa } from "@/lib/config-site/esquema";
@@ -23,7 +24,6 @@ import {
   type Resposta,
 } from "./acoes";
 import { FormularioEpisodio } from "./formulario-episodio";
-import { SEM_CONEXAO } from "./pecas";
 import { ProgramaAoVivo } from "./programa-ao-vivo";
 
 export type EpisodioNaLista = {

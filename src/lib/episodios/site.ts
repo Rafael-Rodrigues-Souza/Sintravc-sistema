@@ -1,18 +1,13 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import { and, asc, desc, eq, or, sql, type SQL } from "drizzle-orm";
 
-import { urlPublica } from "@/lib/armazenamento";
 import { slugificar } from "@/lib/conteudos/publicar";
 import { banco } from "@/lib/db";
 import { categoria, episodio, midia } from "@/lib/db/schema";
-import { lerEnvArmazenamento } from "@/lib/env";
-import { conferirSessaoDaEquipe, sessaoRecusada } from "@/lib/acesso/sessao-da-equipe";
 import { pode } from "@/lib/permissoes";
 import { ehIdDoYoutube } from "@/lib/youtube/link";
 import type { Youtube } from "@/lib/youtube/youtube";
 
+import { enderecoDaCapa, lerCapaPadrao, respostaDeImagem, TEXTO_PURO } from "./capa";
 import { filtroNoAr } from "./comum";
 import { EPISODIOS_POR_LEVA, numeroDaBusca, type FiltrosDoRadio } from "./filtros";
 
@@ -36,11 +31,6 @@ export type EpisodioDoSite = {
 };
 
 export type TemaDoSite = { slug: string; nome: string; total: number };
-
-/** A capa do episódio no site: a da Mídia, se trocada, ou a do YouTube pela rota `/radio-chofer/capa/[id]`. */
-export function enderecoDaCapaNoSite(youtubeId: string, capaChave: string | null): string {
-  return capaChave ? urlPublica(capaChave, lerEnvArmazenamento()) : `/radio-chofer/capa/${youtubeId}`;
-}
 
 const colunas = {
   id: episodio.id,
@@ -69,7 +59,7 @@ type Lida = {
 };
 
 function paraOSite({ capaChave, ...l }: Lida): EpisodioDoSite {
-  return { ...l, exibicaoEm: l.exibicaoEm!, capaUrl: enderecoDaCapaNoSite(l.youtubeId, capaChave) };
+  return { ...l, exibicaoEm: l.exibicaoEm!, capaUrl: enderecoDaCapa({ youtubeId: l.youtubeId, capaChave }, "site") };
 }
 
 function selecionar() {
@@ -155,8 +145,8 @@ async function noArPeloYoutubeId(youtubeId: string, agora: Date) {
   return linha ?? null;
 }
 
-const CAPA_PADRAO = path.join(process.cwd(), "public", "site", "radio", "capa-padrao.jpg");
 const NAO_ENCONTRADO = "Este episódio não está disponível no site.";
+const naoEncontrado = () => new Response(NAO_ENCONTRADO, { status: 404, headers: TEXTO_PURO });
 
 /**
  * A capa do episódio no site (E61): `/radio-chofer/capa/[youtubeId]`. Procura o episódio no ar pelo
@@ -170,60 +160,18 @@ export async function responderCapa(
 ): Promise<Response> {
   if (!pode({ tipo: "visitante" }, "ver", { tipo: "site_publico" })) return new Response(null, { status: 403 });
   const ep = await noArPeloYoutubeId(pedido.youtubeId, deps.agora ?? new Date());
-  if (!ep) return new Response(NAO_ENCONTRADO, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+  if (!ep) return naoEncontrado();
 
   const capa = await deps.youtube.baixarCapa(ep.youtubeId);
-  if (capa) {
-    return new Response(capa.bytes as BodyInit, {
-      headers: {
-        "content-type": capa.tipo,
-        "cache-control": "public, max-age=86400, stale-while-revalidate=604800",
-        "x-content-type-options": "nosniff",
-      },
-    });
-  }
-  const padrao = await readFile(CAPA_PADRAO);
-  return new Response(new Uint8Array(padrao) as BodyInit, {
-    headers: {
-      "content-type": "image/jpeg",
-      // Pouco tempo: quando o YouTube voltar, a capa certa aparece logo.
-      "cache-control": "public, max-age=300",
-      "x-content-type-options": "nosniff",
-      "x-capa-padrao": "1",
-    },
-  });
+  if (capa) return respostaDeImagem(capa.bytes, capa.tipo, "public, max-age=86400, stale-while-revalidate=604800");
+  // Pouco tempo de cache na padrão: quando o YouTube voltar, a capa certa aparece logo.
+  return respostaDeImagem(await lerCapaPadrao(), "image/jpeg", "public, max-age=300", { "x-capa-padrao": "1" });
 }
 
 /** A transcrição do episódio no ar (E55), em texto simples, pedida só quando a janela abre. */
 export async function responderTranscricao(pedido: { youtubeId: string }, deps: { agora?: Date } = {}): Promise<Response> {
   if (!pode({ tipo: "visitante" }, "ver", { tipo: "site_publico" })) return new Response(null, { status: 403 });
   const ep = await noArPeloYoutubeId(pedido.youtubeId, deps.agora ?? new Date());
-  if (!ep?.transcricao) return new Response(NAO_ENCONTRADO, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
-  return new Response(ep.transcricao, {
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=60",
-      "x-content-type-options": "nosniff",
-    },
-  });
-}
-
-/**
- * A capa do vídeo no painel (`/painel/radio/capa/[youtubeId]`): a prévia do modal, antes de salvar.
- * Só para quem gerencia o Rádio Chofer; também passa pelo servidor, para o painel não depender do
- * i.ytimg.com no navegador. Sem capa no YouTube, a padrão.
- */
-export async function responderCapaDoPainel(
-  pedido: { youtubeId: string; headers: Headers },
-  deps: { youtube: Youtube },
-): Promise<Response> {
-  const pessoa = await conferirSessaoDaEquipe(pedido.headers);
-  if (sessaoRecusada(pessoa)) return new Response(null, { status: 401 });
-  if (!pode(pessoa.quem, "gerenciar", { tipo: "radio" })) return new Response(null, { status: 403 });
-  if (!ehIdDoYoutube(pedido.youtubeId)) return new Response(null, { status: 404 });
-  const capa = await deps.youtube.baixarCapa(pedido.youtubeId);
-  const bytes = capa?.bytes ?? new Uint8Array(await readFile(CAPA_PADRAO));
-  return new Response(bytes as BodyInit, {
-    headers: { "content-type": capa?.tipo ?? "image/jpeg", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" },
-  });
+  if (!ep?.transcricao) return naoEncontrado();
+  return new Response(ep.transcricao, { headers: { ...TEXTO_PURO, "cache-control": "public, max-age=60" } });
 }

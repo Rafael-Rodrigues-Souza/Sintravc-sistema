@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { lerEnvYoutube } from "@/lib/env";
+
 import { segundosDoIso } from "./duracao";
 import { enderecoDoVideo } from "./link";
 
@@ -152,6 +154,7 @@ export function youtubeSimulado(): Youtube {
 
 /** A versão do sistema: simulada no e2e (YOUTUBE_SIMULADO=1), real nos outros ambientes. */
 export function youtubeDoSistema(): Youtube {
-  if (process.env.YOUTUBE_SIMULADO === "1") return youtubeSimulado();
-  return youtubeReal({ chaveDataApi: process.env.YOUTUBE_API_KEY?.trim() || undefined });
+  const env = lerEnvYoutube();
+  if (env.YOUTUBE_SIMULADO) return youtubeSimulado();
+  return youtubeReal({ chaveDataApi: env.YOUTUBE_API_KEY });
 }

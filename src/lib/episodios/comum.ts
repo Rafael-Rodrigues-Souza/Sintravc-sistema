@@ -15,11 +15,14 @@ export function filtroNoAr(agora: Date) {
   return and(inArray(episodio.estado, ["agendado", "publicado"]), isNotNull(episodio.exibicaoEm), lte(episodio.exibicaoEm, agora));
 }
 
+/** O episódio como a Atividade e os avisos o descrevem. */
+export type AlvoDoEpisodio = { id: string; numero: number; titulo: string };
+
 /** Grava a ação na Atividade, na transação de quem chamou. Sem `quem`, o ator é o sistema (T03). */
 export async function registrar(
   tx: Transacao,
   quem: QuemDaEquipe | null,
-  alvo: { id: string; numero: number; titulo: string },
+  alvo: AlvoDoEpisodio,
   acao: string,
   detalhe: Record<string, unknown> = {},
 ) {
