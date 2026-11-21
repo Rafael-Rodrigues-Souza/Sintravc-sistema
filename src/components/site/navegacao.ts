@@ -10,6 +10,7 @@ export type EntradaDoMenu = ItemDeMenu | GrupoDeMenu;
 export const LINKS = {
   inicio: { rotulo: "Início", href: "/" },
   noticias: { rotulo: "Notícias", href: "/noticias" },
+  comunicados: { rotulo: "Comunicados", href: "/comunicados" },
   instituicao: { rotulo: "Instituição", href: "/sindicato/instituicao" },
   diretoria: { rotulo: "Diretoria", href: "/sindicato/diretoria" },
   beneficios: { rotulo: "Benefícios", href: "/sindicato/beneficios" },
@@ -33,7 +34,8 @@ export const DOCUMENTOS: GrupoDeMenu = {
   itens: [LINKS.acordos, LINKS.editais],
 };
 
-export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, LINKS.noticias, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
+/** Comunicados não está no Figma (E58): é por onde a pessoa acha de novo o aviso que fechou na faixa. */
+export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, LINKS.noticias, LINKS.comunicados, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
 
 export function ehGrupo(entrada: EntradaDoMenu): entrada is GrupoDeMenu {
   return "itens" in entrada;

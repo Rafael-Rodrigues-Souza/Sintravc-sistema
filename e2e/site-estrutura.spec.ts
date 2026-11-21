@@ -65,6 +65,23 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     await expect(menuPrincipal(page).getByRole("link", { name: "Benefícios" })).toBeVisible();
   });
 
+  test("na menor tela com o menu no cabeçalho (1024 px), os 7 itens, com Comunicados, cabem numa linha antes da busca (E58)", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 700 });
+    await page.goto("/");
+    const itens = menuPrincipal(page).getByRole("listitem").filter({ visible: true });
+    await expect(itens).toHaveCount(7);
+    await expect(menuPrincipal(page).getByRole("link", { name: "Comunicados" })).toHaveAttribute("href", "/comunicados");
+    const alturas = new Set<number>();
+    for (const rotulo of await menuPrincipal(page).locator(":scope > div > ul > li > :first-child").all()) {
+      alturas.add(Math.round((await rotulo.boundingBox())!.height));
+    }
+    expect(alturas.size, "todos os itens com a altura de uma linha").toBe(1);
+    const fimDoMenu = (await menuPrincipal(page).boundingBox())!;
+    const busca = (await page.getByRole("link", { name: "Buscar notícias" }).boundingBox())!;
+    expect(fimDoMenu.x + fimDoMenu.width).toBeLessThan(busca.x);
+    await semRolagemLateral(page);
+  });
+
   test("teclado: pular para o conteúdo, abrir o submenu com Enter e fechar com Esc", async ({ page }) => {
     await page.goto("/");
     await page.keyboard.press("Tab");

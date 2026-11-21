@@ -169,3 +169,13 @@ export const PAGINA_LEGAL = {
   alertaTitulo: "Texto em validação",
   alertaTexto: "O texto final é escrito e aprovado pelo advogado do sindicato antes da publicação.",
 };
+
+/** Página Comunicados (E58, sem frame no Figma): os avisos no ar agora, na ordem da fila. */
+export const COMUNICADOS_PAGINA = {
+  eyebrow: "Avisos do sindicato",
+  titulo: "Comunicados",
+  texto: "Os avisos que estão no ar agora, inclusive os que você fechou na faixa amarela.",
+  vazioTitulo: "Nenhum comunicado no momento",
+  vazioTexto: "Quando o sindicato publicar um aviso, ele aparece aqui e na faixa amarela no alto do site.",
+  vazioAcao: "Voltar ao início",
+};

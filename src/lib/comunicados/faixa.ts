@@ -11,12 +11,15 @@ export type ComunicadoDaFaixa = {
   mensagem: string;
   /** O “Saiba mais”. Sem link, ou com o conteúdo fora do site, a faixa não mostra o link. */
   link: { href: string; externo: boolean } | null;
+  /** Quando sai do ar (o “No ar até…” da página Comunicados). */
+  fim: Date;
 };
 
 /**
  * Os comunicados no ar agora, na ordem da fila (RF08, RN14, CA-US01.1, CA-US01.2). Decide pelo
  * relógio, não pelo `estado` (E58): a faixa entra e sai na hora certa mesmo se a tarefa T02 atrasar,
- * e o site não precisa ser publicado de novo. É pública: não passa por `pode()`, como o resto do site.
+ * e o site não precisa ser publicado de novo. Serve a faixa e a página /comunicados. É pública: não
+ * passa por `pode()`, como o resto do site.
  */
 export async function comunicadosNoAr(agora: Date = new Date()): Promise<ComunicadoDaFaixa[]> {
   const linhas = await banco()
@@ -24,6 +27,7 @@ export async function comunicadosNoAr(agora: Date = new Date()): Promise<Comunic
       id: comunicado.id,
       mensagem: comunicado.mensagem,
       linkUrl: comunicado.linkUrl,
+      fim: comunicado.fim,
       alvoTipo: conteudo.tipo,
       alvoSlug: conteudo.slug,
       alvoEstado: conteudo.estado,
@@ -37,6 +41,7 @@ export async function comunicadosNoAr(agora: Date = new Date()): Promise<Comunic
     id: l.id,
     mensagem: l.mensagem,
     link: linkDaFaixa(l),
+    fim: l.fim!, // no ar quer dizer fim > agora: nunca é nulo aqui
   }));
 }
 

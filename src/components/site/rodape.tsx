@@ -70,7 +70,7 @@ export function Rodape({ config, linkFiliacao }: { config: ConfigSite; linkFilia
 
         {/* No celular (2 colunas), os pares são Navegação e Associado, depois Sindicato e Documentos (Figma 295:51242 e 295:51252). */}
         <nav aria-label="Rodapé" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:flex lg:gap-12 xl:gap-16">
-          <Coluna titulo="Navegação" itens={[LINKS.inicio, LINKS.noticias, LINKS.radio, LINKS.contato]} />
+          <Coluna titulo="Navegação" itens={[LINKS.inicio, LINKS.noticias, LINKS.comunicados, LINKS.radio, LINKS.contato]} />
           <Coluna titulo="Sindicato" itens={SINDICATO.itens} className="max-sm:order-2" />
           <Coluna titulo="Documentos" itens={DOCUMENTOS.itens} className="max-sm:order-2" />
           <Coluna

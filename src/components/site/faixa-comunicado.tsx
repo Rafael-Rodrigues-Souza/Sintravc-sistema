@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
@@ -7,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 import { COOKIE_COMUNICADOS_FECHADOS, juntarFechados, lerFechados } from "./comunicados-fechados";
 import { useDeslize } from "./deslize";
-import { JanelaComunicados, type VistaDaJanela } from "./janela-comunicados";
+import { JanelaComunicados } from "./janela-comunicados";
+import { LINKS } from "./navegacao";
 
 export type ComunicadoNaFaixa = {
   id: string;
@@ -27,7 +30,8 @@ const botao =
  *   pessoa passa pelas setas ou pelo deslize. Com menos movimento pedido pelo sistema, continua
  *   trocando, só sem a transição. O X cumpre a WCAG 2.2.2 (dá para esconder o que se move).
  * - Deslizar o dedo de lado passa para o próximo ou o anterior, sem atrapalhar a rolagem da página.
- * - A mensagem abre a janela dos comunicados em destaque; “Ver todos” (dois ou mais) abre a lista.
+ * - A mensagem abre a janela dos comunicados em destaque. “Ver todos” (dois ou mais) leva à página
+ *   /comunicados, que também mostra os fechados pelo X.
  * - Todos os textos ficam empilhados no mesmo lugar: a faixa tem a altura do maior e não pula.
  * - O X fecha a faixa e guarda os comunicados fechados num cookie; volta se entrar um novo (E58).
  */
@@ -52,17 +56,18 @@ export function FaixaComunicado({
   const [emUso, setEmUso] = React.useState(false);
   const [focoDentro, setFocoDentro] = React.useState(false);
   const [anuncio, setAnuncio] = React.useState(false);
-  const [janela, setJanela] = React.useState<VistaDaJanela | null>(null);
-  // Quem abriu a janela, para o foco voltar a ele ao fechar.
-  const abridor = React.useRef<"mensagem" | "todos">("mensagem");
+  const [janelaAberta, setJanelaAberta] = React.useState(false);
   const secao = React.useRef<HTMLElement>(null);
+  const caminho = usePathname();
 
   const total = comunicados.length;
   const indice = total === 0 ? 0 : Math.min(atual, total - 1);
   const varios = total > 1 && modo !== "miniatura";
   const noSite = modo === "site";
   const trocaSozinha = varios && noSite;
-  const parada = passouPelaPessoa || emUso || focoDentro || janela !== null;
+  const parada = passouPelaPessoa || emUso || focoDentro || janelaAberta;
+  // Na própria página Comunicados, o “Ver todos” levaria para onde a pessoa já está.
+  const comVerTodos = noSite && varios && caminho !== LINKS.comunicados.href;
 
   function ir(passo: number) {
     setAnuncio(true);
@@ -78,11 +83,6 @@ export function FaixaComunicado({
   }, [trocaSozinha, parada, total, intervaloSegundos]);
 
   if (total === 0 || fechada) return null;
-
-  const abrir = (vista: VistaDaJanela, quem: "mensagem" | "todos") => {
-    abridor.current = quem;
-    setJanela(vista);
-  };
 
   const fechar = () => {
     gravarFechados(comunicados.map((c) => c.id), diasDoCookie);
@@ -167,14 +167,17 @@ export function FaixaComunicado({
                   // cruzar). Com menos movimento pedido pelo sistema, troca sem transição.
                   "transition-[opacity,visibility] duration-150 ease-out motion-reduce:delay-0 motion-reduce:duration-0",
                   ativo ? "delay-150" : "invisible opacity-0",
+                  // Com a janela aberta, a faixa está atrás dela e troca na hora: ao fechar logo depois de
+                  // passar pela janela, o comunicado novo já está visível e pode receber o foco de volta.
+                  janelaAberta && "delay-0 duration-0",
                 )}
               >
                 {noSite ? (
                   <button
                     type="button"
-                    data-abre="mensagem"
+                    data-abre-janela
                     aria-haspopup="dialog"
-                    onClick={() => abrir("destaque", "mensagem")}
+                    onClick={() => setJanelaAberta(true)}
                     className="alvo-toque min-w-0 flex-1 cursor-pointer rounded-[6px] text-left texto-titulo-card-pequeno break-words outline-none hover:underline hover:underline-offset-2 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
                   >
                     {c.mensagem}
@@ -183,7 +186,7 @@ export function FaixaComunicado({
                 ) : (
                   <p className="min-w-0 flex-1 texto-titulo-card-pequeno break-words">{c.mensagem}</p>
                 )}
-                {c.link || (noSite && varios) ? (
+                {c.link || comVerTodos ? (
                   <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1">
                     {c.link ? (
                       <a
@@ -197,17 +200,14 @@ export function FaixaComunicado({
                         <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
                       </a>
                     ) : null}
-                    {noSite && varios ? (
-                      <button
-                        type="button"
-                        data-abre="todos"
-                        aria-haspopup="dialog"
-                        onClick={() => abrir("lista", "todos")}
+                    {comVerTodos ? (
+                      <Link
+                        href={LINKS.comunicados.href}
                         className="flex shrink-0 items-center rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
                       >
                         Ver todos
                         <span className="sr-only"> os comunicados</span>
-                      </button>
+                      </Link>
                     ) : null}
                   </div>
                 ) : null}
@@ -234,11 +234,9 @@ export function FaixaComunicado({
             setPassouPelaPessoa(true);
             setAtual(i);
           }}
-          vista={janela}
-          aoMudarVista={setJanela}
-          aoDevolverFoco={() =>
-            secao.current?.querySelector<HTMLElement>(`[aria-hidden=false] [data-abre=${abridor.current}]`)?.focus()
-          }
+          aberta={janelaAberta}
+          aoFechar={() => setJanelaAberta(false)}
+          aoDevolverFoco={() => secao.current?.querySelector<HTMLElement>("[aria-hidden=false] [data-abre-janela]")?.focus()}
         />
       ) : null}
     </>

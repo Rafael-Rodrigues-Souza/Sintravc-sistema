@@ -137,7 +137,7 @@ As regras completas estão em `regras-de-negocio.md` (RN01–RN59). Aqui fica o 
   - entra e sai do ar sozinho e alterna na fila;
   - “Encerrar agora” pede confirmação;
   - pode ser duplicado (RN14);
-  - no ar, edita a mensagem, o link e o fim, mas não o começo; a faixa alterna a cada `comunicados.alternar_segundos`, com pausa, e o X do visitante guarda os fechados num cookie (E58).
+  - no ar, edita a mensagem, o link e o fim, mas não o começo; a faixa alterna a cada `comunicados.alternar_segundos` (para com o mouse em cima, com o foco dentro e com a janela aberta), a mensagem abre uma janela em destaque, e o X do visitante guarda os fechados num cookie; a página `/comunicados` (no menu e no rodapé) mostra todos os no ar, inclusive os fechados (E58).
 - **Episódio:** usa o link do YouTube e o player só carrega no clique. Marcar “Último programa” substitui o anterior (RN17, R12).
 - **Home:** só a área Página inicial controla os destaques, com rascunho e “Publicar alterações” (E13). No editor, o link “Destacar na Home” só vale para notícia publicada; no rascunho fica travado (E43).
 - **Notícia fixada:** uma por vez no topo da página Notícias (RN58).
@@ -231,6 +231,7 @@ Os IDs do Figma estão em `analise-figma.md` §1. As correções estão em `corr
   - Sindicato (Instituição, Diretoria estática, Benefícios);
   - Documentos (Editais, Acordos);
   - Rádio Chofer e Contato;
+  - Comunicados (`/comunicados`, sem frame: E58);
   - menu mobile de visitante, 404, Política de privacidade, Termos de uso (só texto, D6) e aviso de cookies;
   - cabeçalho, menu e rodapé **sem “Entrar”** (N13).
 - **Painel · acesso:**

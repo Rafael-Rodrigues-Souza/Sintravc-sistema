@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { ehGrupo, estaAtivo, MENU_PRINCIPAL, type GrupoDeMenu, type ItemDeMenu } from "./navegacao";
 
 const rotulo =
-  "texto-navegacao flex items-center gap-1 rounded-md pt-[9px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
+  "texto-navegacao flex items-center gap-1 rounded-md pt-[9px] whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
 
 function Indicador({ ativo }: { ativo: boolean }) {
   return <span aria-hidden className={cn("mt-1.5 h-[3px] w-full rounded-[2px]", ativo && "bg-destaque-amarelo")} />;
@@ -81,7 +81,8 @@ export function NavegacaoPrincipal() {
   const caminho = usePathname();
   return (
     <NavigationMenu.Root aria-label="Principal" delayDuration={150} className="hidden lg:block">
-      <NavigationMenu.List className="flex items-start gap-6 xl:gap-8">
+      {/* Com “Comunicados” (E58), são 7 itens: de 1024 a 1279 px, o espaço entre eles fica em 16 px para caber numa linha. */}
+      <NavigationMenu.List className="flex items-start gap-4 xl:gap-8">
         {MENU_PRINCIPAL.map((entrada) =>
           ehGrupo(entrada) ? (
             <Grupo key={entrada.rotulo} grupo={entrada} caminho={caminho} />

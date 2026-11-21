@@ -150,13 +150,14 @@ test("CA-US01.2 · dois no ar: “1 de 2”, setas e teclado, troca sozinha e pa
 });
 
 /** Publica pela tela, um depois do outro (a fila segue essa ordem). */
-async function publicarNoAr(page: Page, mensagens: string[], { toque = false } = {}) {
+async function publicarNoAr(page: Page, comunicados: (string | { mensagem: string; link: string })[], { toque = false } = {}) {
   await entrarComo(page, pessoas.com, "/painel/comunicados", { toque });
   // Na folha de baixo (tela estreita), o botão é só “Publicar”.
   const publicar = telaEstreita(page) ? /^Publicar$/ : /^Publicar agora$/;
-  for (const mensagem of mensagens) {
+  for (const c of comunicados) {
+    const dados = typeof c === "string" ? { mensagem: c } : c;
     await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), toque);
-    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, publicar, { toque });
+    await preencher(page, { ...dados, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, publicar, { toque });
     await expect(formulario(page)).toBeHidden();
   }
 }
@@ -249,35 +250,41 @@ test("depois de fechar a janela com o mouse, a faixa volta a trocar sozinha com 
   await expect(faixa(page).getByText("Comunicado 2 de 2")).toBeVisible();
 });
 
-test("“Ver todos” abre a janela com a lista na ordem da fila; tocar num mostra ele em destaque", async ({ page }) => {
-  const mensagens = [`Lista A (${Date.now()})`, `Lista B (${Date.now()})`, `Lista C (${Date.now()})`];
+/** Os comunicados da página /comunicados, na ordem em que aparecem. */
+const naPagina = (page: Page) => page.getByRole("main").getByRole("list", { name: /ordem da fila/ }).getByRole("article");
+
+test("“Ver todos” leva à página Comunicados, com todos na ordem da fila e até quando ficam no ar", async ({ page }) => {
+  const mensagens = [`Página A (${Date.now()})`, `Página B (${Date.now()})`, `Página C (${Date.now()})`];
   await publicarNoAr(page, mensagens);
 
   await page.goto("/contato");
-  const verTodos = faixa(page).getByRole("button", { name: "Ver todos os comunicados" });
-  await verTodos.click();
-  const lista = page.getByRole("dialog", { name: "Todos os comunicados" }).getByRole("list", { name: /ordem da fila/ });
-  await expect(lista.getByRole("listitem")).toHaveText(mensagens.map((m, i) => `${i + 1}.${m}`));
+  await faixa(page).getByRole("link", { name: "Ver todos os comunicados" }).click();
+  await expect(page).toHaveURL(/\/comunicados$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Comunicados" })).toBeVisible();
+  await expect(naPagina(page).getByText(/Página [ABC]/)).toHaveText(mensagens);
+  for (const cartao of await naPagina(page).all()) {
+    await expect(cartao).toContainText(/No ar até \d{2}\/\d{2}\/\d{4} às \d{2}h\d{2}/);
+  }
+  // Na própria página, a faixa continua, mas sem o “Ver todos” para onde a pessoa já está.
+  await expect(faixa(page)).toBeVisible();
+  await expect(faixa(page).getByRole("link", { name: /Ver todos/ })).toHaveCount(0);
 
-  await lista.getByRole("button", { name: mensagens[2] }).click();
-  await expect(page.getByRole("dialog", { name: "Comunicado" })).toContainText(mensagens[2]!);
-  await expect(janela(page).getByText("Comunicado 3 de 3")).toBeVisible();
-
-  // Da janela, “Ver todos” volta à lista, com o atual marcado.
-  await janela(page).getByRole("button", { name: "Ver todos" }).click();
-  await expect(lista.getByRole("button", { name: mensagens[2] })).toHaveAttribute("aria-current", "true");
-
-  await page.keyboard.press("Escape");
-  await expect(janela(page)).toBeHidden();
-  await expect(faixa(page).locator("[aria-hidden=false]")).toContainText(mensagens[2]!);
-  await expect(faixa(page).getByRole("button", { name: "Ver todos os comunicados" })).toBeFocused();
-
-  // Com um só no ar, não há “Ver todos”.
+  // Com um só no ar, a faixa não tem “Ver todos”.
   await tirarTudoDoAr();
   await publicarNoAr(page, [`Sozinho (${Date.now()})`]);
   await page.goto("/contato");
   await expect(faixa(page)).toBeVisible();
-  await expect(faixa(page).getByRole("button", { name: /Ver todos/ })).toHaveCount(0);
+  await expect(faixa(page).getByRole("link", { name: /Ver todos/ })).toHaveCount(0);
+});
+
+test("sem comunicado no ar, a página Comunicados mostra o vazio, com título e descrição", async ({ page }) => {
+  await page.goto("/comunicados");
+  await expect(page).toHaveTitle(/^Comunicados/);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /avisos do SINTRAVC/);
+  await expect(faixa(page)).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Nenhum comunicado no momento" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Voltar ao início" })).toHaveAttribute("href", "/");
+  await expect(naPagina(page)).toHaveCount(0);
 });
 
 test("com menos movimento pedido pelo sistema, a faixa troca sozinha sem a transição, e não há botão Pausar", async ({ page }) => {
@@ -458,6 +465,44 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
     await expect(fechar).toBeVisible();
     await apertar(fechar, hasTouch);
     await expect(faixa(page)).toBeHidden();
+  });
+
+  test("fechar pelo X e achar o comunicado de novo pela página Comunicados, no menu e no rodapé", async ({ page, hasTouch }) => {
+    const comLink = `Aviso com link (${Date.now()})`;
+    const semLink = `Aviso sem link (${Date.now()})`;
+    await publicarNoAr(page, [{ mensagem: comLink, link: "/contato" }, semLink], { toque: hasTouch });
+
+    await page.goto("/");
+    await apertar(faixa(page).getByRole("button", { name: "Fechar comunicado" }), hasTouch);
+    await expect(faixa(page)).toBeHidden();
+
+    // Pelo menu, como a pessoa faria: o menu do celular nas telas estreitas, o do cabeçalho nas largas.
+    if (telaEstreita(page)) {
+      await apertar(page.getByRole("button", { name: "Abrir menu" }), hasTouch);
+      await apertar(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Comunicados" }), hasTouch);
+    } else {
+      await apertar(page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Comunicados" }), hasTouch);
+    }
+    await expect(page).toHaveURL(/\/comunicados$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Comunicados" })).toBeVisible();
+
+    // O X só esconde a faixa: na página, os dois continuam, inteiros e na ordem da fila.
+    await expect(faixa(page)).toBeHidden();
+    await expect(naPagina(page)).toHaveCount(2);
+    await expect(naPagina(page).nth(0)).toContainText(comLink);
+    await expect(naPagina(page).nth(1)).toContainText(semLink);
+    await expect(naPagina(page).nth(0).getByRole("link", { name: /Saiba mais/ })).toHaveAttribute("href", "/contato");
+    await expect(naPagina(page).nth(1).getByRole("link", { name: /Saiba mais/ })).toHaveCount(0);
+    if (!telaEstreita(page)) {
+      await expect(page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Comunicados" })).toHaveAttribute("aria-current", "page");
+    }
+    await expect(page.getByRole("navigation", { name: "Rodapé" }).getByRole("link", { name: "Comunicados" })).toHaveAttribute("href", "/comunicados");
+
+    await semRolagemLateral(page);
+    if (hasTouch) {
+      const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "main" });
+      expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);
+    }
   });
 
   test("deslizar o dedo de lado na faixa e na janela passa os comunicados; na vertical, rola a página", async ({ page, hasTouch }) => {
