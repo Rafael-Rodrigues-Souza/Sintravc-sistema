@@ -12,6 +12,7 @@ import { salvarEdicaoRapida } from "@/lib/conteudos/edicao-rapida";
 import { resolverConflitoNoticia } from "@/lib/conteudos/conflito";
 import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ErroConteudo } from "@/lib/conteudos/erros";
+import { diaDaFixacao, fixarNoticia } from "@/lib/conteudos/fixar";
 import { MOTIVO_OCULTAR_MAXIMO } from "@/lib/conteudos/motivo";
 import { ehCampoObrigatorio, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import type { RespostaEnvio } from "@/lib/conteudos/fila-rascunho";
@@ -20,6 +21,7 @@ import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/sal
 import { bahiaParaUtc } from "@/lib/datas";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { mostrarInteira } from "@/lib/midia/apresentacao";
+import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
 import { listarMidia } from "@/lib/midia/listar";
 import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -167,8 +169,9 @@ export async function acaoPublicarNoticia(entrada: unknown, sessaoEdicao: unknow
   if (!validado.success || !sessao.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   if (!pode(pessoa.quem, "publicar", { tipo: "noticia" })) return { tipo: "erro", mensagem: "Seu perfil não pode publicar notícias." };
   try {
-    const r = await publicarNoticia(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data });
+    const r = await publicarNoticia(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data, fila: await filaDoSistema() });
     if (r.tipo === "conflito") return { tipo: "conflito" };
+    revalidarNoticiasDoSite();
     return { tipo: "publicada", versao: r.versao, revisaoPublicada: r.revisaoPublicada, publicadoEm: r.publicadoEm.toISOString() };
   } catch (erro) {
     if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos.filter(ehCampoObrigatorio) };
@@ -323,8 +326,50 @@ export async function acaoSalvarEdicaoRapida(entrada: unknown): Promise<Resposta
     const r = await salvarEdicaoRapida({ ...resto, para }, { quem: pessoa.quem, fila: await filaDoSistema(), urlDoArquivo });
     if (r.tipo === "conflito") return { tipo: "conflito" };
     revalidatePath("/painel/conteudos");
+    revalidarNoticiasDoSite();
     return { tipo: "salva", estado: r.estado, revisao: r.revisao, temAlteracoesNaoPublicadas: r.temAlteracoesNaoPublicadas };
   } catch (erro) {
     return erroDoAgendamento(erro, "salvar a edição rápida");
+  }
+}
+
+const esquemaFixar = z.object({
+  id: z.uuid(),
+  /** O dia escolhido ("2026-11-10"), no horário da Bahia; nulo desafixa. */
+  ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+});
+
+export type RespostaFixar =
+  | {
+      tipo: "feito";
+      /** O dia que ficou ("2026-11-10"), ou nulo se desafixou. */
+      ate: string | null;
+      /** Já vale no site (a notícia está publicada); senão, vale ao publicar. */
+      vale: boolean;
+      /** Manchetes das que deixaram de ser fixadas. */
+      desafixadas: string[];
+    }
+  | { tipo: "erro"; mensagem: string; campo?: string };
+
+/**
+ * “Fixar no topo de Notícias até <data>” no editor e na Edição rápida (RF78, RN58, E14, E59). Na
+ * publicada, vale na hora; no rascunho e na agendada, vale ao publicar. A permissão é do servidor.
+ */
+export async function acaoFixarNoticia(entrada: unknown): Promise<RespostaFixar> {
+  const pessoa = await sessaoDaEquipe();
+  const validado = esquemaFixar.safeParse(entrada);
+  if (!validado.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!pode(pessoa.quem, "fixar", { tipo: "noticia" })) return { tipo: "erro", mensagem: "Seu perfil não pode fixar notícias." };
+  try {
+    const r = await fixarNoticia(validado.data, { quem: pessoa.quem, fila: await filaDoSistema() });
+    revalidatePath("/painel/conteudos");
+    revalidarNoticiasDoSite();
+    if (r.tipo === "fixada") return { tipo: "feito", ate: diaDaFixacao(r.fixadaAte), vale: r.vale, desafixadas: r.desafixadas.map((d) => d.titulo) };
+    return { tipo: "feito", ate: r.tipo === "desafixada" ? null : validado.data.ate, vale: false, desafixadas: [] };
+  } catch (erro) {
+    if (erro instanceof ErroConteudo) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
+    if (erro instanceof SemPermissao) return { tipo: "erro", mensagem: "Seu perfil não pode fixar notícias." };
+    console.error("[conteudos] Falha ao fixar.", erro);
+    return { tipo: "erro", mensagem: "Não foi possível fixar agora. Tente de novo em alguns minutos." };
   }
 }

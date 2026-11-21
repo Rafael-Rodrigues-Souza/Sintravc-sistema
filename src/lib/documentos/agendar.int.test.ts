@@ -86,7 +86,7 @@ describe("agendarDocumento (RF41, RN12, E44, E46)", () => {
     const { fila, pedidos } = filaEmMemoria();
     await agendarDocumento({ id: salvo.id, revisaoBase: 1, para: PARA, confirmoOficial: true }, { quem: adm, fila, agora: AGORA });
 
-    const r = await executarPublicacaoAgendada(pedidos[0]!, { agora: PARA });
+    const r = await executarPublicacaoAgendada(pedidos[0]!, { agora: PARA, fila: filaEmMemoria().fila });
 
     expect(r).toEqual({ tipo: "publicada", versao: 1 });
     expect(await carregarDocumento(salvo.id, { quem: adm })).toMatchObject({ estado: "publicado", versao: 1 });

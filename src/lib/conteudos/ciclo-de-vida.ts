@@ -7,6 +7,7 @@ import type { Fila } from "@/lib/tarefas/fila";
 
 import { lerNoticia, type NoticiaAberta, type RetratoDaNoticia } from "./carregar";
 import { ErroConteudo } from "./erros";
+import { desafixarAoSairDoAr } from "./fixar";
 import { conferirMotivo } from "./motivo";
 import { gravarPorCima, registrarAtividadeNoticia, travarNoticia } from "./salvar";
 import {
@@ -57,7 +58,8 @@ export async function ocultarNaTransacao(tx: Transacao, atual: Linha, motivoDigi
   const motivo = conferirMotivo(motivoDigitado);
   if (atual.estado !== "publicado") throw new ErroConteudo("invalido", "Só o que está publicado pode ser ocultado. Atualize a página.");
   await tx.update(conteudo).set({ estado: "oculto", motivoOculto: motivo, ocultadoEm: new Date() }).where(eq(conteudo.id, atual.id));
-  await registrarAtividadeConteudo(tx, atual, "ocultar", deps, {}, motivo);
+  // A oculta sai do topo de Notícias e não volta fixada com "Mostrar no site" (E59).
+  await registrarAtividadeConteudo(tx, atual, "ocultar", deps, await desafixarAoSairDoAr(tx, atual), motivo);
 }
 
 /**
@@ -96,7 +98,8 @@ export async function arquivarConteudos(entrada: { ids: string[] }, deps: { quem
       .update(conteudo)
       .set({ estado: "arquivado", estadoAntesDeArquivar: atual.estado })
       .where(eq(conteudo.id, atual.id));
-    await registrarAtividadeConteudo(tx, atual, "arquivar", deps, { estado_anterior: atual.estado });
+    // Arquivada perde a fixação ou a intenção de fixar; o "Desfazer" não a devolve (E59).
+    await registrarAtividadeConteudo(tx, atual, "arquivar", deps, { estado_anterior: atual.estado, ...(await desafixarAoSairDoAr(tx, atual)) });
   });
 }
 

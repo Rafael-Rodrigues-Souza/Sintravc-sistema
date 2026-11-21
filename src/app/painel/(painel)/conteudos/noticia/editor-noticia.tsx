@@ -32,12 +32,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { acoesDisponiveis, type AcaoDoMenu } from "@/lib/conteudos/acoes-disponiveis";
 import { LIMITE_LINHA_FINA, LIMITE_MANCHETE, type ArquivoConhecido, type DadosNoticia } from "@/lib/conteudos/dados";
+import { fimDaFixacao } from "@/lib/conteudos/data-da-fixacao";
+import type { SituacaoDaFixacao } from "@/lib/conteudos/fixar";
 import { paraJsonSimples } from "@/lib/conteudos/json";
 import { armazemDoNavegador, criarFilaDoRascunho, type VersaoServidor } from "@/lib/conteudos/fila-rascunho";
 import type { EstadoConteudo } from "@/lib/conteudos/listar";
 import { ehCampoObrigatorio, faltasParaPublicar, type CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { jaFoiAoAr, temAlteracoesNaoPublicadas } from "@/lib/conteudos/publicacao";
-import { bahiaEmCampos, camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
+import { bahiaEmCampos, bahiaParaUtc, camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +53,7 @@ import {
   acaoSalvarRascunho,
 } from "../acoes";
 import { acaoRestaurarVersao } from "../acoes-ciclo-de-vida";
+import { CampoFixar, diaNaTela } from "../campo-fixar";
 import { ConfirmarAcao, MenuDeAcoes, type PedidoDeAcao } from "../ciclo-de-vida";
 import {
   BarraDoEditor,
@@ -95,6 +98,8 @@ export type InicioDoEditor = {
   dados: DadosNoticia;
   salvoEm: string | null;
   servidor: VersaoServidor | null;
+  /** Fixar no topo de Notícias (RN58, E59); nulo quando o perfil não pode fixar. */
+  fixacao: SituacaoDaFixacao | null;
 };
 
 type Saida = { tipo: "link"; href: string } | { tipo: "formulario"; formulario: HTMLFormElement };
@@ -193,6 +198,8 @@ export function EditorNoticia({
     agendadoPara: inicio.agendadoPara,
     motivoOculto: inicio.motivoOculto,
   });
+  // Fixar no topo de Notícias (E59): grava na hora, fora do salvamento automático.
+  const [fixacao, setFixacao] = React.useState(inicio.fixacao);
   // O salvamento diz se a cópia de trabalho ficou igual à versão no ar: mudar e desfazer tira o aviso (E47).
   const seguirPublicacao = <R extends { tipo: string; revisaoPublicada?: number | null }>(resposta: R): R => {
     const { revisaoPublicada } = resposta;
@@ -549,6 +556,8 @@ export function EditorNoticia({
         agendadoPara: null,
         motivoOculto: null,
       });
+      // A intenção de fixar valeu ao publicar (a outra saiu do topo) ou, vencida, foi descartada (E59).
+      if (primeira && fixacao?.ate) setFixacao(fixacaoNoModal?.vencida ? { ate: null, outra: fixacao.outra } : { ate: fixacao.ate, outra: null });
       setMostrarFaltas(false);
       toast.success(primeira ? "Notícia publicada." : "Alterações publicadas.");
     } else if (resposta.tipo === "conflito") {
@@ -698,6 +707,17 @@ export function EditorNoticia({
   const capa = dados.capaMidiaId ? arquivos[dados.capaMidiaId] : undefined;
   const emConflito = estado.situacao === "conflito" && estado.conflito;
   const nomeDaCategoria = categorias.find((c) => c.id === dados.categoriaId)?.nome;
+  // A intenção de fixar no modal Publicar (E59): vale ao ir ao ar, se a data ainda não tiver passado.
+  const fimDaIntencao = !noAr && fixacao?.ate ? fimDaFixacao(fixacao.ate) : null;
+  const vaiAoArEm = vaiAgendar ? bahiaParaUtc(campos.data, campos.hora) : new Date();
+  const fixacaoNoModal =
+    fimDaIntencao && fixacao?.ate
+      ? {
+          ate: diaNaTela(fixacao.ate),
+          vencida: vaiAoArEm !== null && fimDaIntencao.getTime() <= vaiAoArEm.getTime(),
+          substitui: fixacao.outra?.titulo ?? null,
+        }
+      : null;
   const rotuloPublicar = noAr ? "Publicar alterações…" : vaiAgendar ? "Agendar…" : agendada ? "Publicar agora…" : "Publicar…";
   // Resumos das seções fechadas no celular (Figma M 120:3836).
   const faltasDa = (secao: SecaoDoEditor) => faltas.filter((f) => SECAO_DO_CAMPO[f.campo] === secao);
@@ -1148,6 +1168,10 @@ export function EditorNoticia({
                   ? `Entra no ar sozinha em ${dataHoraNaBahia(new Date(publicacao.agendadoPara))}, com o que estiver salvo nessa hora.`
                   : "Fica como rascunho, fora do site, até alguém publicar."}
             </p>
+            {fixacao && !oculta ? (
+              // A chave remonta o campo quando a notícia vai ao ar: a fixação passa a valer na hora.
+              <CampoFixar key={noAr ? "no-ar" : "fora-do-ar"} id={estado.id} noAr={noAr} situacao={fixacao} aoMudar={setFixacao} />
+            ) : null}
             {/* No toque, o link tem a altura da área de toque de verdade (e não um ::after), para não cobrir a dica de baixo (#51). */}
             {noAr && estado.id ? (
               <div className="flex flex-col gap-1">
@@ -1232,6 +1256,7 @@ export function EditorNoticia({
         aberto={confirmar}
         alteracoes={noAr}
         agendarPara={vaiAgendar ? camposEmTexto(campos) : null}
+        fixacao={fixacaoNoModal}
         titulo={dados.titulo}
         detalhe={["Notícia", nomeDaCategoria, dados.assinatura.trim()].filter(Boolean).join(" · ")}
         capaUrl={capa?.url ?? null}

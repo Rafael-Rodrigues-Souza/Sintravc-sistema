@@ -24,7 +24,7 @@ async function agendadaPara(titulo: string, para: Date) {
 describe("itensDoCalendario (RF36, Figma 115:2992)", () => {
   it("mostra publicados pela data em que foram ao ar e agendados pela data marcada, no dia da Bahia", async () => {
     const publicadaId = await agendadaPara("Publicada em março", new Date("2031-03-10T13:00:00Z"));
-    await executarPublicacaoAgendada({ conteudoId: publicadaId, para: "2031-03-10T13:00:00.000Z" }, { agora: new Date("2031-03-10T13:00:00Z") });
+    await executarPublicacaoAgendada({ conteudoId: publicadaId, para: "2031-03-10T13:00:00.000Z" }, { agora: new Date("2031-03-10T13:00:00Z"), fila: filaEmMemoria().fila });
     const agendadaId = await agendadaPara("Agendada para a noite", new Date("2031-03-21T02:30:00Z")); // 20/03 às 23h30 na Bahia
     const foraDoMes = await agendadaPara("Agendada para maio", new Date("2031-05-05T12:00:00Z"));
     const quem = await pessoaDaEquipe("COM");

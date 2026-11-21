@@ -8,12 +8,14 @@ import { quandoNaBahia } from "@/lib/datas";
 import type { Enviar } from "@/lib/email";
 import { mensagemPublicacaoAgendadaFalhou } from "@/lib/email/modelos";
 import { lerEnvSite } from "@/lib/env";
-import type { PedidoPublicacao } from "@/lib/tarefas/fila";
+import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
+import type { Fila, PedidoPublicacao } from "@/lib/tarefas/fila";
 
 import { voltarARascunho } from "./agendar";
 import { copiaDeTrabalho } from "./copia-de-trabalho";
 import { ErroConteudo } from "./erros";
-import { irAoAr } from "./publicar";
+import { aplicarFixacaoAoPublicar } from "./fixar";
+import { detalheDaFixacao, irAoAr } from "./publicar";
 import { editorDo, familiaDo, rotuloDoConteudo, travarConteudo } from "./tipo-do-conteudo";
 
 export type ResultadoPublicacaoAgendada = { tipo: "publicada"; versao: number } | { tipo: "ignorada" };
@@ -30,10 +32,10 @@ export type ResultadoPublicacaoAgendada = { tipo: "publicada"; versao: number } 
  */
 export async function executarPublicacaoAgendada(
   pedido: PedidoPublicacao,
-  deps: { agora?: Date } = {},
+  deps: { agora?: Date; fila: Fila },
 ): Promise<ResultadoPublicacaoAgendada> {
   const marcadoPara = new Date(pedido.para);
-  return banco().transaction(async (tx) => {
+  const resultado = await banco().transaction(async (tx): Promise<ResultadoPublicacaoAgendada> => {
     const atual = await travarSeAindaExiste(tx, pedido.conteudoId);
     if (!atual || !aindaAgendada(atual, marcadoPara)) return { tipo: "ignorada" };
 
@@ -41,6 +43,11 @@ export async function executarPublicacaoAgendada(
     const copia = await copiaDeTrabalho(tx, atual);
     const agendadoPor = atual.agendadoPor ?? atual.autorId;
     const { versao } = await irAoAr(tx, atual, copia, { criadoPor: agendadoPor, agora });
+    // Notícia com intenção de fixar: vale agora; vencida, publica sem fixar (E59).
+    const fixacao =
+      atual.tipo === "noticia"
+        ? await aplicarFixacaoAoPublicar(tx, atual.id, { agora, ator: { tipo: "sistema" }, fila: deps.fila, jaEstavaNoAr: false })
+        : null;
     await registrarAtividade(tx, {
       ator: { tipo: "sistema" },
       acao: `${familiaDo(atual.tipo)}.publicar_agendado`,
@@ -52,10 +59,14 @@ export async function executarPublicacaoAgendada(
         marcado_para: marcadoPara.toISOString(),
         publicado_em: agora.toISOString(),
         atraso_segundos: Math.max(0, Math.round((agora.getTime() - marcadoPara.getTime()) / 1000)),
+        ...(fixacao ? detalheDaFixacao(fixacao) : {}),
       },
     });
     return { tipo: "publicada", versao };
   });
+  // Fora de um pedido o Next recusa; o site dinâmico já mostra a notícia na próxima visita (E59).
+  if (resultado.tipo === "publicada") revalidarNoticiasDoSite();
+  return resultado;
 }
 
 /** O pedido ainda vale: a notícia está agendada exatamente para esta hora. */

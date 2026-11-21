@@ -13,7 +13,9 @@ import type { SeloDeVigencia } from "@/lib/documentos/selo";
 import { cn } from "@/lib/utils";
 
 import { ConfirmarAcao, MenuDeAcoes, type Alvo, type ItemExtraDoMenu, type PedidoDeAcao } from "./ciclo-de-vida";
-import { SeloCategoria, SeloEstado, SeloVigencia } from "./selos";
+import { SeloCategoria } from "@/components/selo-categoria";
+
+import { SeloEstado, SeloVigencia } from "./selos";
 
 /** Uma linha da lista, já com os textos prontos (datas no horário da Bahia, feitas no servidor). */
 export type LinhaDaTabela = {

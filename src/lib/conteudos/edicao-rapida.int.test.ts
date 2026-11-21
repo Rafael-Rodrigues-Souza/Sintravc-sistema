@@ -115,7 +115,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
   it("publicada: título e categoria vão para a cópia de trabalho; o site só muda ao publicar as alterações (E42, E44)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     const resultado = await salvarEdicaoRapida(await entrada(id, { titulo: "Título só na cópia" }), depsDe(quem).deps);
 
@@ -127,7 +127,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
   it("publicada para Oculto sem motivo: não grava nada, nem o título (CA-US22.1)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     const erro = await salvarEdicaoRapida(await entrada(id, { titulo: "Outro título", situacao: "oculto", motivo: "  " }), depsDe(quem).deps).catch(
       (e) => e,
@@ -141,7 +141,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
   it("publicada para Oculto com motivo: sai do site e a Atividade guarda o motivo (E44, #11)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     const resultado = await salvarEdicaoRapida(await entrada(id, { situacao: "oculto", motivo: "Foto sem autorização" }), depsDe(quem).deps);
 
@@ -153,7 +153,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
   it("oculta com título mudado: avisa que há alterações que ainda não estão no site (E45)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     await ocultarConteudos({ ids: [id], motivo: "Revisar" }, { quem });
 
     const resultado = await salvarEdicaoRapida(await entrada(id, { titulo: "Título revisado" }), depsDe(quem).deps);
@@ -164,7 +164,7 @@ describe("salvarEdicaoRapida (RF36, Figma 115:2324)", () => {
   it("oculta para Publicado: volta ao site (Mostrar no site)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunhoSalvo(quem, await noticiaCompleta());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     await ocultarConteudos({ ids: [id], motivo: "Revisar" }, { quem });
 
     const resultado = await salvarEdicaoRapida(await entrada(id, { situacao: "publicado" }), depsDe(quem).deps);

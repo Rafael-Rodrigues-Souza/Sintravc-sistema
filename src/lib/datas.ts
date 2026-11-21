@@ -15,6 +15,23 @@ export function dataNaBahia(data: Date): string {
   return `${parte("day")}/${parte("month")}/${parte("year")}`;
 }
 
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** "12 out 2026", no horário da Bahia (os cartões de notícia do site, Figma 79:1481). */
+export function dataCurtaNaBahia(data: Date): string {
+  const parte = partesNaBahia(data, { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `${parte("day")} ${MESES_CURTOS[Number(parte("month")) - 1]} ${parte("year")}`;
+}
+
+/**
+ * Um dia do calendário da Bahia ("2026-11-10") somado de `dias` (negativo volta): "2026-11-11".
+ * Conta só o calendário, sem hora: serve ao fim da fixação e à janela das Mais lidas (E59).
+ */
+export function somarDias(dia: string, dias: number): string {
+  const [ano, mes, d] = dia.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(ano, mes - 1, d + dias)).toISOString().slice(0, 10);
+}
+
 /** "14h30", no horário da Bahia. */
 export function horaNaBahia(data: Date): string {
   const parte = partesNaBahia(data, { hour: "2-digit", minute: "2-digit" });

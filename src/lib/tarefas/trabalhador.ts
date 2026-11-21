@@ -2,6 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { PgBoss, type Db } from "pg-boss";
 
 import { executarViradaDoComunicado } from "@/lib/comunicados/tarefa";
+import { executarDesafixar } from "@/lib/conteudos/desafixar";
 import { executarPublicacaoAgendada, registrarFalhaDaPublicacao } from "@/lib/conteudos/publicar-agendado";
 import { motivoDaFalha } from "@/lib/conteudos/motivo-da-falha";
 import type { Transacao } from "@/lib/db";
@@ -10,10 +11,12 @@ import { lerParametro } from "@/lib/parametros";
 
 import {
   FILA_COMUNICADO,
+  FILA_DESAFIXAR,
   FILA_PUBLICAR_AGENDADO,
   FILA_PUBLICAR_AGENDADO_FALHOU,
   type Fila,
   type PedidoComunicado,
+  type PedidoDesafixar,
   type PedidoPublicacao,
 } from "./fila";
 
@@ -62,17 +65,7 @@ export function bancoDaTransacao(tx: Transacao): Db {
 export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Trabalhador> {
   const boss = new PgBoss({ connectionString: opcoes.url, schema: "pgboss", max: 4 });
   boss.on("error", (erro) => console.error("Fila de tarefas (pg-boss):", erro));
-  try {
-    await boss.start();
-    await prepararFilas(boss, opcoes);
-  } catch (erro) {
-    // Sem os parâmetros (migração pendente) ou sem banco: fecha o que abriu antes de tentar de novo.
-    await boss.stop({ graceful: false }).catch(() => {});
-    throw erro;
-  }
-
-  return {
-    fila: {
+  const fila: Fila = {
       async agendarPublicacao(tx, { conteudoId, para }) {
         const pedido: PedidoPublicacao = { conteudoId, para: para.toISOString() };
         // Pedido único por (notícia, hora marcada) enquanto espera a hora (E44): repetido, é descartado.
@@ -90,7 +83,26 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
           db: bancoDaTransacao(tx),
         });
       },
-    },
+      async agendarDesafixar(tx, { conteudoId, para }) {
+        const pedido: PedidoDesafixar = { conteudoId, para: para.toISOString() };
+        await boss.send(FILA_DESAFIXAR, pedido, {
+          startAfter: para,
+          singletonKey: `${conteudoId}:${pedido.para}`,
+          db: bancoDaTransacao(tx),
+        });
+      },
+  };
+  try {
+    await boss.start();
+    await prepararFilas(boss, opcoes, fila);
+  } catch (erro) {
+    // Sem os parâmetros (migração pendente) ou sem banco: fecha o que abriu antes de tentar de novo.
+    await boss.stop({ graceful: false }).catch(() => {});
+    throw erro;
+  }
+
+  return {
+    fila,
     async pedidosPendentes() {
       const jobs = await boss.findJobs<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO, { queued: true });
       return jobs.map((j) => j.data);
@@ -99,6 +111,7 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
       await boss.offWork(FILA_PUBLICAR_AGENDADO, { wait: true });
       await boss.offWork(FILA_PUBLICAR_AGENDADO_FALHOU, { wait: true });
       await boss.offWork(FILA_COMUNICADO, { wait: true });
+      await boss.offWork(FILA_DESAFIXAR, { wait: true });
     },
     async parar() {
       await boss.stop({ graceful: true, timeout: ESPERA_AO_DESLIGAR_MS });
@@ -106,8 +119,8 @@ export async function criarTrabalhador(opcoes: OpcoesDoTrabalhador): Promise<Tra
   };
 }
 
-/** Cria as filas da T01 e da T02 e começa a pegar as tarefas. */
-async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
+/** Cria as filas da T01, da T02 e da T05 e começa a pegar as tarefas. */
+async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador, fila: Fila) {
   const tentativas = opcoes.tentativas ?? (await lerParametro("tarefas.tentativas"));
   const intervalo = opcoes.intervaloSegundos ?? (await lerParametro("tarefas.intervalo_segundos"));
   await garantirFila(boss, FILA_PUBLICAR_AGENDADO_FALHOU, {});
@@ -124,7 +137,8 @@ async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
   await boss.work<PedidoPublicacao, void, typeof comTentativas>(FILA_PUBLICAR_AGENDADO, comTentativas, async ([job]) => {
     if (!job) return;
     try {
-      await executarPublicacaoAgendada(job.data);
+      // A fila vai junto: a notícia agendada com fixação válida agenda a T05 ao ir ao ar (E59).
+      await executarPublicacaoAgendada(job.data, { fila });
     } catch (erro) {
       if (job.retryCount < job.retryLimit) throw erro; // o pg-boss tenta de novo depois do intervalo
       console.error(`Publicação agendada falhou de vez (${job.data.conteudoId}):`, erro);
@@ -135,6 +149,11 @@ async function prepararFilas(boss: PgBoss, opcoes: OpcoesDoTrabalhador) {
   await garantirFila(boss, FILA_COMUNICADO, { policy: "short", retryLimit: tentativas, retryDelay: intervalo });
   await boss.work<PedidoComunicado>(FILA_COMUNICADO, busca, async ([job]) => {
     if (job) await executarViradaDoComunicado(job.data);
+  });
+  // T05: o site já segue o relógio (E59); aqui só limpa a fixação e registra na Atividade.
+  await garantirFila(boss, FILA_DESAFIXAR, { policy: "short", retryLimit: tentativas, retryDelay: intervalo });
+  await boss.work<PedidoDesafixar>(FILA_DESAFIXAR, busca, async ([job]) => {
+    if (job) await executarDesafixar(job.data);
   });
   // Rede de segurança: a tarefa que nem chegou a terminar (servidor caiu no meio, tempo esgotado).
   await boss.work<PedidoPublicacao>(FILA_PUBLICAR_AGENDADO_FALHOU, busca, async ([job]) => {

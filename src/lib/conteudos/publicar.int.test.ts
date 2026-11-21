@@ -15,6 +15,7 @@ import { noticiaVazia, type DadosNoticia } from "./dados";
 import { descartarAlteracoes, publicarNoticia, versoesDaNoticia } from "./publicar";
 import { temAlteracoesNaoPublicadas } from "./publicacao";
 import { salvarRascunhoNoticia } from "./salvar";
+import { filaEmMemoria } from "@/lib/tarefas/fila";
 
 async function idDaCategoria(nome: string) {
   const [linha] = await banco().select({ id: categoria.id }).from(categoria).where(eq(categoria.nome, nome));
@@ -59,7 +60,7 @@ describe("publicarNoticia: publicar agora (RF39, RN10)", () => {
     const { id, revisao } = await rascunho(quem, await completa());
     const antes = new Date();
 
-    const resultado = await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    const resultado = await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     expect(resultado).toMatchObject({ tipo: "publicada", versao: 1 });
     const aberta = await carregarNoticia(id, { quem });
@@ -88,7 +89,7 @@ describe("publicarNoticia: o que impede a publicação", () => {
     const capa = await enviarImagem(quem);
     const { id, revisao } = await rascunho(quem, await completa({ capaMidiaId: capa, capaAlt: "" }));
 
-    await expect(publicarNoticia({ id, revisaoBase: revisao }, { quem })).rejects.toMatchObject({
+    await expect(publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila })).rejects.toMatchObject({
       codigo: "invalido",
       campo: "capaAlt",
       campos: ["capaAlt"],
@@ -106,7 +107,7 @@ describe("publicarNoticia: conflito, repetição e permissão", () => {
     const { id, revisao } = await rascunho(ana, await completa());
     await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: await completa({ titulo: "Versão do Carlos" }) }, edicaoDe(carlos));
 
-    const resultado = await publicarNoticia({ id, revisaoBase: revisao }, { quem: ana });
+    const resultado = await publicarNoticia({ id, revisaoBase: revisao }, { quem: ana, fila: filaEmMemoria().fila });
 
     expect(resultado).toMatchObject({ tipo: "conflito", servidor: { salvoPorNome: "Carlos Ribeiro", dados: { titulo: "Versão do Carlos" } } });
     expect(await carregarNoticia(id, { quem: ana })).toMatchObject({ estado: "rascunho", versao: 0 });
@@ -116,8 +117,8 @@ describe("publicarNoticia: conflito, repetição e permissão", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(quem, await completa());
 
-    const primeira = await publicarNoticia({ id, revisaoBase: revisao }, { quem });
-    const segunda = await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    const primeira = await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
+    const segunda = await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     expect(segunda).toEqual(primeira);
     expect(await versoesDaNoticia(id, { quem })).toHaveLength(1);
@@ -129,7 +130,7 @@ describe("publicarNoticia: conflito, repetição e permissão", () => {
     const atd = await pessoaDaEquipe("ATD");
     const { id, revisao } = await rascunho(com, await completa());
 
-    await expect(publicarNoticia({ id, revisaoBase: revisao }, { quem: atd })).rejects.toBeInstanceOf(SemPermissao);
+    await expect(publicarNoticia({ id, revisaoBase: revisao }, { quem: atd, fila: filaEmMemoria().fila })).rejects.toBeInstanceOf(SemPermissao);
     expect(await carregarNoticia(id, { quem: com })).toMatchObject({ estado: "rascunho" });
   });
 
@@ -138,7 +139,7 @@ describe("publicarNoticia: conflito, repetição e permissão", () => {
     const colega = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(autora, await completa());
 
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem: colega });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem: colega, fila: filaEmMemoria().fila });
 
     expect((await atividadesDa(id)).at(-1)).toMatchObject({ acao: "noticia.publicar", atorId: colega.id });
   });
@@ -152,8 +153,8 @@ describe("publicarNoticia: endereço da notícia (P2, E40)", () => {
     const a = await rascunho(quem, await completa({ titulo }));
     const b = await rascunho(quem, await completa({ titulo }));
 
-    expect(await publicarNoticia({ id: a.id, revisaoBase: a.revisao }, { quem })).toMatchObject({ slug: esperado });
-    expect(await publicarNoticia({ id: b.id, revisaoBase: b.revisao }, { quem })).toMatchObject({ slug: `${esperado}-2` });
+    expect(await publicarNoticia({ id: a.id, revisaoBase: a.revisao }, { quem, fila: filaEmMemoria().fila })).toMatchObject({ slug: esperado });
+    expect(await publicarNoticia({ id: b.id, revisaoBase: b.revisao }, { quem, fila: filaEmMemoria().fila })).toMatchObject({ slug: `${esperado}-2` });
   });
 });
 
@@ -161,7 +162,7 @@ describe("notícia publicada: cópia de trabalho (E42, E31)", () => {
   it("o salvamento automático não gera versão e não muda o que está no ar (CA-US21.10)", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(quem, await completa({ titulo: "Manchete no ar" }));
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: await completa({ titulo: "Manchete em edição" }) }, edicaoDe(quem));
 
@@ -176,14 +177,14 @@ describe("notícia publicada: cópia de trabalho (E42, E31)", () => {
   it("publicar as alterações gera a versão 2, mantém a data da primeira publicação e o endereço", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(quem, await completa({ titulo: `Primeira manchete ${Date.now()}` }));
-    const primeira = await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    const primeira = await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     const salvo = await salvarRascunhoNoticia(
       { id, revisaoBase: revisao, dados: await completa({ titulo: "Manchete corrigida" }) },
       edicaoDe(quem),
     );
     if (salvo.tipo !== "salvo") throw new Error("esperava salvo");
 
-    const resultado = await publicarNoticia({ id, revisaoBase: salvo.revisao }, { quem });
+    const resultado = await publicarNoticia({ id, revisaoBase: salvo.revisao }, { quem, fila: filaEmMemoria().fila });
 
     expect(resultado).toMatchObject({ tipo: "publicada", versao: 2, revisaoPublicada: salvo.revisao, slug: (primeira as { slug: string }).slug });
     expect(await carregarNoticia(id, { quem })).toMatchObject({ versao: 2, publicadoEm: (primeira as { publicadoEm: Date }).publicadoEm });
@@ -197,10 +198,10 @@ describe("notícia publicada: cópia de trabalho (E42, E31)", () => {
   it("alteração que tira um obrigatório não vai ao ar, e a versão publicada continua", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(quem, await completa());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: await completa({ lide: "" }) }, edicaoDe(quem));
 
-    await expect(publicarNoticia({ id, revisaoBase: revisao + 1 }, { quem })).rejects.toMatchObject({ campos: ["lide"] });
+    await expect(publicarNoticia({ id, revisaoBase: revisao + 1 }, { quem, fila: filaEmMemoria().fila })).rejects.toMatchObject({ campos: ["lide"] });
     expect(await versoesDaNoticia(id, { quem })).toHaveLength(1);
   });
 });
@@ -210,12 +211,12 @@ describe("notícia publicada: uso da Mídia (RN16, E42)", () => {
     const quem = await pessoaDaEquipe("COM");
     const capa = await enviarImagem(quem);
     const { id, revisao } = await rascunho(quem, await completa({ capaMidiaId: capa, capaAlt: "Assembleia na sede" }));
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: await completa({ capaMidiaId: null }) }, edicaoDe(quem));
     expect((await usosDasMidias([capa])).get(capa)).toHaveLength(1);
 
-    await publicarNoticia({ id, revisaoBase: revisao + 1 }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao + 1 }, { quem, fila: filaEmMemoria().fila });
     expect((await usosDasMidias([capa])).get(capa)).toBeUndefined();
   });
 });
@@ -225,13 +226,13 @@ describe("descartarAlteracoes (E42)", () => {
     const quem = await pessoaDaEquipe("COM");
     const fonte = { tipo: "fonte" as const, titulo: "Lei 13.467", url: "https://www.planalto.gov.br/lei", midiaId: null, visivel: true };
     const { id, revisao } = await rascunho(quem, await completa({ titulo: "Manchete no ar", links: [fonte] }));
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     await salvarRascunhoNoticia(
       { id, revisaoBase: revisao, dados: await completa({ titulo: "Manchete mexida", links: [] }) },
       edicaoDe(quem),
     );
 
-    const resultado = await descartarAlteracoes({ id, revisaoBase: revisao + 1 }, { quem });
+    const resultado = await descartarAlteracoes({ id, revisaoBase: revisao + 1 }, { quem});
 
     expect(resultado).toMatchObject({
       tipo: "descartada",
@@ -245,11 +246,11 @@ describe("descartarAlteracoes (E42)", () => {
   it("se alguém salvou depois do que a pessoa está vendo, nada é descartado", async () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(quem, await completa());
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: await completa({ titulo: "Mexida 1" }) }, edicaoDe(quem));
     await salvarRascunhoNoticia({ id, revisaoBase: revisao + 1, dados: await completa({ titulo: "Mexida 2" }) }, edicaoDe(quem));
 
-    expect(await descartarAlteracoes({ id, revisaoBase: revisao + 1 }, { quem })).toMatchObject({ tipo: "conflito" });
+    expect(await descartarAlteracoes({ id, revisaoBase: revisao + 1 }, { quem})).toMatchObject({ tipo: "conflito" });
     expect((await carregarNoticia(id, { quem }))!.dados.titulo).toBe("Mexida 2");
   });
 
@@ -257,8 +258,8 @@ describe("descartarAlteracoes (E42)", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id, revisao } = await rascunho(quem, await completa());
 
-    await expect(descartarAlteracoes({ id, revisaoBase: revisao }, { quem })).rejects.toMatchObject({ codigo: "invalido" });
-    await expect(descartarAlteracoes({ id, revisaoBase: revisao }, { quem: await pessoaDaEquipe("ATD") })).rejects.toBeInstanceOf(
+    await expect(descartarAlteracoes({ id, revisaoBase: revisao }, { quem})).rejects.toMatchObject({ codigo: "invalido" });
+    await expect(descartarAlteracoes({ id, revisaoBase: revisao }, { quem: await pessoaDaEquipe("ATD")})).rejects.toBeInstanceOf(
       SemPermissao,
     );
   });
@@ -269,7 +270,7 @@ describe("alterações não publicadas: compara o conteúdo, não o número de g
     const quem = await pessoaDaEquipe("COM");
     const original = await completa({ titulo: "Manchete no ar" });
     const { id, revisao } = await rascunho(quem, original);
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     const sessao = edicaoDe(quem);
 
     const mudou = await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: { ...original, titulo: "Manchete mexida" } }, sessao);
@@ -280,7 +281,7 @@ describe("alterações não publicadas: compara o conteúdo, não o número de g
 
     expect(desfez).toMatchObject({ tipo: "salvo", revisaoPublicada: (desfez as { revisao: number }).revisao });
     expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(false);
-    await publicarNoticia({ id, revisaoBase: (desfez as { revisao: number }).revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: (desfez as { revisao: number }).revisao }, { quem, fila: filaEmMemoria().fila });
     expect(await versoesDaNoticia(id, { quem })).toHaveLength(1);
     expect((await atividadesDa(id)).map((a) => a.acao)).toEqual(["noticia.criar", "noticia.publicar", "noticia.editar"]);
   });
@@ -289,7 +290,7 @@ describe("alterações não publicadas: compara o conteúdo, não o número de g
     const quem = await pessoaDaEquipe("COM");
     const original = await completa();
     const { id, revisao } = await rascunho(quem, original);
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
 
     const salvo = await salvarRascunhoNoticia({ id, revisaoBase: revisao, dados: { ...original, local: "Vitória da Conquista" } }, edicaoDe(quem));
 
@@ -314,7 +315,7 @@ describe("aviso preso de antes do E47", () => {
     const quem = await pessoaDaEquipe("COM");
     const original = await completa();
     const { id, revisao } = await rascunho(quem, original);
-    await publicarNoticia({ id, revisaoBase: revisao }, { quem });
+    await publicarNoticia({ id, revisaoBase: revisao }, { quem, fila: filaEmMemoria().fila });
     // Como ficavam os conteúdos antes do E47: mudar e desfazer subia a revisão e deixava o aviso.
     await banco().update(conteudo).set({ revisao: sql`${conteudo.revisao} + 2` }).where(eq(conteudo.id, id));
     expect(temAlteracoesNaoPublicadas((await carregarNoticia(id, { quem }))!)).toBe(true);

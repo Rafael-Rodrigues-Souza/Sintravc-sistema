@@ -6,6 +6,7 @@ import { noticiaCompleta, rascunhoSalvo } from "@/testes/noticias";
 import { publicarNoticia } from "./publicar";
 import { noticiasRecentes } from "./recentes";
 import { salvarRascunhoNoticia } from "./salvar";
+import { filaEmMemoria } from "@/lib/tarefas/fila";
 
 describe("noticiasRecentes (coluna da página Comunicados, E58)", () => {
   it("só as publicadas, da mais nova para a mais velha, com o título da versão no ar e o endereço da notícia", async () => {
@@ -14,8 +15,12 @@ describe("noticiasRecentes (coluna da página Comunicados, E58)", () => {
     const primeira = await rascunhoSalvo(quem, await noticiaCompleta({ titulo: `Recente A ${marca}` }));
     const segunda = await rascunhoSalvo(quem, await noticiaCompleta({ titulo: `Recente B ${marca}` }));
     const rascunho = await rascunhoSalvo(quem, await noticiaCompleta({ titulo: `Só rascunho ${marca}` }));
-    await publicarNoticia({ id: primeira.id, revisaoBase: primeira.revisao }, { quem });
-    const publicada = await publicarNoticia({ id: segunda.id, revisaoBase: segunda.revisao }, { quem });
+    // Datas depois de tudo o que os outros arquivos publicam (o banco é o mesmo): as duas ficam no topo.
+    await publicarNoticia({ id: primeira.id, revisaoBase: primeira.revisao }, { quem, fila: filaEmMemoria().fila, agora: new Date("2099-01-01T12:00:00Z") });
+    const publicada = await publicarNoticia(
+      { id: segunda.id, revisaoBase: segunda.revisao },
+      { quem, fila: filaEmMemoria().fila, agora: new Date("2099-01-02T12:00:00Z") },
+    );
 
     // Editar depois de publicar não muda o site até publicar de novo.
     if (publicada.tipo !== "publicada") throw new Error("esperava publicada");

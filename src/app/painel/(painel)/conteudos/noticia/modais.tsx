@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { CalendarDays, CircleCheck, Eye, LayoutGrid, Upload } from "lucide-react";
+import { CalendarDays, CircleCheck, Eye, LayoutGrid, Pin, TriangleAlert, Upload } from "lucide-react";
 import * as React from "react";
 
 import { IconeFigma } from "@/components/icone-figma";
@@ -191,10 +191,16 @@ export function ModalPublicar({
   detalhe,
   capaUrl,
   publicando,
+  fixacao = null,
   aoFechar,
   aoConfirmar,
 }: {
   aberto: boolean;
+  /**
+   * Intenção de fixar no topo de Notícias (E59): até quando, se a data já terá passado quando for
+   * ao ar (publica sem fixar) e qual notícia deixa de ser fixada.
+   */
+  fixacao?: { ate: string; vencida: boolean; substitui: string | null } | null;
   /** Notícia já no ar: publica as alterações (E42). */
   alteracoes: boolean;
   /** "03/11/2026 às 08h00": agenda em vez de publicar agora (CA-US21.2). */
@@ -261,7 +267,28 @@ export function ModalPublicar({
               Visibilidade
             </dt>
             <dd className="font-semibold text-texto-primario">Pública para todos os visitantes</dd>
+            {fixacao && !fixacao.vencida ? (
+              <>
+                <dt className="flex items-center gap-2 text-texto-secundario">
+                  <Pin aria-hidden className="size-4" />
+                  Destaque
+                </dt>
+                <dd className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-texto-primario">No topo de Notícias até {fixacao.ate}</span>
+                  {fixacao.substitui ? <span className="text-texto-secundario">“{fixacao.substitui}” deixa de ser fixada.</span> : null}
+                </dd>
+              </>
+            ) : null}
           </dl>
+
+          {fixacao?.vencida ? (
+            <p className="flex items-start gap-2 rounded-[12px] bg-status-aviso-fundo px-3 py-2.5 texto-pequeno text-status-aviso-texto">
+              <TriangleAlert aria-hidden className="mt-0.5 size-[18px] shrink-0" />
+              {agendarPara
+                ? `A fixação vai até ${fixacao.ate} e termina antes da hora agendada: a notícia vai ao ar sem ficar fixada.`
+                : `A data de fixação (${fixacao.ate}) já passou: a notícia será publicada sem ficar fixada.`}
+            </p>
+          ) : null}
 
           <p className="flex items-center gap-2 rounded-[12px] bg-status-sucesso-fundo px-3 py-2.5 texto-pequeno text-status-sucesso-texto">
             <CircleCheck aria-hidden className="size-[18px] shrink-0" />

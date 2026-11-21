@@ -22,9 +22,11 @@ import { jaFoiAoAr } from "@/lib/conteudos/publicacao";
 import type { CampoObrigatorio } from "@/lib/conteudos/obrigatorios";
 import { camposEmTexto, dataHoraNaBahia } from "@/lib/datas";
 import { cn } from "@/lib/utils";
+import type { SituacaoDaFixacao } from "@/lib/conteudos/fixar";
 
 import { acaoPublicarNoticia, acaoSalvarEdicaoRapida, type RespostaEdicaoRapida } from "./acoes";
 import { ConfirmarAcao, type ExecutarAcao, type PedidoDeAcao } from "./ciclo-de-vida";
+import { CampoFixar } from "./campo-fixar";
 import { SeloEstado } from "./selos";
 
 export type NoticiaDaEdicaoRapida = {
@@ -42,6 +44,8 @@ export type NoticiaDaEdicaoRapida = {
   podeArquivar: boolean;
   /** Data e hora já preenchidas quando a pessoa escolhe "Agendado": a agendada, ou amanhã às 08h00. */
   sugestaoDeData: { data: string; hora: string };
+  /** Fixar no topo de Notícias (RN58, E59); nulo quando o perfil não pode fixar. */
+  fixacao: SituacaoDaFixacao | null;
 };
 
 export type AcaoParaMostrar = { id: string; texto: string; detalhe: string };
@@ -62,7 +66,8 @@ const SEM_CONEXAO = "Sem conexão com o servidor. Confira a internet e tente de 
 /**
  * Edição rápida (RF36; Figma 115:2324, com a correção C3: o exemplo é uma notícia): título,
  * categoria, situação e data sem sair da lista. Na publicada, a situação é Publicado ou Oculto
- * (com motivo, RN11); Arquivar fica no rodapé (#11, correção E44). Fixar chega no #15.
+ * (com motivo, RN11); Arquivar fica no rodapé (#11, correção E44). “Fixar no topo de Notícias”
+ * grava na hora, fora do “Salvar” (E59): na publicada vale já, com confirmação se outra estiver fixada.
  * Fecha com X, Esc ou clique fora; com mudança não salva, pergunta antes.
  */
 export function EdicaoRapida({
@@ -415,6 +420,15 @@ export function EdicaoRapida({
                     <p className="texto-pequeno text-texto-secundario">Horário de Vitória da Conquista.</p>
                   )}
                 </div>
+              ) : null}
+
+              {noticia.fixacao && noticia.estado !== "oculto" ? (
+                <section aria-labelledby="rapida-fixar-titulo" className="flex flex-col gap-3 border-t border-borda-padrao pt-4">
+                  <h3 id="rapida-fixar-titulo" className="texto-rotulo text-texto-primario">
+                    Topo de Notícias
+                  </h3>
+                  <CampoFixar id={noticia.id} noAr={noticia.estado === "publicado"} situacao={noticia.fixacao} prefixo="rapida-fixar" />
+                </section>
               ) : null}
 
               {acoes.length > 0 ? (

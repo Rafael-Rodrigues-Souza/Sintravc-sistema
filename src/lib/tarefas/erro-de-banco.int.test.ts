@@ -38,7 +38,7 @@ afterEach(async () => {
 
 describe("erro de banco na publicação agendada (RNF13): nunca fica Agendada sem aviso", () => {
   it("notícia que não existe mais: o pedido é ignorado", async () => {
-    expect(await executarPublicacaoAgendada({ conteudoId: randomUUID(), para: new Date().toISOString() })).toEqual({ tipo: "ignorada" });
+    expect(await executarPublicacaoAgendada({ conteudoId: randomUUID(), para: new Date().toISOString() }, { fila: filaEmMemoria().fila })).toEqual({ tipo: "ignorada" });
   });
 
   it("outro erro de banco é relançado (o pg-boss tenta de novo), e nada muda", async () => {
@@ -48,7 +48,7 @@ describe("erro de banco na publicação agendada (RNF13): nunca fica Agendada se
     await agendarNoticia({ id, revisaoBase: revisao, para }, { quem, fila: filaEmMemoria().fila });
     travarConteudo.mockRejectedValueOnce(ERRO_DE_BANCO);
 
-    await expect(executarPublicacaoAgendada({ conteudoId: id, para: para.toISOString() }, { agora: para })).rejects.toBe(ERRO_DE_BANCO);
+    await expect(executarPublicacaoAgendada({ conteudoId: id, para: para.toISOString() }, { agora: para, fila: filaEmMemoria().fila })).rejects.toBe(ERRO_DE_BANCO);
     expect(await carregarNoticia(id, { quem })).toMatchObject({ estado: "agendado" });
   });
 
