@@ -328,6 +328,12 @@ export const DOCUMENTOS_PAGINA = {
     partes: "Partes signatárias",
     numero: "Número",
     dataDocumento: "Data do documento",
+    publicadoEm: "Publicado no site",
+    prazo: "Prazo",
+    vigencia: "Vigência",
+    arquivo: "Arquivo",
+    pdfTitulo: "Documento oficial em PDF",
+    pdfTexto: "Abra no navegador para ler ou baixe para guardar no celular.",
     voltar: { editais: "Ver todos os editais", acordos: "Ver todos os acordos coletivos" },
   },
 };

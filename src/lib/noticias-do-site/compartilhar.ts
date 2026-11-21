@@ -13,7 +13,12 @@ const DESCRICAO_MAXIMA = 200;
 
 /** A descrição da prévia (P4): a linha fina; sem ela, o começo do lide, cortado numa palavra. */
 export function descricaoDaNoticia(dados: { linhaFina: string; lide: string }): string {
-  const texto = (dados.linhaFina.trim() || dados.lide.trim()).replace(/\s+/g, " ");
+  return descricaoParaCompartilhar(dados.linhaFina.trim() || dados.lide);
+}
+
+/** A descrição da prévia de um texto qualquer (notícia, documento aberto): uma linha, cortada numa palavra. */
+export function descricaoParaCompartilhar(textoOriginal: string): string {
+  const texto = textoOriginal.trim().replace(/\s+/g, " ");
   if (texto.length <= DESCRICAO_MAXIMA) return texto;
   const corte = texto.slice(0, DESCRICAO_MAXIMA - 1);
   const espaco = corte.lastIndexOf(" ");
