@@ -21,7 +21,7 @@ import { salvarRascunhoNoticia, type ResultadoSalvar } from "@/lib/conteudos/sal
 import { bahiaParaUtc } from "@/lib/datas";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { mostrarInteira } from "@/lib/midia/apresentacao";
-import { revalidarNoticiasDoSite } from "@/lib/noticias-do-site/revalidar";
+import { revalidarSitePublico } from "@/lib/site/revalidar";
 import { listarMidia } from "@/lib/midia/listar";
 import { pode, SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -171,7 +171,7 @@ export async function acaoPublicarNoticia(entrada: unknown, sessaoEdicao: unknow
   try {
     const r = await publicarNoticia(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data, fila: await filaDoSistema() });
     if (r.tipo === "conflito") return { tipo: "conflito" };
-    revalidarNoticiasDoSite();
+    revalidarSitePublico();
     return { tipo: "publicada", versao: r.versao, revisaoPublicada: r.revisaoPublicada, publicadoEm: r.publicadoEm.toISOString() };
   } catch (erro) {
     if (erro instanceof ErroFaltamCampos) return { tipo: "faltam", campos: erro.campos.filter(ehCampoObrigatorio) };
@@ -326,7 +326,7 @@ export async function acaoSalvarEdicaoRapida(entrada: unknown): Promise<Resposta
     const r = await salvarEdicaoRapida({ ...resto, para }, { quem: pessoa.quem, fila: await filaDoSistema(), urlDoArquivo });
     if (r.tipo === "conflito") return { tipo: "conflito" };
     revalidatePath("/painel/conteudos");
-    revalidarNoticiasDoSite();
+    revalidarSitePublico();
     return { tipo: "salva", estado: r.estado, revisao: r.revisao, temAlteracoesNaoPublicadas: r.temAlteracoesNaoPublicadas };
   } catch (erro) {
     return erroDoAgendamento(erro, "salvar a edição rápida");
@@ -363,7 +363,7 @@ export async function acaoFixarNoticia(entrada: unknown): Promise<RespostaFixar>
   try {
     const r = await fixarNoticia(validado.data, { quem: pessoa.quem, fila: await filaDoSistema() });
     revalidatePath("/painel/conteudos");
-    revalidarNoticiasDoSite();
+    revalidarSitePublico();
     if (r.tipo === "fixada") return { tipo: "feito", ate: diaDaFixacao(r.fixadaAte), vale: r.vale, desafixadas: r.desafixadas.map((d) => d.titulo) };
     return { tipo: "feito", ate: r.tipo === "desafixada" ? null : validado.data.ate, vale: false, desafixadas: [] };
   } catch (erro) {

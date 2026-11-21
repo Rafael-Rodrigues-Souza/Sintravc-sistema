@@ -15,6 +15,7 @@ import { publicarDocumento } from "@/lib/documentos/publicar";
 import { salvarRascunhoDocumento, type ResultadoSalvarDocumento } from "@/lib/documentos/salvar";
 import { descartarAlteracoesDocumento, restaurarVersaoDocumento, resolverConflitoDocumento, versoesDoDocumento } from "@/lib/documentos/versoes";
 import { pode, SemPermissao } from "@/lib/permissoes";
+import { revalidarSitePublico } from "@/lib/site/revalidar";
 import { filaDoSistema } from "@/lib/tarefas";
 
 import { versaoNaTela, type VersaoNaTela } from "@/lib/conteudos/versoes";
@@ -145,6 +146,8 @@ export async function acaoPublicarDocumento(entrada: unknown, sessaoEdicao: unkn
     const r = await publicarDocumento(validado.data, { quem: pessoa.quem, sessaoEdicao: sessao.data });
     revalidatePath("/painel/conteudos");
     if (r.tipo === "conflito") return { tipo: "conflito" };
+    // Publicar e publicar alterações mudam o que o site mostra (E60).
+    revalidarSitePublico();
     return { tipo: "publicado", revisaoPublicada: r.revisaoPublicada, publicadoEm: r.publicadoEm.toISOString() };
   } catch (erro) {
     return respostaDeErro(erro, "publicar o documento");
