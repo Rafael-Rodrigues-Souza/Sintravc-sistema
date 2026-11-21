@@ -201,6 +201,35 @@ test("editar um episódio no ar: abre com os dados e as mudanças valem na hora"
   await expect(linha(page, "Título novo")).toContainText("Publicado");
 });
 
+test("no ar, mover a exibição para o futuro pede confirmação antes de tirar do site", async ({ page }) => {
+  await entrarComo(page, pessoas.com, "/painel/radio");
+  const youtubeId = await adicionarEpisodioPelaTela(page, { titulo: "Vai para a semana que vem", numero: "20", ultimo: true });
+  await page.getByRole("button", { name: "Ações do Ep. 20" }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  const m = modal(page);
+  const futuro = campoDaqui(7 * 24 * 60);
+  await m.getByLabel("Exibição *").fill(futuro);
+  await m.getByRole("button", { name: "Agendar episódio", exact: true }).click();
+
+  const [data, hora] = futuro.split("T");
+  const [, mes, dia] = data!.split("-");
+  const confirmacao = page.getByRole("alertdialog", { name: "Tirar o episódio do site até a nova exibição?" });
+  await expect(confirmacao).toContainText(`O episódio sai do site até ${dia}/${mes} às ${hora}.`);
+
+  // “Manter no site” não muda nada.
+  await confirmacao.getByRole("button", { name: "Manter no site" }).click();
+  await expect(confirmacao).toBeHidden();
+  expect((await episodioPeloYoutube(youtubeId)).estado).toBe("publicado");
+
+  await m.getByRole("button", { name: "Agendar episódio", exact: true }).click();
+  await confirmacao.getByRole("button", { name: "Sair do site até lá" }).click();
+  await expect(m).toBeHidden();
+  await expect(linha(page, "Vai para a semana que vem")).toContainText("Agendado");
+  // A marca de último programa fica: volta a valer quando ele entrar no ar de novo.
+  await expect(linha(page, "Vai para a semana que vem")).toContainText("Último programa");
+  expect(await episodioPeloYoutube(youtubeId)).toMatchObject({ estado: "agendado", ultimo_programa: true });
+});
+
 test("programa ao vivo: o interruptor grava na hora e o diálogo muda canal, dias e horário", async ({ page }) => {
   await entrarComo(page, pessoas.com, "/painel/radio");
   const cartao = page.getByRole("region", { name: "Programa ao vivo" });

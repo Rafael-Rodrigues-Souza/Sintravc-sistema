@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { botaoDoModal, conferirCampos, situacaoDo, TRANSCRICAO_MAX, type CamposEpisodio } from "./regras";
+import { botaoDoModal, conferirCampos, situacaoDo, TRANSCRICAO_MAX, vaiSairDoSite, type CamposEpisodio } from "./regras";
 
 const campos = (mais: Partial<CamposEpisodio> = {}): CamposEpisodio => ({
   link: "https://youtu.be/ab12Cd34Ef5",
@@ -74,5 +74,12 @@ describe("situação e botão do modal", () => {
     expect(botaoDoModal("no_ar", new Date("2026-11-22T16:00:00Z"), agora)).toBe("Agendar episódio");
     expect(botaoDoModal("agendado", new Date("2026-11-22T16:00:00Z"), agora)).toBe("Salvar alterações");
     expect(botaoDoModal("agendado", new Date("2026-11-20T16:00:00Z"), agora)).toBe("Publicar episódio");
+  });
+
+  it("só pede confirmação quando o episódio está no ar e a exibição vai para o futuro", () => {
+    expect(vaiSairDoSite("no_ar", new Date("2026-11-22T16:00:00Z"), agora)).toBe(true);
+    expect(vaiSairDoSite("no_ar", new Date("2026-11-20T16:00:00Z"), agora)).toBe(false);
+    expect(vaiSairDoSite("agendado", new Date("2026-11-22T16:00:00Z"), agora)).toBe(false);
+    expect(vaiSairDoSite("rascunho", new Date("2026-11-22T16:00:00Z"), agora)).toBe(false);
   });
 });

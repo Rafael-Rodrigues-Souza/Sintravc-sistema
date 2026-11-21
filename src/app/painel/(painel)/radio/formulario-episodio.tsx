@@ -4,6 +4,8 @@ import { CalendarDays, CheckCircle2, ImageIcon, LoaderCircle, SquarePlay, Undo2 
 import * as React from "react";
 import { toast } from "sonner";
 
+import { SEM_CONEXAO } from "@/components/painel/sem-conexao";
+import { useTelaGrande } from "@/components/painel/use-tela-grande";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog";
@@ -11,7 +13,9 @@ import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { bahiaParaUtc, camposEmTexto } from "@/lib/datas";
+import { enderecoDaCapaDoYoutube } from "@/lib/episodios/endereco-da-capa";
 import {
   botaoDoModal,
   conferirCampos,
@@ -21,6 +25,7 @@ import {
   type CampoDoEpisodio,
   type CamposEpisodio,
   type ModoDeSalvar,
+  vaiSairDoSite,
 } from "@/lib/episodios/regras";
 import { duracaoPorExtenso, segundosDoTexto, textoDaDuracao } from "@/lib/youtube/duracao";
 import { idDoYoutube } from "@/lib/youtube/link";
@@ -28,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 import { SeletorDeMidia } from "../conteudos/noticia/seletor-midia";
 import { acaoBuscarVideo, acaoSalvarEpisodio, type EpisodioNoFormulario } from "./acoes";
-import { Interruptor, SEM_CONEXAO, useTelaGrande } from "./pecas";
+import { Interruptor } from "./pecas";
 
 type Limites = { tamanhoMaximoBytes: number; mensagemDeTamanho: string };
 
@@ -155,6 +160,7 @@ function Corpo({
   const [erro, setErro] = React.useState<{ mensagem: string; campo?: CampoDoEpisodio } | null>(null);
   const [gravando, setGravando] = React.useState<ModoDeSalvar | null>(null);
   const [duracaoDoYoutube, setDuracaoDoYoutube] = React.useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = React.useState(false);
   const buscado = React.useRef(inicial ? idDoYoutube(inicial.campos.link) : null);
   const pedido = React.useRef(0);
   // A hora em que o formulário abriu decide entre “Agendar” e “Publicar”.
@@ -185,7 +191,7 @@ function Corpo({
     if (r.tipo === "erro") {
       buscado.current = null;
       setVideo({ estado: "vazio" });
-      setErro({ mensagem: r.mensagem, campo: r.campo === "link" ? "link" : undefined });
+      setErro({ mensagem: r.mensagem, campo: "campo" in r && r.campo === "link" ? "link" : undefined });
       return;
     }
     const achado = r.resultado;
@@ -206,19 +212,29 @@ function Corpo({
     setDuracaoDoYoutube(!!achado.duracaoSeg);
   };
 
-  const salvar = async (modo: ModoDeSalvar) => {
+  const salvar = async (modo: ModoDeSalvar, confirmarSaidaDoSite = false) => {
     const conferido = conferirCampos(campos, modo);
     if (!conferido.ok) {
       setErro({ mensagem: conferido.mensagem, campo: conferido.campo });
       document.getElementById(`episodio-${conferido.campo}`)?.focus();
       return;
     }
+    // No ar e a exibição nova é no futuro: o episódio sai do site até lá. Pergunta antes (E61).
+    if (modo === "programar" && !confirmarSaidaDoSite && vaiSairDoSite(situacao, conferido.dados.exibicaoEm, new Date())) {
+      setConfirmandoSaida(true);
+      return;
+    }
     setGravando(modo);
     setErro(null);
-    const r = await acaoSalvarEpisodio({ id: inicial?.id, modo, campos }).catch(() => SEM_CONEXAO);
+    const r = await acaoSalvarEpisodio({ id: inicial?.id, modo, campos, confirmarSaidaDoSite }).catch(() => SEM_CONEXAO);
     setGravando(null);
+    if (r.tipo === "confirmar") {
+      setConfirmandoSaida(true);
+      return;
+    }
+    setConfirmandoSaida(false);
     if (r.tipo === "erro") {
-      const campo = r.campo as CampoDoEpisodio | undefined;
+      const campo = "campo" in r ? (r.campo as CampoDoEpisodio | undefined) : undefined;
       setErro({ mensagem: r.mensagem, campo });
       if (campo) document.getElementById(`episodio-${campo}`)?.focus();
       return;
@@ -236,7 +252,7 @@ function Corpo({
   };
 
   const idDoVideo = video.estado === "vazio" ? null : video.youtubeId;
-  const capa = capaDaMidia ?? (idDoVideo ? `/painel/radio/capa/${idDoVideo}` : null);
+  const capa = capaDaMidia ?? (idDoVideo ? enderecoDaCapaDoYoutube(idDoVideo, "painel") : null);
   const duracaoSeg = segundosDoTexto(campos.duracao);
   const avisoDoUltimo =
     ultimoMarcado && ultimoMarcado.id !== inicial?.id
@@ -520,6 +536,28 @@ function Corpo({
         <Interruptor ligado={campos.ultimoPrograma} rotuloId="episodio-ultimo" descricaoId="episodio-ultimo-ajuda" aoMudar={(v) => mudar({ ultimoPrograma: v })} />
       </div>
 
+      <AlertDialog open={confirmandoSaida} onOpenChange={(aberta) => !aberta && !gravando && setConfirmandoSaida(false)}>
+        {confirmandoSaida ? (
+          <AlertDialogContent
+            icone="/painel/icone-alerta.svg"
+            tom="perigo"
+            titulo="Tirar o episódio do site até a nova exibição?"
+            descricao={`O episódio sai do site até ${diaEHora(campos)}. Nessa hora, ele volta sozinho. Até lá, o topo da página mostra o episódio mais recente no ar.`}
+          >
+            <AlertDialogFooter>
+              <AlertDialogCancel asChild>
+                <Button variant="secundario" size="pequeno" disabled={!!gravando}>
+                  Manter no site
+                </Button>
+              </AlertDialogCancel>
+              <Button variant="perigo" size="pequeno" disabled={!!gravando} onClick={() => void salvar("programar", true)}>
+                {gravando ? "Aguarde…" : "Sair do site até lá"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        ) : null}
+      </AlertDialog>
+
       <SeletorDeMidia
         aberto={seletor}
         aoMudarAberto={setSeletor}
@@ -572,4 +610,10 @@ function Corpo({
       <div className="flex gap-3 border-t border-borda-padrao px-5 py-3">{botoes}</div>
     </form>
   );
+}
+
+/** "29/11 às 13:00", a data e a hora da exibição como a pessoa escolheu (horário da Bahia). */
+function diaEHora({ data, hora }: { data: string; hora: string }): string {
+  const [, mes, dia] = data.split("-");
+  return `${dia}/${mes} às ${hora}`;
 }

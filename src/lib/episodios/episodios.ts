@@ -7,8 +7,9 @@ import type { Fila } from "@/lib/tarefas/fila";
 import { idDoYoutube } from "@/lib/youtube/link";
 import type { Youtube } from "@/lib/youtube/youtube";
 
-import { registrar } from "./comum";
+import { registrar, type AlvoDoEpisodio } from "./comum";
 import {
+  ConfirmarSaidaDoSite,
   conferirCampos,
   episodioNaoEncontrado,
   ErroEpisodio,
@@ -19,6 +20,7 @@ import {
   type DadosEpisodio,
   type ModoDeSalvar,
   type Situacao,
+  vaiSairDoSite,
 } from "./regras";
 
 export type LinhaEpisodio = typeof episodio.$inferSelect;
@@ -50,7 +52,7 @@ async function travarUltimoPrograma(tx: Transacao) {
 }
 
 /** Desmarca o último programa atual (se for outro) e devolve qual era, para a Atividade. */
-async function desmarcarOutro(tx: Transacao, id: string | null): Promise<{ id: string; numero: number; titulo: string } | null> {
+async function desmarcarOutro(tx: Transacao, id: string | null): Promise<AlvoDoEpisodio | null> {
   await travarUltimoPrograma(tx);
   const [anterior] = await tx
     .select({ id: episodio.id, numero: episodio.numero, titulo: episodio.titulo })
@@ -61,18 +63,35 @@ async function desmarcarOutro(tx: Transacao, id: string | null): Promise<{ id: s
   return anterior;
 }
 
+type Leitor = Transacao | ReturnType<typeof banco>;
+
+/** O número de outro episódio (que não `exceto`) que já usa este campo, ou null. */
+async function outroComOMesmo(leitor: Leitor, cond: ReturnType<typeof eq>, exceto: string | null): Promise<number | null> {
+  const [linha] = await leitor
+    .select({ numero: episodio.numero })
+    .from(episodio)
+    .where(exceto ? and(cond, ne(episodio.id, exceto)) : cond)
+    .limit(1);
+  return linha?.numero ?? null;
+}
+
+/** O vídeo é único (E61): avisa em qual episódio ele já está. Vale na busca e ao salvar. */
+async function conferirVideoLivre(leitor: Leitor, youtubeId: string, exceto: string | null) {
+  const numero = await outroComOMesmo(leitor, eq(episodio.youtubeId, youtubeId), exceto);
+  if (numero !== null) throw new ErroEpisodio(`Esse vídeo já está no Ep. ${numero}.`, "link");
+}
+
 /** Número e vídeo são únicos (E61). Confere antes, para dizer em qual episódio está. */
 async function conferirUnicos(tx: Transacao, dados: DadosEpisodio, id: string | null) {
-  const outro = (cond: ReturnType<typeof eq>) =>
-    tx
-      .select({ numero: episodio.numero })
-      .from(episodio)
-      .where(id ? and(cond, ne(episodio.id, id)) : cond)
-      .limit(1);
-  const [mesmoNumero] = await outro(eq(episodio.numero, dados.numero));
-  if (mesmoNumero) throw new ErroEpisodio("invalido", `Já existe o Ep. ${dados.numero}. Use outro número.`, "numero");
-  const [mesmoVideo] = await outro(eq(episodio.youtubeId, dados.youtubeId));
-  if (mesmoVideo) throw new ErroEpisodio("invalido", `Esse vídeo já está no Ep. ${mesmoVideo.numero}.`, "link");
+  if ((await outroComOMesmo(tx, eq(episodio.numero, dados.numero), id)) !== null) {
+    throw new ErroEpisodio(`Já existe o Ep. ${dados.numero}. Use outro número.`, "numero");
+  }
+  await conferirVideoLivre(tx, dados.youtubeId, id);
+}
+
+/** A Atividade de “Último programa” marcado, com o episódio que deixou de ser (R12). */
+async function registrarMarcacao(tx: Transacao, quem: QuemDaEquipe, alvo: AlvoDoEpisodio, anterior: AlvoDoEpisodio | null) {
+  await registrar(tx, quem, alvo, "marcar_ultimo", { anterior: anterior ? rotuloDoEpisodio(anterior.numero, anterior.titulo) : null });
 }
 
 /** O tema tem de ser uma categoria com o escopo Rádio Chofer (E15). */
@@ -82,14 +101,14 @@ async function conferirTema(tx: Transacao, temaId: string | null) {
     .select({ id: categoria.id })
     .from(categoria)
     .where(and(eq(categoria.id, temaId), sql`'radio' = any(${categoria.escopos})`));
-  if (!tema) throw new ErroEpisodio("invalido", "Escolha um tema da lista.", "tema");
+  if (!tema) throw new ErroEpisodio("Escolha um tema da lista.", "tema");
 }
 
 /** A capa trocada tem de ser uma imagem da Mídia (E61). */
 async function conferirCapa(tx: Transacao, capaMidiaId: string | null) {
   if (!capaMidiaId) return;
   const [arquivo] = await tx.select({ tipo: midia.tipo }).from(midia).where(eq(midia.id, capaMidiaId));
-  if (arquivo?.tipo !== "imagem") throw new ErroEpisodio("invalido", "Escolha uma imagem da Mídia para a capa.", "capa");
+  if (arquivo?.tipo !== "imagem") throw new ErroEpisodio("Escolha uma imagem da Mídia para a capa.", "capa");
 }
 
 /** Mantém o MidiaUso da capa (RN16): enquanto for a capa, a imagem não pode ser excluída. */
@@ -102,9 +121,9 @@ async function gravarUsoDaCapa(tx: Transacao, id: string, capaMidiaId: string | 
 function traduzirUnico(erro: unknown): never {
   const causa = (erro as { cause?: { code?: string; constraint_name?: string } }).cause ?? (erro as { code?: string; constraint_name?: string });
   if (causa?.code === "23505") {
-    if (causa.constraint_name?.includes("numero")) throw new ErroEpisodio("invalido", "Esse número acabou de ser usado. Use outro.", "numero");
+    if (causa.constraint_name?.includes("numero")) throw new ErroEpisodio("Esse número acabou de ser usado. Use outro.", "numero");
     if (causa.constraint_name?.toLowerCase().includes("youtube")) {
-      throw new ErroEpisodio("invalido", "Esse vídeo acabou de ser cadastrado em outro episódio.", "link");
+      throw new ErroEpisodio("Esse vídeo acabou de ser cadastrado em outro episódio.", "link");
     }
   }
   throw erro;
@@ -132,21 +151,13 @@ export async function buscarVideo(
 ): Promise<ResultadoBusca> {
   exigir(deps.quem, "gerenciar", RECURSO);
   const youtubeId = idDoYoutube(entrada.link);
-  if (!youtubeId) throw new ErroEpisodio("invalido", MENSAGEM_LINK_INVALIDO, "link");
+  if (!youtubeId) throw new ErroEpisodio(MENSAGEM_LINK_INVALIDO, "link");
 
-  const cond = eq(episodio.youtubeId, youtubeId);
-  const [jaUsado] = await banco()
-    .select({ numero: episodio.numero })
-    .from(episodio)
-    .where(entrada.episodioId ? and(cond, ne(episodio.id, entrada.episodioId)) : cond)
-    .limit(1);
-  if (jaUsado) throw new ErroEpisodio("invalido", `Esse vídeo já está no Ep. ${jaUsado.numero}.`, "link");
+  await conferirVideoLivre(banco(), youtubeId, entrada.episodioId ?? null);
 
   const busca = await deps.youtube.buscarVideo(youtubeId);
   if (busca.tipo === "nao_encontrado") {
-    throw new ErroEpisodio(
-      "invalido",
-      "Não encontramos esse vídeo. Ele pode ser privado, ter sido apagado ou não permitir ser mostrado em outros sites.",
+    throw new ErroEpisodio("Não encontramos esse vídeo. Ele pode ser privado, ter sido apagado ou não permitir ser mostrado em outros sites.",
       "link",
     );
   }
@@ -170,16 +181,17 @@ export type ResultadoSalvar = { id: string; situacao: Situacao };
  * - `rascunho`: fica fora do site; um agendado que volta a rascunho sai da agenda.
  * - `programar`: com a exibição no futuro, fica Agendado (a T03 acerta o estado na hora); agora ou
  *   antes, vai ao ar na hora. Editar um episódio no ar vale na hora (não há versões).
- * No ar, “Salvar rascunho” não vale: use “Tirar do site”.
+ * No ar, “Salvar rascunho” não vale: use “Tirar do site”. No ar com a exibição movida para o futuro,
+ * o episódio sai do site até lá: só com `confirmarSaidaDoSite` (a tela pergunta antes).
  */
 export async function salvarEpisodio(
-  entrada: { id?: string; campos: CamposEpisodio; modo: ModoDeSalvar },
+  entrada: { id?: string; campos: CamposEpisodio; modo: ModoDeSalvar; confirmarSaidaDoSite?: boolean },
   deps: DepsComFila,
 ): Promise<ResultadoSalvar> {
   exigir(deps.quem, "gerenciar", RECURSO);
   const agora = deps.agora ?? new Date();
   const conferencia = conferirCampos(entrada.campos, entrada.modo);
-  if (!conferencia.ok) throw new ErroEpisodio("invalido", conferencia.mensagem, conferencia.campo);
+  if (!conferencia.ok) throw new ErroEpisodio(conferencia.mensagem, conferencia.campo);
   const dados = conferencia.dados;
 
   try {
@@ -187,7 +199,10 @@ export async function salvarEpisodio(
       const atual = entrada.id ? await travar(tx, entrada.id) : null;
       const situacaoAntes = atual ? situacaoDo(atual, agora) : "rascunho";
       if (situacaoAntes === "no_ar" && entrada.modo === "rascunho") {
-        throw new ErroEpisodio("invalido", "Este episódio está no site. Para tirar do site, use “Tirar do site” no menu.");
+        throw new ErroEpisodio("Este episódio está no site. Para tirar do site, use “Tirar do site” no menu.");
+      }
+      if (entrada.modo === "programar" && vaiSairDoSite(situacaoAntes, dados.exibicaoEm, agora) && !entrada.confirmarSaidaDoSite) {
+        throw new ConfirmarSaidaDoSite(dados.exibicaoEm!);
       }
 
       await conferirUnicos(tx, dados, atual?.id ?? null);
@@ -235,27 +250,28 @@ export async function salvarEpisodio(
           .values({ ...valores, criadoPor: deps.quem.id })
           .returning({ id: episodio.id });
         id = novo!.id;
-        await registrar(tx, deps.quem, { id, ...dados }, "criar", { situacao });
+        await registrar(tx, deps.quem, { id, numero: dados.numero, titulo: dados.titulo }, "criar", { situacao });
       } else {
         id = atual.id;
         await tx.update(episodio).set(valores).where(eq(episodio.id, id));
         const mudou = mudancas(atual, dados);
-        if (Object.keys(mudou).length > 0) await registrar(tx, deps.quem, { id, ...dados }, "editar", mudou);
+        if (Object.keys(mudou).length > 0) await registrar(tx, deps.quem, { id, numero: dados.numero, titulo: dados.titulo }, "editar", mudou);
       }
       await gravarUsoDaCapa(tx, id, dados.capaMidiaId);
 
       const alvo = { id, numero: dados.numero, titulo: dados.titulo };
       if (vaiAoArAgora) await registrar(tx, deps.quem, alvo, "publicar", { exibicao_em: iso(dados.exibicaoEm) });
       else if (situacao === "agendado" && situacaoAntes !== "agendado") {
-        await registrar(tx, deps.quem, alvo, "agendar", { exibicao_em: iso(dados.exibicaoEm) });
+        // Do ar para o futuro: a Atividade diz que saiu do site até a exibição (confirmado na tela).
+        await registrar(tx, deps.quem, alvo, "agendar", {
+          exibicao_em: iso(dados.exibicaoEm),
+          ...(situacaoAntes === "no_ar" ? { saiu_do_site: true } : {}),
+        });
       } else if (situacao === "rascunho" && situacaoAntes === "agendado") {
         await registrar(tx, deps.quem, alvo, "cancelar_agendamento", { exibicao_em: iso(atual!.exibicaoEm) });
       }
-      if (dados.ultimoPrograma && !atual?.ultimoPrograma) {
-        await registrar(tx, deps.quem, alvo, "marcar_ultimo", {
-          anterior: anterior ? rotuloDoEpisodio(anterior.numero, anterior.titulo) : null,
-        });
-      }
+      if (dados.ultimoPrograma && !atual?.ultimoPrograma) await registrarMarcacao(tx, deps.quem, alvo, anterior);
+      if (!dados.ultimoPrograma && atual?.ultimoPrograma) await registrar(tx, deps.quem, alvo, "desmarcar_ultimo");
 
       if (situacao === "agendado") await deps.fila.agendarEpisodio(tx, { episodioId: id, para: dados.exibicaoEm! });
       return { id, situacao };
@@ -295,9 +311,7 @@ export async function marcarUltimoPrograma(entrada: { id: string }, deps: Deps):
     if (atual.ultimoPrograma) return;
     const anterior = await desmarcarOutro(tx, atual.id);
     await tx.update(episodio).set({ ultimoPrograma: true, atualizadoPor: deps.quem.id }).where(eq(episodio.id, atual.id));
-    await registrar(tx, deps.quem, atual, "marcar_ultimo", {
-      anterior: anterior ? rotuloDoEpisodio(anterior.numero, anterior.titulo) : null,
-    });
+    await registrarMarcacao(tx, deps.quem, atual, anterior);
   });
 }
 
@@ -311,7 +325,7 @@ export async function tirarDoSite(entrada: { id: string }, deps: Deps): Promise<
   await banco().transaction(async (tx) => {
     const atual = await travar(tx, entrada.id);
     const situacao = situacaoDo(atual, agora);
-    if (situacao === "rascunho") throw new ErroEpisodio("invalido", "Este episódio já está fora do site. Atualize a página.");
+    if (situacao === "rascunho") throw new ErroEpisodio("Este episódio já está fora do site. Atualize a página.");
     if (atual.ultimoPrograma) await travarUltimoPrograma(tx);
     await tx
       .update(episodio)
@@ -333,7 +347,7 @@ export async function excluirEpisodio(entrada: { id: string }, deps: Deps): Prom
   await banco().transaction(async (tx) => {
     const atual = await travar(tx, entrada.id);
     if (atual.estado !== "rascunho" || atual.jaPublicado) {
-      throw new ErroEpisodio("invalido", "Só dá para excluir o rascunho que nunca foi ao ar. Use “Tirar do site”.");
+      throw new ErroEpisodio("Só dá para excluir o rascunho que nunca foi ao ar. Use “Tirar do site”.");
     }
     await tx.delete(midiaUso).where(and(eq(midiaUso.donoTipo, "episodio"), eq(midiaUso.donoId, atual.id)));
     await tx.delete(episodio).where(eq(episodio.id, atual.id));

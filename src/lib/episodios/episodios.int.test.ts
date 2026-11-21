@@ -22,7 +22,7 @@ import {
   tirarDoSite,
 } from "./episodios";
 import { gravarProgramaAoVivo, lerProgramaAoVivo } from "./gravar-programa";
-import { ErroEpisodio, type CamposEpisodio } from "./regras";
+import { ConfirmarSaidaDoSite, ErroEpisodio, type CamposEpisodio } from "./regras";
 import { episodiosDoSite, responderCapa, responderTranscricao, temasDoSite, ultimoPrograma } from "./site";
 import { executarEntradaDoEpisodio } from "./tarefa";
 
@@ -200,6 +200,36 @@ describe("Episódios: salvar, agendar e publicar (E61)", () => {
     const editar = (await atividadesDe(id)).find((a) => a.acao === "episodio.editar");
     expect(editar?.detalhe).toMatchObject({ titulo: { de: "Saúde mental no volante", para: "Título novo" } });
   });
+
+  it("no ar, mover a exibição para o futuro pede confirmação; confirmado, sai do site até lá e o topo cai no mais recente no ar", async () => {
+    await semEpisodios();
+    await publicado({ numero: "801", data: "2026-11-10" });
+    const { id, quem } = await publicado({ numero: "802", data: "2026-11-15", ultimoPrograma: true });
+    const { fila, pedidosEpisodio } = filaEmMemoria();
+    const atual = await linha(id);
+    const futuro = campos({
+      link: `https://youtu.be/${atual!.youtubeId}`,
+      numero: "802",
+      data: "2026-11-29",
+      hora: "13:00",
+      ultimoPrograma: true,
+    });
+
+    // Sem a confirmação, o servidor recusa e nada muda.
+    await expect(salvarEpisodio({ id, campos: futuro, modo: "programar" }, { quem, fila, agora: AGORA })).rejects.toBeInstanceOf(
+      ConfirmarSaidaDoSite,
+    );
+    expect((await linha(id))!.estado).toBe("publicado");
+
+    // Confirmado: vira agendado, a marca de último programa fica, e o topo mostra o mais recente no ar.
+    const r = await salvarEpisodio({ id, campos: futuro, modo: "programar", confirmarSaidaDoSite: true }, { quem, fila, agora: AGORA });
+    expect(r.situacao).toBe("agendado");
+    expect(await linha(id)).toMatchObject({ estado: "agendado", ultimoPrograma: true });
+    expect(pedidosEpisodio).toEqual([{ episodioId: id, para: "2026-11-29T16:00:00.000Z" }]);
+    expect((await ultimoPrograma(AGORA))?.numero).toBe(801);
+    expect((await ultimoPrograma(new Date("2026-11-29T16:00:00Z")))?.numero).toBe(802);
+    expect((await atividadesDe(id)).at(-1)).toMatchObject({ acao: "episodio.agendar", detalhe: { saiu_do_site: true } });
+  });
 });
 
 describe("Episódios: último programa (R12)", () => {
@@ -215,6 +245,16 @@ describe("Episódios: último programa (R12)", () => {
     await marcarUltimoPrograma({ id: a.id }, { quem: a.quem });
     expect((await linha(a.id))!.ultimoPrograma).toBe(true);
     expect((await linha(b.id))!.ultimoPrograma).toBe(false);
+  });
+
+  it("desmarcar pelo modal também vai para a Atividade, na mesma transação", async () => {
+    const { id, quem } = await publicado({ ultimoPrograma: true, numero: "620" });
+    const { fila } = filaEmMemoria();
+    const atual = await linha(id);
+    const base = campos({ link: `https://youtu.be/${atual!.youtubeId}`, numero: "620", ultimoPrograma: false });
+    await salvarEpisodio({ id, campos: base, modo: "programar" }, { quem, fila, agora: AGORA });
+    expect((await linha(id))!.ultimoPrograma).toBe(false);
+    expect((await atividadesDe(id)).map((a) => a.acao)).toContain("episodio.desmarcar_ultimo");
   });
 
   it("duas marcações ao mesmo tempo: fica uma só, sem erro", async () => {

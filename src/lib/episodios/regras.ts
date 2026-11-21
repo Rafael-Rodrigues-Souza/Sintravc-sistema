@@ -29,22 +29,37 @@ export type CampoDoEpisodio =
   | "transcricao"
   | "capa";
 
-export type CodigoErroEpisodio = "nao_encontrado" | "invalido";
-
-/** Erro esperado do Rádio Chofer. A mensagem vai direto para a tela, em linguagem simples. */
-export class ErroEpisodio extends Error {
+/** Erro esperado do Rádio Chofer: a mensagem vai direto para a tela, e o campo diz onde mostrar. */
+export class ErroDoRadio<C extends string = string> extends Error {
   constructor(
-    readonly codigo: CodigoErroEpisodio,
     mensagem: string,
-    readonly campo?: CampoDoEpisodio,
+    readonly campo?: C,
   ) {
     super(mensagem);
-    this.name = "ErroEpisodio";
+    this.name = new.target.name;
   }
 }
 
-export const episodioNaoEncontrado = () =>
-  new ErroEpisodio("nao_encontrado", "Este episódio não existe mais. Atualize a página.");
+/** Erro do episódio (modal e menu ⋯). */
+export class ErroEpisodio extends ErroDoRadio<CampoDoEpisodio> {}
+
+/**
+ * O episódio está no site e a exibição nova é no futuro: ele sai do site até lá. A tela confirma
+ * antes (“O episódio sai do site até…”) e manda de novo com `confirmarSaidaDoSite` (E61).
+ */
+export class ConfirmarSaidaDoSite extends Error {
+  constructor(readonly ate: Date) {
+    super("Este episódio sai do site até a nova exibição. Confirme para continuar.");
+    this.name = "ConfirmarSaidaDoSite";
+  }
+}
+
+/** No ar agora e a exibição nova é no futuro: salvar tira o episódio do site até lá. */
+export function vaiSairDoSite(situacaoAntes: Situacao, exibicao: Date | null, agora: Date): boolean {
+  return situacaoAntes === "no_ar" && !!exibicao && exibicao.getTime() > agora.getTime();
+}
+
+export const episodioNaoEncontrado = () => new ErroEpisodio("Este episódio não existe mais. Atualize a página.");
 
 export const MENSAGEM_LINK_INVALIDO =
   "Este link não é de um vídeo do YouTube. Cole o link do vídeo (youtube.com/watch… ou youtu.be/…).";

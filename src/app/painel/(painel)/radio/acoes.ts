@@ -4,10 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
-import { urlPublica } from "@/lib/armazenamento";
-import type { ProgramaAoVivo } from "@/lib/config-site";
 import { bahiaEmCampos } from "@/lib/datas";
-import { lerEnvArmazenamento } from "@/lib/env";
+import { enderecoDaCapa } from "@/lib/episodios/capa";
 import {
   buscarVideo,
   carregarEpisodio,
@@ -18,8 +16,8 @@ import {
   type ResultadoBusca,
   type ResultadoSalvar,
 } from "@/lib/episodios/episodios";
-import { ErroPrograma, gravarProgramaAoVivo } from "@/lib/episodios/gravar-programa";
-import { ErroEpisodio, TRANSCRICAO_MAX, type CamposEpisodio, type Situacao } from "@/lib/episodios/regras";
+import { gravarProgramaAoVivo } from "@/lib/episodios/gravar-programa";
+import { ConfirmarSaidaDoSite, ErroDoRadio, TRANSCRICAO_MAX, type CamposEpisodio, type Situacao } from "@/lib/episodios/regras";
 import { SemPermissao } from "@/lib/permissoes";
 import { revalidarSitePublico } from "@/lib/site/revalidar";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -45,13 +43,19 @@ const esquemaCampos = z.object({
   temaId: z.union([z.uuid(), z.literal("")]),
   data: texto(10),
   hora: texto(5),
-  transcricao: texto(TRANSCRICAO_MAX + 1000),
+  // O mesmo limite do banco e do regras.ts (E55): passou, nem chega às regras.
+  transcricao: texto(TRANSCRICAO_MAX),
   capaMidiaId: z.union([z.uuid(), z.literal("")]),
   ultimoPrograma: z.boolean(),
   tituloYoutube: texto(500),
   canalYoutube: texto(200),
 });
-const esquemaSalvar = z.object({ id: z.uuid().optional(), modo: z.enum(["rascunho", "programar"]), campos: esquemaCampos });
+const esquemaSalvar = z.object({
+  id: z.uuid().optional(),
+  modo: z.enum(["rascunho", "programar"]),
+  campos: esquemaCampos,
+  confirmarSaidaDoSite: z.boolean().optional(),
+});
 const esquemaId = z.object({ id: z.uuid() });
 const esquemaBusca = z.object({ link: texto(500), episodioId: z.uuid().optional() });
 const esquemaPrograma = z.object({
@@ -63,8 +67,7 @@ const esquemaPrograma = z.object({
 });
 
 function erroParaResposta(erro: unknown, contexto: string): Erro {
-  if (erro instanceof ErroEpisodio) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
-  if (erro instanceof ErroPrograma) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
+  if (erro instanceof ErroDoRadio) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
   if (erro instanceof SemPermissao) return { tipo: "erro", mensagem: SEM_PERMISSAO };
   console.error(`[radio] Falha ao ${contexto}.`, erro);
   return { tipo: "erro", mensagem: FALHOU };
@@ -88,8 +91,11 @@ export async function acaoBuscarVideo(pedido: unknown): Promise<Resposta<{ resul
   }
 }
 
-/** Cria ou salva (RF45, E61). Permissão e regras conferidas no servidor (RNF01). */
-export async function acaoSalvarEpisodio(pedido: unknown): Promise<Resposta<ResultadoSalvar>> {
+/**
+ * Cria ou salva (RF45, E61). Permissão e regras conferidas no servidor (RNF01). Episódio no ar com a
+ * exibição movida para o futuro volta `confirmar`: a tela pergunta e manda de novo, confirmado.
+ */
+export async function acaoSalvarEpisodio(pedido: unknown): Promise<Resposta<ResultadoSalvar> | { tipo: "confirmar"; ate: string }> {
   const lido = esquemaSalvar.safeParse(pedido);
   if (!lido.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   try {
@@ -98,6 +104,7 @@ export async function acaoSalvarEpisodio(pedido: unknown): Promise<Resposta<Resu
     revalidar();
     return { tipo: "ok", ...resultado };
   } catch (erro) {
+    if (erro instanceof ConfirmarSaidaDoSite) return { tipo: "confirmar", ate: erro.ate.toISOString() };
     return erroParaResposta(erro, "salvar o episódio");
   }
 }
@@ -122,7 +129,7 @@ export async function acaoCarregarEpisodio(pedido: unknown): Promise<Resposta<{ 
       episodio: {
         id: e.id,
         situacao: e.situacao,
-        capaDaMidiaUrl: e.capaChave ? urlPublica(e.capaChave, lerEnvArmazenamento()) : null,
+        capaDaMidiaUrl: e.capaChave ? enderecoDaCapa(e, "painel") : null,
         campos: {
           link: enderecoDoVideo(e.youtubeId),
           numero: String(e.numero),
@@ -179,10 +186,7 @@ export async function acaoGravarPrograma(pedido: unknown): Promise<Resposta> {
   if (!lido.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   try {
     const { quem } = await sessaoDaEquipe();
-    // “youtube.com/@sintravc” sem o https:// também vale.
-    const digitado = lido.data.canal?.trim() ?? "";
-    const canal = !digitado ? null : /^https?:\/\//i.test(digitado) ? digitado : `https://${digitado}`;
-    await gravarProgramaAoVivo({ ...lido.data, canal } as ProgramaAoVivo, { quem });
+    await gravarProgramaAoVivo(lido.data, { quem });
     revalidar();
     return { tipo: "ok" };
   } catch (erro) {
