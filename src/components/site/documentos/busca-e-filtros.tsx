@@ -89,7 +89,7 @@ export function BuscaEFiltros({
           ) : null}
           <button
             type="submit"
-            className="hidden h-[25px] items-center rounded-[8px] bg-fundo-superficie-alt px-2.5 texto-etiqueta text-texto-secundario uppercase outline-none hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring sm:flex"
+            className="alvo-toque hidden h-[25px] items-center rounded-[8px] bg-fundo-superficie-alt px-2.5 texto-etiqueta text-texto-secundario uppercase outline-none hover:text-texto-primario focus-visible:ring-[3px] focus-visible:ring-ring sm:flex"
           >
             {t.buscar}
           </button>
