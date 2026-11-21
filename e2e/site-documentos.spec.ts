@@ -250,6 +250,7 @@ test.describe("Documentos no celular e no tablet", { tag: "@responsivo" }, () =>
           resumo: "Reajuste e cláusulas sociais da oficina.",
           vigencia: { inicio: diaNaBahiaDaquiA(-5), fim: diaNaBahiaDaquiA(360) },
           abrangencia: "Oficina de exemplo",
+          partes: "SINTRAVC e empresa de exemplo",
           pdf: { nome: `act-${marca}.pdf`, linhas: ["ACORDO COLETIVO DE TRABALHO"] },
         });
       }

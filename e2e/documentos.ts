@@ -59,6 +59,8 @@ export async function publicarDocumentoPelaTela(page: Page, d: Documento): Promi
 
   await page.getByRole("button", { name: "Publicar…" }).click();
   const modal = page.getByRole("alertdialog", { name: "Publicar documento oficial?" });
+  // Sem a confirmação, falta campo obrigatório: falha logo, em vez de esperar o tempo do teste.
+  await expect(modal, "a confirmação de publicar abriu (falta algum campo obrigatório?)").toBeVisible({ timeout: 10_000 });
   await modal.getByLabel("Confirmo que o PDF é a versão oficial e assinada").check();
   await modal.getByRole("button", { name: "Publicar documento" }).click();
   await expect(page.getByText("Documento publicado.")).toBeVisible();

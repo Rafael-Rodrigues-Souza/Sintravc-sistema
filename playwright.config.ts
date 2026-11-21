@@ -64,6 +64,8 @@ export const RESPONSIVO = {
   menuLateralAPartirDe: 1024,
   /** Abaixo desta largura (o `sm` do Tailwind), o layout de celular: o rodapé do site em 2 colunas, por exemplo. */
   celularAbaixoDe: 640,
+  /** A partir desta largura (o `2xl` do Tailwind), estado e vigência ficam numa linha na tabela de Conteúdos; abaixo, um embaixo do outro (#16). */
+  estadoNumaLinhaAPartirDe: 1536,
 } as const;
 
 export default defineConfig({
