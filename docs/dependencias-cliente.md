@@ -13,6 +13,7 @@ Itens que o SINTRAVC precisa entregar ou decidir para o desenvolvimento avançar
 | D7 | **Lista das URLs do site atual** (sitemap ou exportação). | Redirecionamentos 301, para preservar o SEO (ver `decisoes.md`, item B2). | Publicação do site | Pendente |
 | D8 | **Acesso ao Cloudflare** (DNS e o que mais estiver em uso), **servidor (VPS) para a aplicação** (E26) e **servidor de backup** do sindicato (E27). | Hospedagem, domínio e backups. | Publicação do site | Pendente |
 | D9 | **Validação do advogado** para os prazos de guarda provisórios (E25) e para o texto sobre excluir acesso (E24). | Política de privacidade e limpeza automática. | Publicação da Fase 2 | Pendente |
+| D10 | **Atendimento jurídico:** o atendimento jurídico é gratuito para associados? Qual texto e qual canal o bloco “Precisa de orientação?” da notícia aberta deve usar? | Bloco lateral da notícia aberta (Figma 100:15159). Hoje mostra “[Conteúdo a definir pelo sindicato]”, e o botão abre o WhatsApp da recepção (E59). | Nada; o marcador fica visível | Pendente |
 
 ## Validar com o sindicato
 

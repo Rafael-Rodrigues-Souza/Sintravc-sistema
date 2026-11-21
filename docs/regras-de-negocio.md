@@ -73,7 +73,7 @@ Regras de negócio descrevem decisões do sindicato que valem em qualquer tela o
 | RN17 | **Rádio Chofer sem vídeo no servidor** | Episódios são cadastrados por link do YouTube; nenhum vídeo é guardado no servidor do site. Título, capa e duração são preenchidos a partir do YouTube; o player é carregado só no clique. |
 | RN43 | **Configurações como fonte única** | Endereço, horários, telefones, WhatsApp e redes sociais exibidos no site vêm de Configurações › Site. |
 | RN57 | **Período do parceiro** (E12) | O parceiro tem “Começa em” (opcional; vazio = entra ao publicar) e “Válido até” (opcional; vazio = sem prazo). Com início futuro, fica Agendado e entra sozinho. Ao vencer, sai do site e vai para Arquivado. |
-| RN58 | **Notícia fixada** (E14) | Só uma notícia fica fixada no topo da página Notícias, até a data escolhida. Fixar outra substitui a anterior, com aviso. Sem fixada, o destaque é a notícia mais recente. Os destaques da Home são controlados só pela área Página inicial (E13). |
+| RN58 | **Notícia fixada** (E14, E59) | Só uma notícia fica fixada no topo da página Notícias, até o fim do dia escolhido (horário da Bahia). Fixar outra substitui a anterior, com aviso. No rascunho e na agendada, a fixação vale ao publicar; se a data já passou, publica sem fixar. Sem fixada, o destaque é a notícia mais recente. Os destaques da Home são controlados só pela área Página inicial (E13). |
 | RN59 | **E-mail × notificação** (E19–E21) | O e-mail é usado só para mensagens transacionais: conta, segurança, falhas de publicação e agendamentos. Os avisos do sindicato aos associados são notificações no site, geradas automaticamente quando entra no ar um edital, acordo, comunicado ou parceiro; notícias comuns não geram. Para a equipe, só vão por e-mail os eventos de segurança e a publicação agendada que falhou; o resto fica nas notificações do painel. |
 
 ### 2.5 Agendamentos
@@ -144,6 +144,8 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Tempo de aviso rápido na tela | 6 segundos | RN42 |
 | Troca da faixa com vários comunicados no ar | 8 segundos | E58 |
 | Validade do X do visitante na faixa de comunicado | 365 dias | E58 |
+| Janela das “Mais lidas” | 7 dias | E30, E59 |
+| Quantidade de “Mais lidas” | 3 notícias | E30, E59 |
 | Atualização do site após Configurações | até 1 minuto | RN43 |
 | Validade da escolha no aviso de cookies | 365 dias | RN45, E56 |
 | Alerta de vigência de documento | 2 dias antes | RN44 |
