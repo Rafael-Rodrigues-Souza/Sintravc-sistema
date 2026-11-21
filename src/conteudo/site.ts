@@ -178,4 +178,5 @@ export const COMUNICADOS_PAGINA = {
   vazioTitulo: "Nenhum comunicado no momento",
   vazioTexto: "Quando o sindicato publicar um aviso, ele aparece aqui e na faixa amarela no alto do site.",
   vazioAcao: "Voltar ao início",
+  noticiasTitulo: "Notícias recentes",
 };

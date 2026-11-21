@@ -12,14 +12,59 @@ import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LIMITE_MENSAGEM, normalizarLinkDoComunicado } from "@/lib/comunicados/regras";
+import { LIMITE_TEXTO, LIMITE_TITULO, normalizarLinkDoComunicado, type CampoDoComunicado } from "@/lib/comunicados/regras";
 import { bahiaParaUtc, camposEmTexto } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
 import { acaoBuscarConteudos, acaoSalvarComunicado, type ComunicadoNoFormulario, type ConteudoDoLink, type PedidoSalvar } from "./acoes";
 
-type Campo = "mensagem" | "link" | "inicio" | "fim";
+type Campo = CampoDoComunicado;
 type LinkEscolhido = ComunicadoNoFormulario["link"];
+
+/** Campo de várias linhas com contador de caracteres (título e texto do comunicado). */
+function CampoDeTexto({
+  id,
+  rotulo,
+  valor,
+  limite,
+  linhas,
+  aoMudar,
+  erro,
+  ajuda,
+}: {
+  id: string;
+  rotulo: string;
+  valor: string;
+  limite: number;
+  linhas: number;
+  aoMudar: (valor: string) => void;
+  erro?: string;
+  ajuda: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <Label htmlFor={id}>{rotulo}</Label>
+        <span aria-hidden className={cn("texto-pequeno", valor.length >= limite ? "text-status-perigo-texto" : "text-texto-terciario")}>
+          {valor.length}/{limite}
+        </span>
+      </div>
+      <Textarea
+        id={id}
+        value={valor}
+        maxLength={limite}
+        rows={linhas}
+        className={linhas > 2 ? "min-h-[120px]" : "min-h-[80px]"}
+        aria-invalid={erro ? true : undefined}
+        aria-describedby={`${id}-ajuda`}
+        onChange={(e) => aoMudar(e.target.value)}
+      />
+      <p id={`${id}-ajuda`} className={cn("texto-pequeno", erro ? "text-status-perigo-texto" : "text-texto-secundario")}>
+        {erro ?? ajuda}
+      </p>
+    </div>
+  );
+}
 
 /** "2026-10-24T08:00" (datetime-local) ⇄ { data, hora } no horário da Bahia. */
 const paraCampo = (q: { data: string; hora: string } | null) => (q ? `${q.data}T${q.hora}` : "");
@@ -39,8 +84,8 @@ function useTelaGrande() {
 }
 
 /**
- * Novo comunicado e edição (RF43; Figma 165:16711 e 170:18978): mensagem de até 140 caracteres, link
- * “Saiba mais” opcional (notícia, edital ou acordo publicado, ou um endereço), começo e fim, prévia da
+ * Novo comunicado e edição (RF43; Figma 165:16711 e 170:18978): título de até 140 caracteres (o que a
+ * faixa mostra), texto de até 1.000 (na janela e na página Comunicados), link “Saiba mais” opcional (notícia, edital ou acordo publicado, ou um endereço), começo e fim, prévia da
  * faixa e o resumo de quando entra e sai do ar. No ar, o começo fica travado (E58).
  */
 export function FormularioComunicado({
@@ -95,7 +140,8 @@ function Corpo({
 }) {
   const situacao = inicial?.situacao ?? "rascunho";
   const noAr = situacao === "no_ar";
-  const [mensagem, setMensagem] = React.useState(inicial?.mensagem ?? "");
+  const [titulo, setTitulo] = React.useState(inicial?.titulo ?? "");
+  const [texto, setTexto] = React.useState(inicial?.texto ?? "");
   const [link, setLink] = React.useState<LinkEscolhido>(inicial?.link ?? null);
   const [inicio, setInicio] = React.useState(paraCampo(inicial?.inicio ?? null));
   const [fim, setFim] = React.useState(paraCampo(inicial?.fim ?? null));
@@ -123,7 +169,8 @@ function Corpo({
     const pedido: PedidoSalvar = {
       id: inicial?.id,
       modo,
-      mensagem,
+      titulo,
+      texto,
       link: linkFinal?.tipo === "conteudo" ? { tipo: "conteudo", id: linkFinal.id } : linkFinal,
       inicio: inicioCampos,
       fim: fimCampos,
@@ -164,27 +211,27 @@ function Corpo({
     <>
       {erro && !erro.campo ? <Alerta tipo="erro" titulo="Não foi possível salvar">{erro.mensagem}</Alerta> : null}
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-3">
-          <Label htmlFor="comunicado-mensagem">Mensagem *</Label>
-          <span aria-hidden className={cn("texto-pequeno", mensagem.length >= LIMITE_MENSAGEM ? "text-status-perigo-texto" : "text-texto-terciario")}>
-            {mensagem.length}/{LIMITE_MENSAGEM}
-          </span>
-        </div>
-        <Textarea
-          id="comunicado-mensagem"
-          value={mensagem}
-          maxLength={LIMITE_MENSAGEM}
-          rows={2}
-          className="min-h-[80px]"
-          aria-invalid={erroNo("mensagem") ? true : undefined}
-          aria-describedby="comunicado-mensagem-ajuda"
-          onChange={(e) => setMensagem(e.target.value)}
-        />
-        <p id="comunicado-mensagem-ajuda" className={cn("texto-pequeno", erroNo("mensagem") ? "text-status-perigo-texto" : "text-texto-secundario")}>
-          {erroNo("mensagem") ?? `Escreva só o essencial (até ${LIMITE_MENSAGEM} caracteres). Detalhes vão no link “Saiba mais”.`}
-        </p>
-      </div>
+      <CampoDeTexto
+        id="comunicado-titulo"
+        rotulo="Título *"
+        valor={titulo}
+        limite={LIMITE_TITULO}
+        linhas={2}
+        aoMudar={setTitulo}
+        erro={erroNo("titulo")}
+        ajuda={`O que aparece na faixa amarela do site (até ${LIMITE_TITULO} caracteres).`}
+      />
+
+      <CampoDeTexto
+        id="comunicado-texto"
+        rotulo="Texto do comunicado *"
+        valor={texto}
+        limite={LIMITE_TEXTO}
+        linhas={5}
+        aoMudar={setTexto}
+        erro={erroNo("texto")}
+        ajuda={`Aparece com o título quando a pessoa abre o comunicado (até ${LIMITE_TEXTO} caracteres). Pode pular linha.`}
+      />
 
       <CampoDoLink
         link={link}
@@ -220,11 +267,17 @@ function Corpo({
               comunicados={[
                 {
                   id: "previa",
-                  mensagem: mensagem.trim() || "Sua mensagem aparece aqui.",
+                  titulo: titulo.trim() || "O título aparece aqui.",
+                  texto: "",
                   link: link || textoDoLink.trim() ? { href: "#", externo: false } : null,
                 },
               ]}
             />
+          </div>
+          {/* Ao abrir o comunicado (janela e página Comunicados): o título e o texto inteiro. */}
+          <div data-testid="previa-aberta" className="flex max-h-48 flex-col gap-1.5 overflow-y-auto rounded-[8px] bg-destaque-amarelo px-4 py-3 text-destaque-marinho-fixo">
+            <p className="texto-titulo-card-pequeno break-words">{titulo.trim() || "O título aparece aqui."}</p>
+            <p className="texto-pequeno break-words whitespace-pre-line">{texto.trim() || "O texto do comunicado aparece aqui."}</p>
           </div>
         </div>
       ) : null}

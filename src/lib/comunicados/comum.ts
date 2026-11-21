@@ -19,7 +19,7 @@ export function filtroNoAr(agora: Date) {
 export async function registrar(
   tx: Transacao,
   quem: QuemDaEquipe | null,
-  alvo: { id: string; mensagem: string },
+  alvo: { id: string; titulo: string },
   acao: string,
   detalhe: Record<string, unknown> = {},
 ) {
@@ -27,7 +27,7 @@ export async function registrar(
     ator: quem ? { tipo: "pessoa", id: quem.id } : { tipo: "sistema" },
     acao: `comunicado.${acao}`,
     area: "comunicados",
-    alvo: { tipo: "comunicado", id: alvo.id, rotulo: rotuloDoComunicado(alvo.mensagem) },
+    alvo: { tipo: "comunicado", id: alvo.id, rotulo: rotuloDoComunicado(alvo.titulo) },
     detalhe,
   });
 }

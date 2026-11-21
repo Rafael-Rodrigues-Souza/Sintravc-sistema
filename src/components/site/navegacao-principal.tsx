@@ -76,13 +76,12 @@ function Grupo({ grupo, caminho }: { grupo: GrupoDeMenu; caminho: string }) {
   );
 }
 
-/** Menu principal do desktop (Figma 295:51110). Sindicato e Documentos abrem no clique, no toque e no teclado. */
+/** Menu principal do desktop (Figma 295:51110). Notícias, Sindicato e Documentos abrem no clique, no toque e no teclado. */
 export function NavegacaoPrincipal() {
   const caminho = usePathname();
   return (
     <NavigationMenu.Root aria-label="Principal" delayDuration={150} className="hidden lg:block">
-      {/* Com “Comunicados” (E58), são 7 itens: de 1024 a 1279 px, o espaço entre eles fica em 16 px para caber numa linha. */}
-      <NavigationMenu.List className="flex items-start gap-4 xl:gap-8">
+      <NavigationMenu.List className="flex items-start gap-6 xl:gap-8">
         {MENU_PRINCIPAL.map((entrada) =>
           ehGrupo(entrada) ? (
             <Grupo key={entrada.rotulo} grupo={entrada} caminho={caminho} />

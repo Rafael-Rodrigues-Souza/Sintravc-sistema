@@ -14,10 +14,10 @@ const botaoNoEscuro =
   "alvo-toque flex size-10 shrink-0 items-center justify-center rounded-full bg-sobre-escuro-chip outline-none hover:bg-sobre-escuro-borda focus-visible:ring-[3px] focus-visible:ring-texto-invertido";
 
 /**
- * Janela dos comunicados (E58), aberta pela mensagem da faixa. Não tem frame no Figma: segue o
+ * Janela dos comunicados (E58), aberta pelo título na faixa ou por um cartão da página Comunicados. Não tem frame no Figma: segue o
  * visualizador da Mídia (E53), com o fundo escuro semitransparente por cima do site.
  *
- * - A mensagem grande, no amarelo da faixa, com o “Saiba mais”; com dois ou mais, “1 de N”, setas
+ * - O título grande e o texto inteiro, no amarelo da faixa, com o “Saiba mais”; com dois ou mais, “1 de N”, setas
  *   (também as do teclado) e deslize do dedo. A lista de todos fica na página /comunicados.
  * - Fecha pelo X, pelo Esc, tocando fora e pelo voltar do celular, sem sobrar entrada no histórico.
  *   Quem abriu cuida de devolver o foco (`aoDevolverFoco`).
@@ -92,7 +92,7 @@ export function JanelaComunicados({
             </DialogPrimitive.Close>
           </div>
 
-          <div data-fundo className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8">
+          <div data-fundo className="flex flex-1 flex-col items-center justify-center-safe gap-6 pt-6 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:px-8">
             {atual ? (
               <>
                 <article
@@ -103,9 +103,12 @@ export function JanelaComunicados({
                     <IconeFigma src="/site/comunicado-megafone.svg" tamanho={18} />
                     Comunicado
                   </p>
-                  <p aria-live="polite" aria-atomic className="texto-titulo-secao-mobile break-words lg:texto-titulo-secao">
-                    {atual.mensagem}
-                  </p>
+                  <div aria-live="polite" aria-atomic className="flex flex-col gap-3 lg:gap-4">
+                    <p className="texto-titulo-secao-mobile break-words lg:texto-titulo-secao">{atual.titulo}</p>
+                    <p data-testid="texto-do-comunicado" className="texto-corpo break-words whitespace-pre-line lg:text-[18px] lg:leading-[1.6]">
+                      {atual.texto}
+                    </p>
+                  </div>
                   {atual.link ? (
                     <a
                       href={atual.link.href}

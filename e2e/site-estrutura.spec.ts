@@ -65,12 +65,10 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     await expect(menuPrincipal(page).getByRole("link", { name: "Benefícios" })).toBeVisible();
   });
 
-  test("na menor tela com o menu no cabeçalho (1024 px), os 7 itens, com Comunicados, cabem numa linha antes da busca (E58)", async ({ page }) => {
+  test("na menor tela com o menu no cabeçalho (1024 px), os 6 itens cabem numa linha antes da busca", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 700 });
     await page.goto("/");
-    const itens = menuPrincipal(page).getByRole("listitem").filter({ visible: true });
-    await expect(itens).toHaveCount(7);
-    await expect(menuPrincipal(page).getByRole("link", { name: "Comunicados" })).toHaveAttribute("href", "/comunicados");
+    await expect(menuPrincipal(page).getByRole("listitem").filter({ visible: true })).toHaveCount(6);
     const alturas = new Set<number>();
     for (const rotulo of await menuPrincipal(page).locator(":scope > div > ul > li > :first-child").all()) {
       alturas.add(Math.round((await rotulo.boundingBox())!.height));
@@ -80,6 +78,31 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     const busca = (await page.getByRole("link", { name: "Buscar notícias" }).boundingBox())!;
     expect(fimDoMenu.x + fimDoMenu.width).toBeLessThan(busca.x);
     await semRolagemLateral(page);
+  });
+
+  test("Notícias é um submenu com Notícias e Comunicados: abre no clique e no teclado, com aria-expanded (E58)", async ({ page }) => {
+    await page.goto("/");
+    const noticias = menuPrincipal(page).getByRole("button", { name: "Notícias" });
+    await expect(noticias).toHaveAttribute("aria-expanded", "false");
+    await expect(menuPrincipal(page).getByRole("link", { name: "Comunicados" })).toBeHidden();
+
+    // Teclado: Enter abre, Esc fecha e devolve o foco.
+    await noticias.focus();
+    await page.keyboard.press("Enter");
+    await expect(noticias).toHaveAttribute("aria-expanded", "true");
+    await expect(menuPrincipal(page).getByRole("link", { name: "Notícias", exact: true })).toHaveAttribute("href", "/noticias");
+    await expect(menuPrincipal(page).getByRole("link", { name: "Comunicados" })).toHaveAttribute("href", "/comunicados");
+    await page.keyboard.press("Escape");
+    await expect(noticias).toHaveAttribute("aria-expanded", "false");
+    await expect(noticias).toBeFocused();
+
+    // Mouse (página nova, sem o foco do teclado): abre e leva à página Comunicados.
+    await page.goto("/");
+    await noticias.click();
+    await expect(noticias).toHaveAttribute("aria-expanded", "true");
+    await menuPrincipal(page).getByRole("link", { name: "Comunicados" }).click();
+    await expect(page).toHaveURL(/\/comunicados$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Comunicados" })).toBeVisible();
   });
 
   test("teclado: pular para o conteúdo, abrir o submenu com Enter e fechar com Esc", async ({ page }) => {
@@ -179,9 +202,18 @@ test.describe("menu mobile do visitante", { tag: "@responsivo" }, () => {
     await expect(menu).toBeVisible();
     await semAnimacao(page);
 
-    for (const nome of ["Início", "Notícias", "Rádio Chofer", "Contato"]) {
+    for (const nome of ["Início", "Rádio Chofer", "Contato"]) {
       await expect(menu.getByRole("link", { name: nome, exact: true })).toBeVisible();
     }
+    // Notícias abre e fecha no toque, com Notícias e Comunicados (E58).
+    const noticias = menu.getByRole("button", { name: "Notícias" });
+    await expect(noticias).toHaveAttribute("aria-expanded", "false");
+    await apertar(noticias, hasTouch);
+    await expect(noticias).toHaveAttribute("aria-expanded", "true");
+    await expect(menu.getByRole("link", { name: "Notícias", exact: true })).toHaveAttribute("href", "/noticias");
+    await expect(menu.getByRole("link", { name: "Comunicados" })).toHaveAttribute("href", "/comunicados");
+    await apertar(noticias, hasTouch);
+    await expect(menu.getByRole("link", { name: "Comunicados" })).toBeHidden();
     await expect(menu.getByRole("link", { name: "Início", exact: true })).toHaveAttribute("aria-current", "page");
     await expect(menu.getByRole("link", { name: /entrar/i })).toHaveCount(0);
     await expect(menu.getByRole("link", { name: "Filiar-se pelo WhatsApp" })).toHaveAttribute("href", FILIACAO);

@@ -36,7 +36,7 @@ describe("normalizarLinkDoComunicado", () => {
 });
 
 describe("rotuloDoComunicado", () => {
-  it("mensagem longa vira o começo, com reticências", () => {
+  it("título longo vira o começo, com reticências", () => {
     expect(rotuloDoComunicado("x".repeat(140))).toHaveLength(60);
     expect(rotuloDoComunicado("Curto")).toBe("Curto");
   });

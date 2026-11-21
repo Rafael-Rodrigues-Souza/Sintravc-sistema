@@ -14,7 +14,10 @@ import { LINKS } from "./navegacao";
 
 export type ComunicadoNaFaixa = {
   id: string;
-  mensagem: string;
+  /** O que a faixa mostra. */
+  titulo: string;
+  /** Texto simples, com quebras de linha: só na janela e na página Comunicados. */
+  texto: string;
   link: { href: string; externo: boolean } | null;
 };
 
@@ -30,7 +33,7 @@ const botao =
  *   pessoa passa pelas setas ou pelo deslize. Com menos movimento pedido pelo sistema, continua
  *   trocando, só sem a transição. O X cumpre a WCAG 2.2.2 (dá para esconder o que se move).
  * - Deslizar o dedo de lado passa para o próximo ou o anterior, sem atrapalhar a rolagem da página.
- * - A mensagem abre a janela dos comunicados em destaque. “Ver todos” (dois ou mais) leva à página
+ * - A faixa mostra só o título. Tocar nele abre a janela, com o título e o texto em destaque. “Ver todos” (dois ou mais) leva à página
  *   /comunicados, que também mostra os fechados pelo X.
  * - Todos os textos ficam empilhados no mesmo lugar: a faixa tem a altura do maior e não pula.
  * - O X fecha a faixa e guarda os comunicados fechados num cookie; volta se entrar um novo (E58).
@@ -180,11 +183,11 @@ export function FaixaComunicado({
                     onClick={() => setJanelaAberta(true)}
                     className="alvo-toque min-w-0 flex-1 cursor-pointer rounded-[6px] text-left texto-titulo-card-pequeno break-words outline-none hover:underline hover:underline-offset-2 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
                   >
-                    {c.mensagem}
+                    {c.titulo}
                     <span className="sr-only"> (ver em destaque)</span>
                   </button>
                 ) : (
-                  <p className="min-w-0 flex-1 texto-titulo-card-pequeno break-words">{c.mensagem}</p>
+                  <p className="min-w-0 flex-1 texto-titulo-card-pequeno break-words">{c.titulo}</p>
                 )}
                 {c.link || comVerTodos ? (
                   <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1">
@@ -195,7 +198,7 @@ export function FaixaComunicado({
                         className="flex shrink-0 items-center gap-1.5 rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
                       >
                         Saiba mais
-                        <span className="sr-only">: {c.mensagem}</span>
+                        <span className="sr-only">: {c.titulo}</span>
                         {c.link.externo ? <span className="sr-only"> (abre em outra aba)</span> : null}
                         <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
                       </a>

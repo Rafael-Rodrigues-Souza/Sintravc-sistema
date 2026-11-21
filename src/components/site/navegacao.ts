@@ -22,6 +22,16 @@ export const LINKS = {
   termos: { rotulo: "Termos de uso", href: "/termos-de-uso" },
 } as const satisfies Record<string, ItemDeMenu>;
 
+/**
+ * Notícias e Comunicados (E58): Comunicados não está no Figma e fica dentro de Notícias, para a pessoa
+ * achar de novo o aviso que fechou na faixa sem mais um item no primeiro nível.
+ */
+export const NOTICIAS: GrupoDeMenu = {
+  rotulo: "Notícias",
+  base: "/noticias",
+  itens: [LINKS.noticias, LINKS.comunicados],
+};
+
 export const SINDICATO: GrupoDeMenu = {
   rotulo: "Sindicato",
   base: "/sindicato",
@@ -34,16 +44,15 @@ export const DOCUMENTOS: GrupoDeMenu = {
   itens: [LINKS.acordos, LINKS.editais],
 };
 
-/** Comunicados não está no Figma (E58): é por onde a pessoa acha de novo o aviso que fechou na faixa. */
-export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, LINKS.noticias, LINKS.comunicados, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
+export const MENU_PRINCIPAL: EntradaDoMenu[] = [LINKS.inicio, NOTICIAS, SINDICATO, DOCUMENTOS, LINKS.radio, LINKS.contato];
 
 export function ehGrupo(entrada: EntradaDoMenu): entrada is GrupoDeMenu {
   return "itens" in entrada;
 }
 
-/** O item (ou grupo) está ativo no caminho atual? */
+/** O item (ou grupo) está ativo no caminho atual? O grupo está ativo quando um dos itens dele está. */
 export function estaAtivo(entrada: EntradaDoMenu, caminho: string): boolean {
-  if (ehGrupo(entrada)) return caminho === entrada.base || caminho.startsWith(`${entrada.base}/`);
+  if (ehGrupo(entrada)) return entrada.itens.some((item) => estaAtivo(item, caminho));
   if (entrada.href === "/") return caminho === "/";
   return caminho === entrada.href || caminho.startsWith(`${entrada.href}/`);
 }

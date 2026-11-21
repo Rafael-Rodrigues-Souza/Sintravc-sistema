@@ -26,8 +26,8 @@ async function consultar<T extends object>(consulta: (sql: postgres.Sql) => Prom
 }
 
 async function comunicadoPelaMensagem(mensagem: string) {
-  const [linha] = await consultar((sql) => sql<{ id: string; estado: string; link_url: string | null }[]>`
-    select id, estado, link_url from comunicado where mensagem = ${mensagem} order by id desc limit 1`);
+  const [linha] = await consultar((sql) => sql<{ id: string; estado: string; link_url: string | null; texto: string }[]>`
+    select id, estado, link_url, texto from comunicado where titulo = ${mensagem} order by id desc limit 1`);
   return linha!;
 }
 
@@ -58,12 +58,13 @@ test.afterAll(tirarTudoDoAr);
 /** Preenche o formulário aberto (modal ou folha) e aperta o botão principal ou o de rascunho. */
 async function preencher(
   page: Page,
-  dados: { mensagem: string; link?: string; inicio?: string; fim?: string },
+  dados: { titulo: string; texto?: string; link?: string; inicio?: string; fim?: string },
   botao: RegExp,
   { toque = false } = {},
 ) {
   const f = formulario(page);
-  await f.getByLabel("Mensagem *").fill(dados.mensagem);
+  await f.getByLabel("Título *").fill(dados.titulo);
+  await f.getByLabel("Texto do comunicado *").fill(dados.texto ?? `Mais detalhes: ${dados.titulo}`);
   if (dados.link) {
     await f.getByRole("combobox", { name: /Saiba mais/ }).fill(dados.link);
     await apertar(f.getByRole("option", { name: new RegExp(`Usar o endereço`) }), toque);
@@ -79,16 +80,24 @@ test("CA-US24.1 · agendar pelo modal: fica em Agendados, fora do site, com as v
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
   await expect(formulario(page).getByRole("heading", { name: "Novo comunicado" })).toBeVisible();
   // Contador de caracteres e prévia acompanham o que se digita.
-  await formulario(page).getByLabel("Mensagem *").fill(mensagem);
+  const texto = "A sede fecha de 24/12 a 01/01.\nO atendimento volta no dia 02/01, às 8h.";
+  await formulario(page).getByLabel("Título *").fill(mensagem);
   await expect(formulario(page).getByText(`${mensagem.length}/140`)).toBeVisible();
+  await formulario(page).getByLabel("Texto do comunicado *").fill(texto);
+  await expect(formulario(page).getByText(`${texto.length}/1000`)).toBeVisible();
+  // A prévia mostra a faixa (só o título) e o comunicado aberto (título e texto).
   await expect(formulario(page).getByTestId("faixa-comunicado")).toContainText(mensagem);
+  await expect(formulario(page).getByTestId("faixa-comunicado")).not.toContainText("A sede fecha");
+  await expect(formulario(page).getByTestId("previa-aberta")).toContainText(mensagem);
+  await expect(formulario(page).getByTestId("previa-aberta")).toContainText("O atendimento volta no dia 02/01");
 
-  await preencher(page, { mensagem, inicio: campoDaqui(2 * DIA), fim: campoDaqui(4 * DIA) }, /^Agendar comunicado$/);
+  await preencher(page, { titulo: mensagem, texto, inicio: campoDaqui(2 * DIA), fim: campoDaqui(4 * DIA) }, /^Agendar comunicado$/);
 
   await expect(page.getByText("Comunicado agendado")).toBeVisible();
   await expect(formulario(page)).toBeHidden();
   const salvo = await comunicadoPelaMensagem(mensagem);
   expect(salvo.estado).toBe("agendado");
+  expect(salvo.texto).toBe(texto);
   expect(await acoesNaAtividade(salvo.id)).toEqual(["comunicado.criar", "comunicado.agendar"]);
 
   await page.getByRole("link", { name: /^Agendados/ }).click();
@@ -102,7 +111,7 @@ test("CA-US01.1 · publicar agora: a faixa aparece em qualquer página do site, 
   const mensagem = `Feriado: a sede atende das 8h às 12h (${Date.now()}).`;
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-  await preencher(page, { mensagem, link: "/sindicato/instituicao", inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+  await preencher(page, { titulo: mensagem, link: "/sindicato/instituicao", inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
   await expect(page.getByText("Comunicado publicado: já está no site")).toBeVisible();
 
   // No painel, “No site agora” mostra a mesma faixa.
@@ -123,7 +132,7 @@ test("CA-US01.2 · dois no ar: “1 de 2”, setas e teclado, troca sozinha e pa
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   for (const mensagem of [primeiro, segundo]) {
     await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+    await preencher(page, { titulo: mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
     await expect(formulario(page)).toBeHidden();
   }
 
@@ -150,12 +159,12 @@ test("CA-US01.2 · dois no ar: “1 de 2”, setas e teclado, troca sozinha e pa
 });
 
 /** Publica pela tela, um depois do outro (a fila segue essa ordem). */
-async function publicarNoAr(page: Page, comunicados: (string | { mensagem: string; link: string })[], { toque = false } = {}) {
+async function publicarNoAr(page: Page, comunicados: (string | { titulo: string; texto?: string; link?: string })[], { toque = false } = {}) {
   await entrarComo(page, pessoas.com, "/painel/comunicados", { toque });
   // Na folha de baixo (tela estreita), o botão é só “Publicar”.
   const publicar = telaEstreita(page) ? /^Publicar$/ : /^Publicar agora$/;
   for (const c of comunicados) {
-    const dados = typeof c === "string" ? { mensagem: c } : c;
+    const dados = typeof c === "string" ? { titulo: c } : c;
     await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), toque);
     await preencher(page, { ...dados, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, publicar, { toque });
     await expect(formulario(page)).toBeHidden();
@@ -180,6 +189,8 @@ test("o clique na mensagem abre a janela: passa pelas setas, para a troca e fech
   await mensagemNaFaixa(page).click();
   await expect(janela(page)).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Comunicado" })).toContainText(primeiro);
+  await expect(janela(page).getByTestId("texto-do-comunicado")).toHaveText(`Mais detalhes: ${primeiro}`);
+  await expect(faixa(page)).not.toContainText("Mais detalhes:");
   await expect(janela(page).getByText("Comunicado 1 de 2")).toBeVisible();
 
   // Com a janela aberta, a faixa não troca sozinha.
@@ -252,21 +263,44 @@ test("depois de fechar a janela com o mouse, a faixa volta a trocar sozinha com 
 
 /** Os comunicados da página /comunicados, na ordem em que aparecem. */
 const naPagina = (page: Page) => page.getByRole("main").getByRole("list", { name: /ordem da fila/ }).getByRole("article");
+const colunaDeNoticias = (page: Page) => page.getByRole("complementary", { name: "Notícias recentes" });
 
-test("“Ver todos” leva à página Comunicados, com todos na ordem da fila e até quando ficam no ar", async ({ page }) => {
-  const mensagens = [`Página A (${Date.now()})`, `Página B (${Date.now()})`, `Página C (${Date.now()})`];
-  await publicarNoAr(page, mensagens);
+/** Escreve e publica uma notícia pelo editor, como a pessoa faria (para a coluna “Notícias recentes”). */
+async function publicarNoticiaPelaTela(page: Page, manchete: string) {
+  await page.goto("/painel/conteudos/noticia/nova");
+  const salvo = () => expect(page.getByTestId("status-do-salvamento")).toContainText("Salvo automaticamente às");
+  await page.getByLabel("Manchete").fill(manchete);
+  await salvo();
+  await page.getByLabel("Lide").fill("O plantão funciona das 8h às 17h, na sede do sindicato.");
+  await page.getByRole("textbox", { name: "Corpo da notícia" }).click();
+  await page.keyboard.type("Leve contracheques e documento com foto.");
+  await page.getByLabel("Assinatura").fill("Redação SINTRAVC");
+  await page.getByLabel("Categoria").selectOption({ label: "Jurídico" });
+  await salvo();
+  await page.getByRole("button", { name: "Publicar…" }).click();
+  await page.getByRole("dialog", { name: "Publicar notícia?" }).getByRole("button", { name: "Publicar agora" }).click();
+  await expect(page.getByText("Notícia publicada.", { exact: true })).toBeVisible();
+}
+
+test("“Ver todos” leva à página Comunicados: cartões na ordem da fila, com título, “No ar até…” e o texto inteiro", async ({ page }) => {
+  const marca = Date.now();
+  const titulos = [`Página A (${marca})`, `Página B (${marca})`, `Página C (${marca})`];
+  await publicarNoAr(page, [{ titulo: titulos[0]!, texto: "Primeira linha do aviso A.\nSegunda linha do aviso A." }, titulos[1]!, titulos[2]!]);
 
   await page.goto("/contato");
   await faixa(page).getByRole("link", { name: "Ver todos os comunicados" }).click();
   await expect(page).toHaveURL(/\/comunicados$/);
   await expect(page.getByRole("heading", { level: 1, name: "Comunicados" })).toBeVisible();
-  await expect(naPagina(page).getByText(/Página [ABC]/)).toHaveText(mensagens);
+  await expect(naPagina(page).getByRole("heading")).toHaveText(titulos.map((t) => `${t} (ver em destaque)`));
   for (const cartao of await naPagina(page).all()) {
     await expect(cartao).toContainText(/No ar até \d{2}\/\d{2}\/\d{4} às \d{2}h\d{2}/);
   }
-  // Na própria página, a faixa continua, mas sem o “Ver todos” para onde a pessoa já está.
+  // O texto aparece inteiro, com a quebra de linha.
+  await expect(naPagina(page).nth(0)).toContainText("Primeira linha do aviso A.");
+  await expect(naPagina(page).nth(0)).toContainText("Segunda linha do aviso A.");
+  // Na própria página, a faixa continua (só com o título), mas sem o “Ver todos” para onde a pessoa já está.
   await expect(faixa(page)).toBeVisible();
+  await expect(faixa(page)).not.toContainText("Primeira linha do aviso A.");
   await expect(faixa(page).getByRole("link", { name: /Ver todos/ })).toHaveCount(0);
 
   // Com um só no ar, a faixa não tem “Ver todos”.
@@ -277,7 +311,47 @@ test("“Ver todos” leva à página Comunicados, com todos na ordem da fila e 
   await expect(faixa(page).getByRole("link", { name: /Ver todos/ })).toHaveCount(0);
 });
 
-test("sem comunicado no ar, a página Comunicados mostra o vazio, com título e descrição", async ({ page }) => {
+test("clicar num cartão da página abre a janela nele: título e texto, setas, e o foco volta ao cartão", async ({ page }) => {
+  const marca = Date.now();
+  const a = { titulo: `Cartão A (${marca})`, texto: "Texto completo do cartão A." };
+  const b = { titulo: `Cartão B (${marca})`, texto: "Texto completo do cartão B.\nCom uma segunda linha." };
+  await publicarNoAr(page, [a, b]);
+
+  await page.context().addCookies([{ name: "sintravc_cookies", value: "essenciais", url: page.url() }]);
+  await page.goto("/comunicados");
+  // O clique em qualquer lugar do cartão (aqui, no meio dele) abre a janela no comunicado dele.
+  await naPagina(page).nth(1).click();
+  await expect(janela(page)).toBeVisible();
+  await expect(janela(page)).toContainText(b.titulo);
+  await expect(janela(page).getByTestId("texto-do-comunicado")).toHaveText(b.texto);
+  await expect(janela(page).getByText("Comunicado 2 de 2")).toBeVisible();
+
+  await janela(page).getByRole("button", { name: "Próximo comunicado" }).click();
+  await expect(janela(page).getByTestId("texto-do-comunicado")).toHaveText(a.texto);
+  await page.keyboard.press("Escape");
+  await expect(janela(page)).toBeHidden();
+  await expect(naPagina(page).nth(0).getByRole("button", { name: /ver em destaque/ })).toBeFocused();
+
+  // Fecha também pelo voltar do navegador, sem sair da página e sem sobrar entrada no histórico.
+  await page.keyboard.press("Enter");
+  await expect(janela(page)).toBeVisible();
+  await page.goBack();
+  await expect(janela(page)).toBeHidden();
+  await expect(page).toHaveURL(/\/comunicados$/);
+
+  // O “Saiba mais” do cartão continua sendo um link à parte, sem abrir a janela.
+  await tirarTudoDoAr();
+  await publicarNoAr(page, [{ titulo: `Com link (${marca})`, link: "/contato" }]);
+  await page.goto("/comunicados");
+  await naPagina(page).getByRole("link", { name: /Saiba mais/ }).click();
+  await expect(page).toHaveURL(/\/contato$/);
+});
+
+test("sem comunicado no ar, a página mostra o vazio, com título e descrição; a coluna de notícias continua", async ({ page }) => {
+  const manchete = `Notícia para a coluna (${Date.now()})`;
+  await entrarComo(page, pessoas.com, "/painel");
+  await publicarNoticiaPelaTela(page, manchete);
+
   await page.goto("/comunicados");
   await expect(page).toHaveTitle(/^Comunicados/);
   await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /avisos do SINTRAVC/);
@@ -285,6 +359,32 @@ test("sem comunicado no ar, a página Comunicados mostra o vazio, com título e 
   await expect(page.getByRole("heading", { name: "Nenhum comunicado no momento" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: "Voltar ao início" })).toHaveAttribute("href", "/");
   await expect(naPagina(page)).toHaveCount(0);
+
+  // A notícia recém-publicada é a primeira da coluna, com a data e o link para a notícia aberta.
+  const primeira = colunaDeNoticias(page).getByRole("link").first();
+  await expect(primeira).toContainText(manchete);
+  await expect(primeira).toContainText(/\d{2}\/\d{2}\/\d{4}/);
+  await expect(primeira).toHaveAttribute("href", /^\/noticias\/.+/);
+  expect(await colunaDeNoticias(page).getByRole("link").count()).toBeLessThanOrEqual(4);
+});
+
+test("sem notícia publicada, a coluna “Notícias recentes” não aparece", async ({ page }) => {
+  await publicarNoAr(page, [`Aviso sem notícias (${Date.now()})`]);
+  // Tira do site, pelo banco, as notícias que outros testes publicaram, e põe de volta no fim.
+  const ocultas = await consultar((sql) => sql<{ id: string }[]>`
+    update conteudo set estado = 'oculto', motivo_oculto = 'e2e', ocultado_em = now()
+    where tipo = 'noticia' and estado = 'publicado' returning id`);
+  try {
+    await page.goto("/comunicados");
+    await expect(naPagina(page)).toHaveCount(1);
+    await expect(colunaDeNoticias(page)).toHaveCount(0);
+  } finally {
+    const ids = ocultas.map((o) => o.id);
+    if (ids.length > 0) {
+      await consultar((sql) => sql`
+        update conteudo set estado = 'publicado', motivo_oculto = null, ocultado_em = null where id in ${sql(ids)} returning id`);
+    }
+  }
 });
 
 test("com menos movimento pedido pelo sistema, a faixa troca sozinha sem a transição, e não há botão Pausar", async ({ page }) => {
@@ -320,7 +420,7 @@ test("o X fecha a faixa (continua fechada nas outras páginas) e ela volta com u
   const novo = `Aviso novo depois de fechar (${Date.now()}).`;
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-  await preencher(page, { mensagem: antigo, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+  await preencher(page, { titulo: antigo, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
   await expect(formulario(page)).toBeHidden();
 
   await page.goto("/contato");
@@ -336,7 +436,7 @@ test("o X fecha a faixa (continua fechada nas outras páginas) e ela volta com u
 
   await page.goto("/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-  await preencher(page, { mensagem: novo, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+  await preencher(page, { titulo: novo, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
   await expect(formulario(page)).toBeHidden();
 
   await page.goto("/contato");
@@ -348,7 +448,7 @@ test("CA-US24.2 · Encerrar agora com confirmação: a faixa sai do site e vai p
   const mensagem = `Assembleia geral hoje às 19h (${Date.now()}).`;
   await entrarComo(page, pessoas.adm, "/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-  await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+  await preencher(page, { titulo: mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
   await expect(formulario(page)).toBeHidden();
 
   const linha = page.getByTestId("linha-comunicado").filter({ hasText: mensagem });
@@ -376,7 +476,7 @@ test("CA-US24.2 · Encerrar agora com confirmação: a faixa sai do site e vai p
   await page.getByTestId("linha-comunicado").filter({ hasText: mensagem }).first().getByRole("button", { name: /Ações do comunicado/ }).click();
   await page.getByRole("menuitem", { name: "Duplicar" }).click();
   await expect(formulario(page).getByRole("heading", { name: "Editar rascunho" })).toBeVisible();
-  await expect(formulario(page).getByLabel("Mensagem *")).toHaveValue(mensagem);
+  await expect(formulario(page).getByLabel("Título *")).toHaveValue(mensagem);
 });
 
 test("fila: a alça muda a ordem pelo teclado, e a faixa do site segue a ordem nova", async ({ page }) => {
@@ -385,7 +485,7 @@ test("fila: a alça muda a ordem pelo teclado, e a faixa do site segue a ordem n
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   for (const mensagem of [a, b]) {
     await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+    await preencher(page, { titulo: mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
     await expect(formulario(page)).toBeHidden();
   }
   const linhas = page.getByTestId("linha-comunicado");
@@ -400,14 +500,20 @@ test("fila: a alça muda a ordem pelo teclado, e a faixa do site segue a ordem n
   await expect(faixa(page).locator("[aria-hidden=false]")).toContainText(b);
 });
 
-test("mensagem vazia e fim antes do começo: o formulário mostra o erro no campo e não salva", async ({ page }) => {
+test("título vazio, texto vazio e fim antes do começo: o formulário mostra o erro no campo e não salva", async ({ page }) => {
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
   await formulario(page).getByRole("button", { name: /^Agendar comunicado$/ }).click();
-  await expect(formulario(page).getByText("Escreva a mensagem do comunicado.")).toBeVisible();
-  await expect(formulario(page).getByLabel("Mensagem *")).toBeFocused();
+  await expect(formulario(page).getByText("Escreva o título do comunicado.")).toBeVisible();
+  await expect(formulario(page).getByLabel("Título *")).toBeFocused();
 
-  await preencher(page, { mensagem: "Aviso com datas trocadas", inicio: campoDaqui(3 * DIA), fim: campoDaqui(2 * DIA) }, /^Agendar comunicado$/);
+  await formulario(page).getByLabel("Título *").fill("Aviso sem texto");
+  await formulario(page).getByRole("button", { name: /^Salvar rascunho$/ }).click();
+  await expect(formulario(page).getByText("Escreva o texto do comunicado.")).toBeVisible();
+  await expect(formulario(page).getByLabel("Texto do comunicado *")).toBeFocused();
+  await expect(formulario(page).getByLabel("Texto do comunicado *")).toHaveAttribute("aria-invalid", "true");
+
+  await preencher(page, { titulo: "Aviso com datas trocadas", inicio: campoDaqui(3 * DIA), fim: campoDaqui(2 * DIA) }, /^Agendar comunicado$/);
   await expect(formulario(page).getByText("O fim tem de ser depois do início.")).toBeVisible();
   await expect(formulario(page).getByLabel("Termina em *")).toHaveAttribute("aria-invalid", "true");
 });
@@ -426,7 +532,7 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
 
     await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), hasTouch);
     await expect(formulario(page).getByRole("heading", { name: "Novo comunicado" })).toBeVisible();
-    await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, estreita ? /^Publicar$/ : /^Publicar agora$/, { toque: hasTouch });
+    await preencher(page, { titulo: mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, estreita ? /^Publicar$/ : /^Publicar agora$/, { toque: hasTouch });
     await expect(formulario(page)).toBeHidden();
 
     if (estreita) {
@@ -439,7 +545,7 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
 
     // Um segundo no ar, para a faixa ter setas e “Ver todos”.
     await apertar(page.getByRole("button", { name: "Novo comunicado", exact: true }), hasTouch);
-    await preencher(page, { mensagem: `Segundo ${mensagem}`, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, estreita ? /^Publicar$/ : /^Publicar agora$/, { toque: hasTouch });
+    await preencher(page, { titulo: `Segundo ${mensagem}`, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, estreita ? /^Publicar$/ : /^Publicar agora$/, { toque: hasTouch });
     await expect(formulario(page)).toBeHidden();
 
     await page.goto("/contato");
@@ -470,19 +576,22 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
   test("fechar pelo X e achar o comunicado de novo pela página Comunicados, no menu e no rodapé", async ({ page, hasTouch }) => {
     const comLink = `Aviso com link (${Date.now()})`;
     const semLink = `Aviso sem link (${Date.now()})`;
-    await publicarNoAr(page, [{ mensagem: comLink, link: "/contato" }, semLink], { toque: hasTouch });
+    await publicarNoAr(page, [{ titulo: comLink, link: "/contato" }, semLink], { toque: hasTouch });
 
     await page.goto("/");
     await apertar(faixa(page).getByRole("button", { name: "Fechar comunicado" }), hasTouch);
     await expect(faixa(page)).toBeHidden();
 
-    // Pelo menu, como a pessoa faria: o menu do celular nas telas estreitas, o do cabeçalho nas largas.
-    if (telaEstreita(page)) {
-      await apertar(page.getByRole("button", { name: "Abrir menu" }), hasTouch);
-      await apertar(page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Comunicados" }), hasTouch);
-    } else {
-      await apertar(page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Comunicados" }), hasTouch);
-    }
+    // Pelo menu, como a pessoa faria: Notícias › Comunicados, no menu do celular nas telas estreitas e no
+    // do cabeçalho nas largas.
+    const menu = telaEstreita(page) ? page.getByRole("dialog", { name: "Menu" }) : page.getByRole("navigation", { name: "Principal" });
+    if (telaEstreita(page)) await apertar(page.getByRole("button", { name: "Abrir menu" }), hasTouch);
+    const noticias = menu.getByRole("button", { name: "Notícias" });
+    await expect(noticias).toHaveAttribute("aria-expanded", "false");
+    await apertar(noticias, hasTouch);
+    await expect(noticias).toHaveAttribute("aria-expanded", "true");
+    await expect(menu.getByRole("link", { name: "Notícias", exact: true })).toHaveAttribute("href", "/noticias");
+    await apertar(menu.getByRole("link", { name: "Comunicados" }), hasTouch);
     await expect(page).toHaveURL(/\/comunicados$/);
     await expect(page.getByRole("heading", { level: 1, name: "Comunicados" })).toBeVisible();
 
@@ -493,13 +602,42 @@ test.describe("Comunicados no celular", { tag: "@responsivo" }, () => {
     await expect(naPagina(page).nth(1)).toContainText(semLink);
     await expect(naPagina(page).nth(0).getByRole("link", { name: /Saiba mais/ })).toHaveAttribute("href", "/contato");
     await expect(naPagina(page).nth(1).getByRole("link", { name: /Saiba mais/ })).toHaveCount(0);
-    if (!telaEstreita(page)) {
-      await expect(page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Comunicados" })).toHaveAttribute("aria-current", "page");
-    }
     await expect(page.getByRole("navigation", { name: "Rodapé" }).getByRole("link", { name: "Comunicados" })).toHaveAttribute("href", "/comunicados");
 
     await semRolagemLateral(page);
     if (hasTouch) {
+      const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "main" });
+      expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);
+    }
+  });
+
+  test("página Comunicados: a coluna “Notícias recentes” fica ao lado no computador e embaixo no celular e no tablet em pé", async ({ page, browser, hasTouch }) => {
+    // A notícia é publicada numa janela de computador à parte: o que se confere aqui é a página do site.
+    const manchete = `Notícia ao lado dos comunicados (${Date.now()})`;
+    // O Playwright aplica o perfil do projeto também aqui: tamanho e toque de computador explícitos.
+    const computador = await browser.newPage({ viewport: { width: 1280, height: 800 }, isMobile: false, hasTouch: false });
+    await entrarComo(computador, pessoas.com, "/painel");
+    await publicarNoticiaPelaTela(computador, manchete);
+    await computador.close();
+
+    await publicarNoAr(page, [`Aviso com coluna A (${Date.now()})`, `Aviso com coluna B (${Date.now()})`], { toque: hasTouch });
+    await page.goto("/comunicados");
+    const coluna = colunaDeNoticias(page);
+    await expect(coluna.getByRole("link").first()).toContainText(manchete);
+    const lista = (await page.getByRole("main").getByRole("list", { name: /ordem da fila/ }).boundingBox())!;
+    const lado = (await coluna.boundingBox())!;
+    if (telaEstreita(page)) {
+      expect(lado.y, "a coluna vem depois dos comunicados").toBeGreaterThanOrEqual(lista.y + lista.height);
+    } else {
+      expect(lado.x, "a coluna fica à direita dos comunicados").toBeGreaterThanOrEqual(lista.x + lista.width);
+    }
+    await semRolagemLateral(page);
+    if (hasTouch) {
+      // Tocar no cartão abre a janela; ela cabe sem rolagem lateral e com os alvos de toque.
+      await apertar(naPagina(page).nth(1).getByRole("button", { name: /ver em destaque/ }), true);
+      await expect(janela(page)).toBeVisible();
+      await expect(janela(page).getByText("Comunicado 2 de 2")).toBeVisible();
+      await semRolagemLateral(page);
       const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "main" });
       expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);
     }
@@ -572,7 +710,7 @@ test("calendário de Conteúdos (E17): barra marinho do período, sem arrastar; 
   const inicio = campoDaqui(2 * DIA);
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-  await preencher(page, { mensagem, inicio, fim: campoDaqui(4 * DIA) }, /^Agendar comunicado$/);
+  await preencher(page, { titulo: mensagem, inicio, fim: campoDaqui(4 * DIA) }, /^Agendar comunicado$/);
   await expect(formulario(page)).toBeHidden();
 
   await page.goto(`/painel/conteudos?visao=calendario&mes=${inicio.slice(0, 7)}`);
@@ -590,14 +728,14 @@ test("calendário de Conteúdos (E17): barra marinho do período, sem arrastar; 
   await barra.click();
   await expect(page).toHaveURL(/\/painel\/comunicados/);
   await expect(formulario(page).getByRole("heading", { name: "Editar comunicado" })).toBeVisible();
-  await expect(formulario(page).getByLabel("Mensagem *")).toHaveValue(mensagem);
+  await expect(formulario(page).getByLabel("Título *")).toHaveValue(mensagem);
 });
 
 test("calendário de Conteúdos: o clique num encerrado abre a aba Encerrados com ele na vista e destacado (E58)", async ({ page }) => {
   const mensagem = `Encerrado visto no calendário (${Date.now()}).`;
   await entrarComo(page, pessoas.com, "/painel/comunicados");
   await page.getByRole("button", { name: "Novo comunicado", exact: true }).click();
-  await preencher(page, { mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
+  await preencher(page, { titulo: mensagem, inicio: campoDaqui(-5), fim: campoDaqui(DIA) }, /^Publicar agora$/);
   await expect(formulario(page)).toBeHidden();
   await page.getByTestId("linha-comunicado").filter({ hasText: mensagem }).getByRole("button", { name: /Ações do comunicado/ }).click();
   await page.getByRole("menuitem", { name: "Encerrar agora" }).click();

@@ -125,7 +125,7 @@ describe("fila real (pg-boss): o comunicado entra e sai do ar sozinho (T02, CA-U
     const inicio = new Date(Date.now() + 1000);
     const fim = new Date(Date.now() + 3000);
     const { id } = await salvarComunicado(
-      { dados: { mensagem: "Sede fechada no feriado.", link: null, inicio, fim }, modo: "programar" },
+      { dados: { titulo: "Sede fechada no feriado.", texto: "A sede fecha no feriado.", link: null, inicio, fim }, modo: "programar" },
       { quem, fila: trabalhador.fila },
     );
 

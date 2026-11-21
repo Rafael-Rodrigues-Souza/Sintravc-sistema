@@ -32,7 +32,8 @@ const esquemaQuando = z.object({ data: z.string().max(10), hora: z.string().max(
 const esquemaSalvar = z.object({
   id: z.uuid().optional(),
   modo: z.enum(["rascunho", "programar"]),
-  mensagem: z.string().max(1000),
+  titulo: z.string().max(1000),
+  texto: z.string().max(5000),
   link: z.union([z.object({ tipo: z.literal("conteudo"), id: z.uuid() }), z.object({ tipo: z.literal("url"), url: z.string().max(2000) }), z.null()]),
   inicio: esquemaQuando,
   fim: esquemaQuando,
@@ -62,8 +63,8 @@ export async function acaoSalvarComunicado(pedido: unknown): Promise<Resposta<Re
   if (!lido.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
   try {
     const { quem } = await sessaoDaEquipe();
-    const { id, modo, mensagem, link } = lido.data;
-    const dados = { mensagem, link: link as LinkComunicado, inicio: quando(lido.data.inicio, "inicio"), fim: quando(lido.data.fim, "fim") };
+    const { id, modo, titulo, texto, link } = lido.data;
+    const dados = { titulo, texto, link: link as LinkComunicado, inicio: quando(lido.data.inicio, "inicio"), fim: quando(lido.data.fim, "fim") };
     const resultado = await salvarComunicado({ id, dados, modo }, { quem, fila: await filaDoSistema() });
     revalidatePath(CAMINHO);
     return { tipo: "ok", ...resultado };
@@ -150,7 +151,8 @@ export async function acaoBuscarConteudos(busca: unknown): Promise<Resposta<{ it
 
 export type ComunicadoNoFormulario = {
   id: string;
-  mensagem: string;
+  titulo: string;
+  texto: string;
   link: { tipo: "conteudo"; id: string; rotulo: string } | { tipo: "url"; url: string } | null;
   inicio: { data: string; hora: string } | null;
   fim: { data: string; hora: string } | null;
@@ -168,7 +170,8 @@ export async function acaoCarregarComunicado(pedido: unknown): Promise<Resposta<
       tipo: "ok",
       comunicado: {
         id: c.id,
-        mensagem: c.mensagem,
+        titulo: c.titulo,
+        texto: c.texto,
         link: c.link?.tipo === "conteudo" ? { ...c.link, rotulo: c.rotuloDoLink ?? "" } : c.link,
         inicio: c.inicio ? bahiaEmCampos(c.inicio) : null,
         fim: c.fim ? bahiaEmCampos(c.fim) : null,

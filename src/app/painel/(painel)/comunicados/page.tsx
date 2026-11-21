@@ -48,7 +48,7 @@ export default async function PaginaComunicados({ searchParams }: { searchParams
 
   const itens: ItemNaTela[] = lista.itens.map((c) => ({
     id: c.id,
-    mensagem: c.mensagem,
+    titulo: c.titulo,
     rotuloDoLink: c.rotuloDoLink,
     inicio: c.inicio ? curto(c.inicio) : null,
     fim: c.fim ? curto(c.fim) : null,

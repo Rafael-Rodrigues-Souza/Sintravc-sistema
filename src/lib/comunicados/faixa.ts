@@ -8,7 +8,10 @@ import { enderecoPublicoDoConteudo, type TipoDoLink } from "./regras";
 
 export type ComunicadoDaFaixa = {
   id: string;
-  mensagem: string;
+  /** O que a faixa mostra. */
+  titulo: string;
+  /** Texto simples, com as quebras de linha: na janela e na página /comunicados. */
+  texto: string;
   /** O “Saiba mais”. Sem link, ou com o conteúdo fora do site, a faixa não mostra o link. */
   link: { href: string; externo: boolean } | null;
   /** Quando sai do ar (o “No ar até…” da página Comunicados). */
@@ -25,7 +28,8 @@ export async function comunicadosNoAr(agora: Date = new Date()): Promise<Comunic
   const linhas = await banco()
     .select({
       id: comunicado.id,
-      mensagem: comunicado.mensagem,
+      titulo: comunicado.titulo,
+      texto: comunicado.texto,
       linkUrl: comunicado.linkUrl,
       fim: comunicado.fim,
       alvoTipo: conteudo.tipo,
@@ -39,7 +43,8 @@ export async function comunicadosNoAr(agora: Date = new Date()): Promise<Comunic
 
   return linhas.map((l) => ({
     id: l.id,
-    mensagem: l.mensagem,
+    titulo: l.titulo,
+    texto: l.texto,
     link: linkDaFaixa(l),
     fim: l.fim!, // no ar quer dizer fim > agora: nunca é nulo aqui
   }));

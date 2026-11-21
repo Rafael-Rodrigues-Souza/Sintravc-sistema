@@ -9,6 +9,8 @@ export const estadoComunicado = pgEnum("estado_comunicado", ["rascunho", "agenda
 
 /**
  * Comunicado: a faixa no topo de todas as páginas do site (spec §2.2, RN14, C3, E58). Não é Conteudo.
+ * - `titulo` (até 140) é o que a faixa mostra; `texto` (até 1.000, texto simples com quebras de linha)
+ *   aparece com o título na janela e na página /comunicados. Os dois são obrigatórios (E58).
  * - O site mostra o que está agendado ou publicado com `inicio ≤ agora < fim`, na ordem da fila: a
  *   faixa entra e sai pelo relógio, mesmo se a tarefa T02 atrasar. A T02 só acerta o `estado` e grava
  *   a Atividade.
@@ -21,7 +23,8 @@ export const comunicado = pgTable(
   "comunicado",
   {
     id: idUuid(),
-    mensagem: text().notNull(),
+    titulo: text().notNull(),
+    texto: text().notNull(),
     linkConteudoId: uuid().references(() => conteudo.id, { onDelete: "set null" }),
     linkUrl: text(),
     inicio: dataHora(),
@@ -43,7 +46,8 @@ export const comunicado = pgTable(
   (tabela) => [
     index().on(tabela.estado, tabela.ordemFila),
     check("comunicado_um_link_so", sql`${tabela.linkConteudoId} IS NULL OR ${tabela.linkUrl} IS NULL`),
-    check("comunicado_mensagem_ate_140", sql`char_length(${tabela.mensagem}) <= 140`),
+    check("comunicado_titulo_ate_140", sql`char_length(${tabela.titulo}) <= 140`),
+    check("comunicado_texto_ate_1000", sql`char_length(${tabela.texto}) <= 1000`),
     check("comunicado_fim_depois_do_inicio", sql`${tabela.inicio} IS NULL OR ${tabela.fim} IS NULL OR ${tabela.fim} > ${tabela.inicio}`),
     check(
       "comunicado_periodo_fora_do_rascunho",

@@ -29,7 +29,7 @@ export type RascunhoNaTela = { id: string; titulo: string; revisao: number };
 /** Comunicado no calendário (E17): só para consulta, do primeiro ao último dia no ar. */
 export type ComunicadoNaTela = {
   id: string;
-  mensagem: string;
+  titulo: string;
   situacao: "agendado" | "no_ar" | "encerrado";
   primeiroDia: string;
   ultimoDia: string;
@@ -312,7 +312,7 @@ export function Calendario({
                     <Megaphone aria-hidden className="mt-0.5 size-4 shrink-0" />
                     <span className="min-w-0">
                       <span className="sr-only">Comunicado: </span>
-                      {c.mensagem}
+                      {c.titulo}
                     </span>
                   </Link>
                 </li>
@@ -518,7 +518,7 @@ function Dia({
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
             data-testid="barra-comunicado"
-            title={c.mensagem}
+            title={c.titulo}
             aria-hidden={comTexto ? undefined : true}
             tabIndex={comTexto ? undefined : -1}
             className={cn(
@@ -532,7 +532,7 @@ function Dia({
               <>
                 <Megaphone aria-hidden className="size-3 shrink-0" />
                 <span className="sr-only">Comunicado: </span>
-                <span className="truncate">{c.mensagem}</span>
+                <span className="truncate">{c.titulo}</span>
               </>
             ) : null}
           </Link>
@@ -641,7 +641,7 @@ function ComunicadosDoMes({ comunicados }: { comunicados: ComunicadoNaTela[] }) 
                 {dia(c.primeiroDia)} <span aria-hidden>→</span>
                 <span className="sr-only">até</span> {dia(c.ultimoDia)}
               </span>
-              <span className="min-w-0">{c.mensagem}</span>
+              <span className="min-w-0">{c.titulo}</span>
             </Link>
           </li>
         ))}

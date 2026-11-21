@@ -42,7 +42,8 @@ function periodo(ano: number) {
 }
 
 const dados = (mudancas: Partial<DadosComunicado> = {}): DadosComunicado => ({
-  mensagem: "Feriado de Finados: na sexta (30/10) a sede atende das 8h às 12h.",
+  titulo: "Feriado de Finados: na sexta (30/10) a sede atende das 8h às 12h.",
+  texto: "Na sexta-feira (30/10), a sede atende das 8h às 12h.\nNa segunda (02/11), fica fechada.",
   link: null,
   inicio: null,
   fim: null,
@@ -54,12 +55,12 @@ async function linha(id: string) {
   return l!;
 }
 
-async function agendado(ano: number, quem?: Awaited<ReturnType<typeof pessoaDaEquipe>>, mensagem?: string) {
+async function agendado(ano: number, quem?: Awaited<ReturnType<typeof pessoaDaEquipe>>, titulo?: string) {
   const p = periodo(ano);
   const autor = quem ?? (await pessoaDaEquipe("COM"));
   const { fila, pedidosComunicado } = filaEmMemoria();
   const { id } = await salvarComunicado(
-    { dados: dados({ inicio: p.inicio, fim: p.fim, ...(mensagem ? { mensagem } : {}) }), modo: "programar" },
+    { dados: dados({ inicio: p.inicio, fim: p.fim, ...(titulo ? { titulo } : {}) }), modo: "programar" },
     { quem: autor, fila, agora: p.antes },
   );
   return { id, p, quem: autor, pedidosComunicado };
@@ -112,8 +113,10 @@ describe("salvarComunicado (RF43, RN14)", () => {
   });
 
   it.each([
-    ["mensagem vazia", dados({ mensagem: "   " }), "mensagem"],
-    ["mensagem com 141 caracteres", dados({ mensagem: "x".repeat(141) }), "mensagem"],
+    ["título vazio", dados({ titulo: "   " }), "titulo"],
+    ["título com 141 caracteres", dados({ titulo: "x".repeat(141) }), "titulo"],
+    ["texto vazio", dados({ texto: " \n  " }), "texto"],
+    ["texto com 1.001 caracteres", dados({ texto: "x".repeat(1001) }), "texto"],
     ["sem início", dados({ fim: new Date("2033-11-03T02:59:00Z") }), "inicio"],
     ["sem fim", dados({ inicio: new Date("2033-10-30T11:00:00Z") }), "fim"],
     ["fim antes do início", dados({ inicio: new Date("2033-11-03T02:59:00Z"), fim: new Date("2033-10-30T11:00:00Z") }), "fim"],
@@ -128,10 +131,47 @@ describe("salvarComunicado (RF43, RN14)", () => {
     expect(pedidosComunicado).toEqual([]);
   });
 
-  it("aceita exatamente 140 caracteres", async () => {
+  it("aceita exatamente 140 caracteres no título e 1.000 no texto", async () => {
     const quem = await pessoaDaEquipe("COM");
-    const { id } = await salvarComunicado({ dados: dados({ mensagem: "x".repeat(140) }), modo: "rascunho" }, { quem, fila: filaEmMemoria().fila });
-    expect((await linha(id)).mensagem).toHaveLength(140);
+    const { id } = await salvarComunicado(
+      { dados: dados({ titulo: "x".repeat(140), texto: "y".repeat(1000) }), modo: "rascunho" },
+      { quem, fila: filaEmMemoria().fila },
+    );
+    expect((await linha(id)).titulo).toHaveLength(140);
+    expect((await linha(id)).texto).toHaveLength(1000);
+  });
+
+  it("título e texto são obrigatórios também no rascunho, e nada é gravado sem eles", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    for (const [entrada, campo] of [
+      [dados({ titulo: "" }), "titulo"],
+      [dados({ texto: "" }), "texto"],
+    ] as const) {
+      const { fila, pedidosComunicado } = filaEmMemoria();
+      const erro = await salvarComunicado({ dados: entrada, modo: "rascunho" }, { quem, fila }).catch((e) => e);
+      expect(erro).toBeInstanceOf(ErroComunicado);
+      expect(erro).toMatchObject({ codigo: "invalido", campo });
+      expect(pedidosComunicado).toEqual([]);
+    }
+  });
+
+  it("o texto guarda as quebras de linha (texto simples) e tira os espaços das pontas", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id } = await salvarComunicado(
+      { dados: dados({ texto: "  Primeira linha.\r\n\r\nSegunda linha.  " }), modo: "rascunho" },
+      { quem, fila: filaEmMemoria().fila },
+    );
+    expect((await linha(id)).texto).toBe("Primeira linha.\n\nSegunda linha.");
+  });
+
+  it("o banco também recusa título com mais de 140 e texto com mais de 1.000 caracteres", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { id } = await salvarComunicado({ dados: dados(), modo: "rascunho" }, { quem, fila: filaEmMemoria().fila });
+    const causa = (e: unknown) => String((e as { cause?: { message?: string } }).cause?.message ?? e);
+    const titulo = await banco().update(comunicado).set({ titulo: "x".repeat(141) }).where(eq(comunicado.id, id)).catch(causa);
+    const texto = await banco().update(comunicado).set({ texto: "x".repeat(1001) }).where(eq(comunicado.id, id)).catch(causa);
+    expect(titulo).toMatch(/comunicado_titulo_ate_140/);
+    expect(texto).toMatch(/comunicado_texto_ate_1000/);
   });
 
   it("“Saiba mais” só aceita conteúdo publicado; na faixa, vira o endereço da notícia", async () => {
@@ -163,22 +203,26 @@ describe("salvarComunicado (RF43, RN14)", () => {
     expect((await linha(b.id)).linkUrl).toBe("/contato");
   });
 
-  it("no ar, muda a mensagem e o fim, mas não o início; a faixa muda na hora e a edição vai para a Atividade", async () => {
+  it("no ar, muda o título, o texto e o fim, mas não o início; a faixa muda na hora e a edição vai para a Atividade", async () => {
     const { id, p, quem } = await agendado(2035);
     const { fila, pedidosComunicado } = filaEmMemoria();
     const novoFim = new Date(p.fim.getTime() + 24 * 60 * 60 * 1000);
 
     await salvarComunicado(
-      { id, dados: dados({ mensagem: "Feriado: sede fechada.", inicio: p.antes, fim: novoFim }), modo: "programar" },
+      { id, dados: dados({ titulo: "Feriado: sede fechada.", texto: "A sede fica fechada no feriado.", inicio: p.antes, fim: novoFim }), modo: "programar" },
       { quem, fila, agora: p.durante },
     );
 
-    expect(await linha(id)).toMatchObject({ mensagem: "Feriado: sede fechada.", inicio: p.inicio, fim: novoFim });
-    expect((await comunicadosNoAr(p.durante))[0]?.mensagem).toBe("Feriado: sede fechada.");
+    expect(await linha(id)).toMatchObject({ titulo: "Feriado: sede fechada.", texto: "A sede fica fechada no feriado.", inicio: p.inicio, fim: novoFim });
+    expect((await comunicadosNoAr(p.durante))[0]).toMatchObject({ titulo: "Feriado: sede fechada.", texto: "A sede fica fechada no feriado." });
     expect(pedidosComunicado).toEqual([{ comunicadoId: id, virada: "sair", para: novoFim.toISOString() }]);
     expect((await atividadesDe(id)).at(-1)).toMatchObject({
       acao: "comunicado.editar",
-      detalhe: { mensagem: { para: "Feriado: sede fechada." }, fim: { de: p.fim.toISOString(), para: novoFim.toISOString() } },
+      detalhe: {
+        titulo: { de: dados().titulo, para: "Feriado: sede fechada." },
+        texto: { de: dados().texto, para: "A sede fica fechada no feriado." },
+        fim: { de: p.fim.toISOString(), para: novoFim.toISOString() },
+      },
     });
   });
 
@@ -234,7 +278,7 @@ describe("Duplicar, cancelar agendamento e excluir", () => {
     await encerrarComunicado({ id }, { quem, agora: p.durante });
     const copia = await duplicarComunicado({ id }, { quem, agora: p.depois });
 
-    expect(await linha(copia.id)).toMatchObject({ estado: "rascunho", mensagem: (await linha(id)).mensagem, inicio: null, fim: null, jaPublicado: false });
+    expect(await linha(copia.id)).toMatchObject({ estado: "rascunho", titulo: (await linha(id)).titulo, texto: (await linha(id)).texto, inicio: null, fim: null, jaPublicado: false });
     expect((await atividadesDe(copia.id)).at(-1)).toMatchObject({ acao: "comunicado.duplicar", detalhe: { origem: id } });
   });
 
@@ -276,11 +320,11 @@ describe("Fila e faixa (CA-US01.2)", () => {
     const b = await agendado(2050, quem, "Segundo aviso");
     const p = a.p;
 
-    expect((await comunicadosNoAr(p.durante)).map((c) => c.mensagem)).toEqual(["Primeiro aviso", "Segundo aviso"]);
+    expect((await comunicadosNoAr(p.durante)).map((c) => c.titulo)).toEqual(["Primeiro aviso", "Segundo aviso"]);
 
     await reordenarFila({ ids: [b.id, a.id] }, { quem, agora: p.durante });
 
-    expect((await comunicadosNoAr(p.durante)).map((c) => c.mensagem)).toEqual(["Segundo aviso", "Primeiro aviso"]);
+    expect((await comunicadosNoAr(p.durante)).map((c) => c.titulo)).toEqual(["Segundo aviso", "Primeiro aviso"]);
     const lista = await listarComunicados({ aba: "no_ar" }, { quem, agora: p.durante });
     expect(lista.itens.map((c) => c.id)).toEqual([b.id, a.id]);
     expect((await atividadesDe(b.id)).at(-1)).toMatchObject({ acao: "comunicado.reordenar", detalhe: { para: [b.id, a.id] } });
@@ -293,7 +337,7 @@ describe("Fila e faixa (CA-US01.2)", () => {
     // Agendado para depois: no instante `durante`, ainda não está no ar.
     const { fila } = filaEmMemoria();
     const { id: futuro } = await salvarComunicado(
-      { dados: dados({ mensagem: "Ainda agendado", inicio: new Date("2052-11-10T11:00:00Z"), fim: new Date("2052-11-20T11:00:00Z") }), modo: "programar" },
+      { dados: dados({ titulo: "Ainda agendado", inicio: new Date("2052-11-10T11:00:00Z"), fim: new Date("2052-11-20T11:00:00Z") }), modo: "programar" },
       { quem, fila, agora: a.p.antes },
     );
     const ordemAntes = await Promise.all([a.id, b.id, futuro].map(async (id) => (await linha(id)).ordemFila));
@@ -309,11 +353,11 @@ describe("Fila e faixa (CA-US01.2)", () => {
     const a = await agendado(2053, quem, "Fila A");
     const b = await agendado(2053, quem, "Fila B");
     const c = await agendado(2053, quem, "Fila C");
-    const antes = (await comunicadosNoAr(a.p.durante)).map((x) => x.mensagem);
+    const antes = (await comunicadosNoAr(a.p.durante)).map((x) => x.titulo);
 
     await expect(reordenarFila({ ids: [c.id, a.id] }, { quem, agora: a.p.durante })).rejects.toBeInstanceOf(ErroComunicado);
 
-    expect((await comunicadosNoAr(a.p.durante)).map((x) => x.mensagem)).toEqual(antes);
+    expect((await comunicadosNoAr(a.p.durante)).map((x) => x.titulo)).toEqual(antes);
     expect((await atividadesDe(b.id)).map((x) => x.acao)).not.toContain("comunicado.reordenar");
   });
 
@@ -399,8 +443,8 @@ describe("calendário de Conteúdos (E17, C3)", () => {
   it("o clique num encerrado leva à página da aba Encerrados em que ele está", async () => {
     const quem = await pessoaDaEquipe("COM");
     const ids: string[] = [];
-    for (const mensagem of ["Encerrado 1", "Encerrado 2", "Encerrado 3", "Encerrado 4", "Encerrado 5"]) {
-      const c = await agendado(2071, quem, mensagem);
+    for (const titulo of ["Encerrado 1", "Encerrado 2", "Encerrado 3", "Encerrado 4", "Encerrado 5"]) {
+      const c = await agendado(2071, quem, titulo);
       ids.push(c.id);
     }
     const agora = new Date("2071-12-01T12:00:00Z");

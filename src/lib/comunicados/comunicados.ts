@@ -81,7 +81,7 @@ export type ResultadoSalvar = { id: string; situacao: Situacao };
  * Cria ou salva um comunicado (RF43, RN14, E58).
  * - `rascunho`: fica fora do site. Um agendado que volta a rascunho sai da agenda.
  * - `programar`: com início no futuro, fica Agendado; com início agora ou antes, entra no ar na hora
- *   (o início passa a ser agora). No ar, dá para mudar a mensagem, o link e o fim, mas não o início.
+ *   (o início passa a ser agora). No ar, dá para mudar o título, o texto, o link e o fim, mas não o início.
  * O encerrado não se edita: duplique.
  */
 export async function salvarComunicado(
@@ -127,7 +127,8 @@ export async function salvarComunicado(
     }
 
     const valores = {
-      mensagem: dados.mensagem,
+      titulo: dados.titulo,
+      texto: dados.texto,
       ...colunasDoLink(dados.link),
       inicio,
       fim: dados.fim,
@@ -143,20 +144,20 @@ export async function salvarComunicado(
         .values({ ...valores, criadoPor: deps.quem.id, ordemFila: await proximaPosicaoNaFila(tx) })
         .returning({ id: comunicado.id });
       id = nova!.id;
-      await registrar(tx, deps.quem, { id, mensagem: dados.mensagem }, "criar", { situacao });
+      await registrar(tx, deps.quem, { id, titulo: dados.titulo }, "criar", { situacao });
     } else {
       id = atual.id;
       await tx.update(comunicado).set(valores).where(eq(comunicado.id, id));
       const mudou = mudancas(atual, { ...dados, inicio });
-      if (Object.keys(mudou).length > 0) await registrar(tx, deps.quem, { id, mensagem: dados.mensagem }, "editar", mudou);
+      if (Object.keys(mudou).length > 0) await registrar(tx, deps.quem, { id, titulo: dados.titulo }, "editar", mudou);
     }
 
     const periodo = { inicio: iso(inicio), fim: iso(dados.fim) };
-    if (entraAgora) await registrar(tx, deps.quem, { id, mensagem: dados.mensagem }, "publicar", periodo);
+    if (entraAgora) await registrar(tx, deps.quem, { id, titulo: dados.titulo }, "publicar", periodo);
     else if (situacao === "agendado" && situacaoAntes !== "agendado") {
-      await registrar(tx, deps.quem, { id, mensagem: dados.mensagem }, "agendar", periodo);
+      await registrar(tx, deps.quem, { id, titulo: dados.titulo }, "agendar", periodo);
     } else if (situacao === "rascunho" && situacaoAntes === "agendado") {
-      await registrar(tx, deps.quem, { id, mensagem: dados.mensagem }, "cancelar_agendamento", { inicio: iso(atual!.inicio) });
+      await registrar(tx, deps.quem, { id, titulo: dados.titulo }, "cancelar_agendamento", { inicio: iso(atual!.inicio) });
     }
 
     if (situacao !== "rascunho") await agendarViradas(tx, deps.fila, id, situacao, inicio!, dados.fim!);
@@ -167,7 +168,8 @@ export async function salvarComunicado(
 /** O que mudou, para a Atividade (só os campos alterados, com o antes e o depois). */
 function mudancas(atual: LinhaComunicado, novo: DadosComunicado): Record<string, unknown> {
   const saida: Record<string, unknown> = {};
-  if (atual.mensagem !== novo.mensagem) saida.mensagem = { de: atual.mensagem, para: novo.mensagem };
+  if (atual.titulo !== novo.titulo) saida.titulo = { de: atual.titulo, para: novo.titulo };
+  if (atual.texto !== novo.texto) saida.texto = { de: atual.texto, para: novo.texto };
   const linkAntes = linkDaLinha(atual);
   if (JSON.stringify(linkAntes) !== JSON.stringify(novo.link)) saida.link = { de: linkAntes, para: novo.link };
   if (iso(atual.inicio) !== iso(novo.inicio)) saida.inicio = { de: iso(atual.inicio), para: iso(novo.inicio) };
@@ -227,7 +229,8 @@ export async function duplicarComunicado(entrada: { id: string }, deps: Deps): P
     const [copia] = await tx
       .insert(comunicado)
       .values({
-        mensagem: original.mensagem,
+        titulo: original.titulo,
+        texto: original.texto,
         linkConteudoId: original.linkConteudoId,
         linkUrl: original.linkUrl,
         ordemFila: await proximaPosicaoNaFila(tx),
@@ -235,7 +238,7 @@ export async function duplicarComunicado(entrada: { id: string }, deps: Deps): P
         atualizadoPor: deps.quem.id,
       })
       .returning({ id: comunicado.id });
-    await registrar(tx, deps.quem, { id: copia!.id, mensagem: original.mensagem }, "duplicar", { origem: original.id });
+    await registrar(tx, deps.quem, { id: copia!.id, titulo: original.titulo }, "duplicar", { origem: original.id });
     return { id: copia!.id };
   });
 }
@@ -294,7 +297,8 @@ export async function reordenarFila(entrada: { ids: string[] }, deps: Deps): Pro
 
 export type ComunicadoNaLista = {
   id: string;
-  mensagem: string;
+  titulo: string;
+  texto: string;
   link: LinkComunicado;
   /** O texto do “Saiba mais → …” na lista. */
   rotuloDoLink: string | null;
@@ -342,7 +346,8 @@ function itemDaLista({ c, alvoTipo, alvoTitulo }: LinhaComConteudo, agora: Date)
   const situacao = situacaoDo(c, agora);
   return {
     id: c.id,
-    mensagem: c.mensagem,
+    titulo: c.titulo,
+    texto: c.texto,
     link: linkDaLinha(c),
     rotuloDoLink: alvoTipo ? `${NOME_DO_TIPO[alvoTipo].toLowerCase()} “${alvoTitulo}”` : c.linkUrl,
     inicio: c.inicio,
@@ -458,7 +463,7 @@ export async function conteudosParaOLink(busca: string, deps: Deps): Promise<{ i
 
 export type ComunicadoNoCalendario = {
   id: string;
-  mensagem: string;
+  titulo: string;
   situacao: Exclude<Situacao, "rascunho">;
   /** Primeiro e último dia ("AAAA-MM-DD", horário da Bahia) em que esteve ou estará no ar. */
   primeiroDia: string;
@@ -487,7 +492,7 @@ export async function comunicadosDoCalendario(
     const ultimo = new Date(Math.max(c.inicio!.getTime(), ate.getTime() - 1));
     return {
       id: c.id,
-      mensagem: c.mensagem,
+      titulo: c.titulo,
       situacao: situacaoDo(c, agora) as ComunicadoNoCalendario["situacao"],
       primeiroDia: deps.diaDe(c.inicio!),
       ultimoDia: deps.diaDe(ultimo),

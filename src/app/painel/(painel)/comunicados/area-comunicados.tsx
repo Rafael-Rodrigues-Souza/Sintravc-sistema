@@ -43,7 +43,7 @@ import { FormularioComunicado } from "./formulario-comunicado";
 
 export type ItemNaTela = {
   id: string;
-  mensagem: string;
+  titulo: string;
   rotuloDoLink: string | null;
   /** "24/10 08h00", no horário da Bahia. */
   inicio: string | null;
@@ -342,7 +342,7 @@ export function AreaComunicados({
                       <span className="sr-only">{fila ? "Posição na fila" : ""}</span>
                     </th>
                     <th scope="col" className="py-3 pr-4 text-left font-[inherit]">
-                      Mensagem
+                      Título
                     </th>
                     <th scope="col" className="w-[170px] py-3 pr-4 text-left font-[inherit]">
                       Período
@@ -399,7 +399,7 @@ export function AreaComunicados({
                         ) : null}
                       </td>
                       <td className="py-4 pr-4">
-                        <Mensagem item={item} />
+                        <Titulo item={item} />
                       </td>
                       <td className="py-4 pr-4 texto-pequeno text-texto-primario">
                         <Periodo item={item} />
@@ -454,7 +454,7 @@ export function AreaComunicados({
                         />
                       ) : null}
                     </div>
-                    <Mensagem item={item} />
+                    <Titulo item={item} />
                     {item.inicio && item.fim ? (
                       <p className="flex items-center gap-2 texto-pequeno text-texto-secundario">
                         <Clock aria-hidden className="size-4 shrink-0" />
@@ -540,8 +540,8 @@ export function AreaComunicados({
             titulo={confirmacao.tipo === "encerrar" ? "Encerrar comunicado?" : "Excluir rascunho?"}
             descricao={
               confirmacao.tipo === "encerrar"
-                ? `A faixa “${resumo(confirmacao.item.mensagem)}” sai do site agora, antes do fim do período. O registro continua em Atividade.`
-                : `O rascunho “${resumo(confirmacao.item.mensagem)}” será apagado de vez. Esta ação não pode ser desfeita.`
+                ? `A faixa “${resumo(confirmacao.item.titulo)}” sai do site agora, antes do fim do período. O registro continua em Atividade.`
+                : `O rascunho “${resumo(confirmacao.item.titulo)}” será apagado de vez. Esta ação não pode ser desfeita.`
             }
           >
             <AlertDialogFooter>
@@ -561,8 +561,8 @@ export function AreaComunicados({
   );
 }
 
-function resumo(mensagem: string) {
-  return mensagem.length > 40 ? `${mensagem.slice(0, 39).trimEnd()}…` : mensagem;
+function resumo(titulo: string) {
+  return titulo.length > 40 ? `${titulo.slice(0, 39).trimEnd()}…` : titulo;
 }
 
 function Selo({ situacao }: { situacao: Situacao }) {
@@ -575,10 +575,10 @@ function Selo({ situacao }: { situacao: Situacao }) {
   );
 }
 
-function Mensagem({ item }: { item: ItemNaTela }) {
+function Titulo({ item }: { item: ItemNaTela }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <p className="texto-titulo-card-pequeno break-words text-texto-primario">{item.mensagem}</p>
+      <p className="texto-titulo-card-pequeno break-words text-texto-primario">{item.titulo}</p>
       <p className="hidden items-center gap-1.5 texto-pequeno text-texto-secundario lg:flex">
         <Link2 aria-hidden className="size-3.5 shrink-0" />
         <span className="min-w-0 truncate">{item.rotuloDoLink ? `Saiba mais → ${item.rotuloDoLink}` : "Sem link"}</span>
@@ -631,7 +631,7 @@ function Menu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          aria-label={`Ações do comunicado “${resumo(item.mensagem)}”`}
+          aria-label={`Ações do comunicado “${resumo(item.titulo)}”`}
           className="alvo-toque inline-flex size-9 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
         >
           <MoreHorizontal aria-hidden className="size-4" />
