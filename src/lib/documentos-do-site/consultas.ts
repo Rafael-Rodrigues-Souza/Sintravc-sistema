@@ -93,7 +93,7 @@ export async function documentoPeloSlug(tipo: TipoDocumento, slug: string): Prom
 
 /**
  * Tudo o que uma aba de Documentos mostra (E60), numa leitura: a lista com os filtros da URL, os
- * chips, os anos, e o topo (contadores e destaque em Editais; o acordo vigente em Acordos).
+ * tipos (o seletor), os anos, e o topo (contadores e destaque em Editais; o acordo vigente em Acordos).
  */
 export async function paginaDaAba(aba: AbaDocumentos, filtros: FiltrosDeDocumentos, agora = new Date()) {
   const tipo = TIPO_DA_ABA[aba];

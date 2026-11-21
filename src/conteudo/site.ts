@@ -236,8 +236,8 @@ export const DOCUMENTOS_PAGINA = {
   listaEyebrow: "Arquivo oficial",
   anoRotulo: "Ano",
   todosOsAnos: "Todos os anos",
-  todos: "Todos",
-  tiposRotulo: "Tipos de documento",
+  tipoRotulo: "Tipo",
+  todosOsTipos: "Todos os tipos",
   carregarMais: "Carregar mais publicações",
   semResultadoTitulo: "Nenhum documento encontrado",
   semResultadoTexto: "Tente outra palavra, outro tipo ou outro ano.",
@@ -264,7 +264,7 @@ export const DOCUMENTOS_PAGINA = {
     unidade: ["publicação", "publicações"],
     vazioTitulo: "Nenhum edital publicado ainda",
     vazioTexto: "Quando o sindicato publicar um edital, ele aparece aqui.",
-    chips: { convocacao: "Convocações", eleicao: "Eleições", prestacao_contas: "Prestação de contas", outros: "Outros editais" },
+    tipos: { convocacao: "Convocações", eleicao: "Eleições", prestacao_contas: "Prestação de contas", outros: "Outros editais" },
   },
   acordos: {
     eyebrow: "Seus direitos",
@@ -282,7 +282,7 @@ export const DOCUMENTOS_PAGINA = {
     unidade: ["documento", "documentos"],
     vazioTitulo: "Nenhum acordo publicado ainda",
     vazioTexto: "Quando o sindicato publicar um acordo ou uma convenção, ele aparece aqui.",
-    chips: { act: "ACT", cct: "CCT" },
+    tipos: { act: "ACT", cct: "CCT" },
   },
   /** Explicação de ACT e CCT (Figma 75:1566): textos do Figma, aprovados pelo Rafael em 21/11/2026. */
   actECct: {

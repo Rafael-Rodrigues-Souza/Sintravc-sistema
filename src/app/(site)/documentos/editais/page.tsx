@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { AbasDocumentos } from "@/components/site/documentos/abas-documentos";
 import { AvisosNoCelular, NaoEncontrou, Transparencia } from "@/components/site/documentos/blocos-laterais";
 import { BuscaEFiltros } from "@/components/site/documentos/busca-e-filtros";
-import { ChipsDeTipo } from "@/components/site/documentos/chips-de-tipo";
 import { DestaqueEdital } from "@/components/site/documentos/destaque-edital";
 import { ListaDeDocumentos, VazioDeDocumentos } from "@/components/site/documentos/lista-de-documentos";
 import { FilieSe } from "@/components/site/filie-se";
@@ -30,7 +29,7 @@ export const metadata: Metadata = {
 
 /**
  * Documentos › Editais (Figma 73:629 / 74:1085; US03, RF04, C2, E60). No topo, os contadores e o
- * destaque com “Faltam N dias”. Embaixo, busca, ano e tipos (na URL) e a lista agrupada pelo mês
+ * destaque com “Faltam N dias”. Embaixo, busca, tipo e ano (na URL) e a lista agrupada pelo mês
  * da publicação. Renderizada a cada visita: o selo e a contagem seguem o relógio.
  */
 export default async function PaginaEditais({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -85,9 +84,7 @@ export default async function PaginaEditais({ searchParams }: { searchParams: Pr
         </div>
 
         {pagina.totalNoAr > 0 ? (
-          <BuscaEFiltros aba="editais" filtros={filtros} anos={pagina.anos}>
-            <ChipsDeTipo aba="editais" filtros={filtros} total={pagina.totalNoAr} subtipos={pagina.subtipos} />
-          </BuscaEFiltros>
+          <BuscaEFiltros aba="editais" filtros={filtros} anos={pagina.anos} total={pagina.totalNoAr} subtipos={pagina.subtipos} />
         ) : null}
 
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_368px] lg:gap-10">

@@ -79,7 +79,7 @@ describe("lista", () => {
     expect(montarLista(docs, { ...vazio, mais: 2 }, null, AGORA, 7)).toMatchObject({ total: 12, temMais: false });
   });
 
-  it("Acordos pelo início da vigência; anos e chips só com o que existe", () => {
+  it("Acordos pelo início da vigência; anos e tipos só com o que existe", () => {
     const a24 = doc("acordo", "2026-11-01", { subtipo: "act", vigenciaInicio: "2024-05-01", vigenciaFim: "2025-04-30" });
     const a26 = doc("acordo", "2026-05-02", { subtipo: "act", vigenciaInicio: "2026-05-01", vigenciaFim: "2027-04-30" });
     const c25 = doc("acordo", "2025-05-02", { subtipo: "cct", vigenciaInicio: "2025-05-01", vigenciaFim: "2026-04-30" });

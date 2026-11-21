@@ -127,7 +127,7 @@ export function gruposPorMes(itens: DocumentoNaLista[]): { chave: string; rotulo
   return grupos;
 }
 
-/** Os chips de tipo: todos os subtipos da aba com pelo menos um documento, com a contagem. */
+/** O seletor de tipo: todos os subtipos da aba com pelo menos um documento, com a contagem. */
 export function contagemPorSubtipo(tipo: TipoDocumento, docs: DocumentoNoAr[]): { subtipo: SubtipoDocumento; total: number }[] {
   return (SUBTIPOS[tipo] as readonly SubtipoDocumento[])
     .map((subtipo) => ({ subtipo, total: docs.filter((d) => d.dados.subtipo === subtipo).length }))
