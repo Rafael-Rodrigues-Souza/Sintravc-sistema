@@ -8,9 +8,10 @@ import { IconeFigma } from "@/components/icone-figma";
 import { cn } from "@/lib/utils";
 
 import { COOKIE_COMUNICADOS_FECHADOS, juntarFechados, lerFechados } from "./comunicados-fechados";
-import { useDeslize } from "./deslize";
+import { useDeslize, vizinhoNaFila } from "./deslize";
 import { JanelaComunicados } from "./janela-comunicados";
 import { LINKS } from "./navegacao";
+import { SaibaMais } from "./saiba-mais";
 
 export type ComunicadoNaFaixa = {
   id: string;
@@ -72,16 +73,16 @@ export function FaixaComunicado({
   // Na própria página Comunicados, o “Ver todos” levaria para onde a pessoa já está.
   const comVerTodos = noSite && varios && caminho !== LINKS.comunicados.href;
 
-  function ir(passo: number) {
+  function ir(passo: -1 | 1) {
     setAnuncio(true);
     setPassouPelaPessoa(true);
-    setAtual((indice + passo + total) % total);
+    setAtual(vizinhoNaFila(indice, passo, total));
   }
   const deslize = useDeslize(ir);
 
   React.useEffect(() => {
     if (!trocaSozinha || parada) return;
-    const relogio = window.setInterval(() => setAtual((i) => (i + 1) % total), intervaloSegundos * 1000);
+    const relogio = window.setInterval(() => setAtual((i) => vizinhoNaFila(i, 1, total)), intervaloSegundos * 1000);
     return () => window.clearInterval(relogio);
   }, [trocaSozinha, parada, total, intervaloSegundos]);
 
@@ -192,16 +193,7 @@ export function FaixaComunicado({
                 {c.link || comVerTodos ? (
                   <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1">
                     {c.link ? (
-                      <a
-                        href={c.link.href}
-                        {...(c.link.externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                        className="flex shrink-0 items-center gap-1.5 rounded-[6px] texto-botao underline underline-offset-2 outline-none pointer-coarse:min-h-11 focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
-                      >
-                        Saiba mais
-                        <span className="sr-only">: {c.titulo}</span>
-                        {c.link.externo ? <span className="sr-only"> (abre em outra aba)</span> : null}
-                        <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
-                      </a>
+                      <SaibaMais link={c.link} sobre={c.titulo} className="shrink-0 pointer-coarse:min-h-11" />
                     ) : null}
                     {comVerTodos ? (
                       <Link

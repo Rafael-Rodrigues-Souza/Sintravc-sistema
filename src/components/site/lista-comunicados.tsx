@@ -2,10 +2,9 @@
 
 import * as React from "react";
 
-import { IconeFigma } from "@/components/icone-figma";
-
 import type { ComunicadoNaFaixa } from "./faixa-comunicado";
 import { JanelaComunicados } from "./janela-comunicados";
+import { SaibaMais } from "./saiba-mais";
 
 export type ComunicadoNaPagina = ComunicadoNaFaixa & {
   /** "22/11/2026 às 18h00", já no horário da Bahia, e o instante para o `<time>`. */
@@ -53,16 +52,7 @@ export function ListaComunicados({ comunicados }: { comunicados: ComunicadoNaPag
               </div>
               <p className="texto-pequeno break-words whitespace-pre-line">{c.texto}</p>
               {c.link ? (
-                <a
-                  href={c.link.href}
-                  {...(c.link.externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  className="alvo-toque relative z-10 flex items-center gap-1.5 self-start rounded-[6px] texto-botao underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
-                >
-                  Saiba mais
-                  <span className="sr-only">: {c.titulo}</span>
-                  {c.link.externo ? <span className="sr-only"> (abre em outra aba)</span> : null}
-                  <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
-                </a>
+                <SaibaMais link={c.link} sobre={c.titulo} className="alvo-toque relative z-10 self-start" />
               ) : null}
             </article>
           </li>

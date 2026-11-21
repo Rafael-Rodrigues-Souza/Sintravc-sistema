@@ -16,7 +16,7 @@ import {
   salvarComunicado,
   type ResultadoSalvar,
 } from "@/lib/comunicados/comunicados";
-import { ErroComunicado, NOME_DO_TIPO, type LinkComunicado } from "@/lib/comunicados/regras";
+import { ErroComunicado, esquemaTextosDoComunicado, NOME_DO_TIPO, primeiroErroDosTextos, type LinkComunicado } from "@/lib/comunicados/regras";
 import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
 import { SemPermissao } from "@/lib/permissoes";
 import { filaDoSistema } from "@/lib/tarefas";
@@ -29,18 +29,28 @@ const FALHOU = "Não foi possível concluir agora. Tente de novo em alguns minut
 const PEDIDO_INVALIDO = "A tela mandou dados incompletos. Atualize a página e tente de novo.";
 
 const esquemaQuando = z.object({ data: z.string().max(10), hora: z.string().max(5) }).nullable();
-const esquemaSalvar = z.object({
+// Título e texto com o mesmo esquema da tela e das regras (140 e 1.000 caracteres, obrigatórios).
+const esquemaSalvar = esquemaTextosDoComunicado.extend({
   id: z.uuid().optional(),
   modo: z.enum(["rascunho", "programar"]),
-  titulo: z.string().max(1000),
-  texto: z.string().max(5000),
   link: z.union([z.object({ tipo: z.literal("conteudo"), id: z.uuid() }), z.object({ tipo: z.literal("url"), url: z.string().max(2000) }), z.null()]),
   inicio: esquemaQuando,
   fim: esquemaQuando,
 });
 const esquemaId = z.object({ id: z.uuid() });
 
-export type PedidoSalvar = z.infer<typeof esquemaSalvar>;
+/** O que a tela manda (antes de o esquema limpar o título e o texto). */
+export type PedidoSalvar = z.input<typeof esquemaSalvar>;
+
+/** Erro no título ou no texto vai para o campo; o resto do pedido malformado, para o aviso geral. */
+function erroDoPedido(pedido: unknown): { tipo: "erro"; mensagem: string; campo?: ErroComunicado["campo"] } {
+  const textos = primeiroErroDosTextos(
+    typeof pedido === "object" && pedido !== null
+      ? { titulo: String((pedido as { titulo?: unknown }).titulo ?? ""), texto: String((pedido as { texto?: unknown }).texto ?? "") }
+      : { titulo: "", texto: "" },
+  );
+  return textos ? { tipo: "erro", mensagem: textos.mensagem, campo: textos.campo } : { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+}
 
 function erroParaResposta(erro: unknown, contexto: string): { tipo: "erro"; mensagem: string; campo?: ErroComunicado["campo"] } {
   if (erro instanceof ErroComunicado) return { tipo: "erro", mensagem: erro.message, campo: erro.campo };
@@ -60,7 +70,7 @@ function quando(valor: { data: string; hora: string } | null, campo: "inicio" | 
 /** Cria ou salva (RF43, RN14). A permissão e as regras são conferidas no servidor (RNF01). */
 export async function acaoSalvarComunicado(pedido: unknown): Promise<Resposta<ResultadoSalvar>> {
   const lido = esquemaSalvar.safeParse(pedido);
-  if (!lido.success) return { tipo: "erro", mensagem: PEDIDO_INVALIDO };
+  if (!lido.success) return erroDoPedido(pedido);
   try {
     const { quem } = await sessaoDaEquipe();
     const { id, modo, titulo, texto, link } = lido.data;

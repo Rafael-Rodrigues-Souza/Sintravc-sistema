@@ -1,7 +1,7 @@
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { urlPublica } from "@/lib/armazenamento";
-import { enderecoPublicoDoConteudo } from "@/lib/comunicados/regras";
+import { enderecoPublicoDoConteudo } from "@/lib/conteudos/enderecos";
 import { banco } from "@/lib/db";
 import { conteudo, conteudoVersao, midia } from "@/lib/db/schema";
 import { lerEnvArmazenamento } from "@/lib/env";

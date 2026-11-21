@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DESLIZE_MINIMO, passoDoDeslize } from "./deslize";
+import { DESLIZE_MINIMO, passoDoDeslize, vizinhoNaFila } from "./deslize";
 
 describe("passoDoDeslize", () => {
   const inicio = { x: 200, y: 100 };
@@ -17,5 +17,14 @@ describe("passoDoDeslize", () => {
   it("mais na vertical que de lado é rolagem da página", () => {
     expect(passoDoDeslize(inicio, { x: 140, y: 170 })).toBe(0);
     expect(passoDoDeslize(inicio, { x: 140, y: 40 })).toBe(0);
+  });
+});
+
+describe("vizinhoNaFila", () => {
+  it("anda um para a frente ou para trás e dá a volta nas pontas", () => {
+    expect(vizinhoNaFila(0, 1, 3)).toBe(1);
+    expect(vizinhoNaFila(2, 1, 3)).toBe(0);
+    expect(vizinhoNaFila(0, -1, 3)).toBe(2);
+    expect(vizinhoNaFila(1, -1, 3)).toBe(0);
   });
 });

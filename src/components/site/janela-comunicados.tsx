@@ -7,8 +7,9 @@ import * as React from "react";
 import { IconeFigma } from "@/components/icone-figma";
 import { useFecharPeloVoltar } from "@/components/use-fechar-pelo-voltar";
 
-import { useDeslize } from "./deslize";
+import { useDeslize, vizinhoNaFila } from "./deslize";
 import type { ComunicadoNaFaixa } from "./faixa-comunicado";
+import { SaibaMais } from "./saiba-mais";
 
 const botaoNoEscuro =
   "alvo-toque flex size-10 shrink-0 items-center justify-center rounded-full bg-sobre-escuro-chip outline-none hover:bg-sobre-escuro-borda focus-visible:ring-[3px] focus-visible:ring-texto-invertido";
@@ -46,7 +47,7 @@ export function JanelaComunicados({
 
   const total = comunicados.length;
   const varios = total > 1;
-  const passar = (passo: -1 | 1) => aoIr((indice + passo + total) % total);
+  const passar = (passo: -1 | 1) => aoIr(vizinhoNaFila(indice, passo, total));
   const ouvintes = useDeslize((passo) => {
     if (varios) passar(passo);
   });
@@ -110,15 +111,7 @@ export function JanelaComunicados({
                     </p>
                   </div>
                   {atual.link ? (
-                    <a
-                      href={atual.link.href}
-                      {...(atual.link.externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                      className="flex min-h-11 items-center gap-1.5 self-start rounded-[6px] texto-botao underline underline-offset-2 outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-marinho-fixo"
-                    >
-                      Saiba mais
-                      {atual.link.externo ? <span className="sr-only"> (abre em outra aba)</span> : null}
-                      <IconeFigma src="/site/comunicado-seta-direita.svg" tamanho={16} />
-                    </a>
+                    <SaibaMais link={atual.link} className="min-h-11 self-start" />
                   ) : null}
                 </article>
 

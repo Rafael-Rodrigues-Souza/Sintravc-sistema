@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizarLinkDoComunicado, rotuloDoComunicado, situacaoDo } from "./regras";
+import { esquemaTextosDoComunicado, normalizarLinkDoComunicado, primeiroErroDosTextos, rotuloDoComunicado, situacaoDo } from "./regras";
 
 const inicio = new Date("2026-10-30T11:00:00Z");
 const fim = new Date("2026-11-03T02:59:00Z");
@@ -39,5 +39,28 @@ describe("rotuloDoComunicado", () => {
   it("título longo vira o começo, com reticências", () => {
     expect(rotuloDoComunicado("x".repeat(140))).toHaveLength(60);
     expect(rotuloDoComunicado("Curto")).toBe("Curto");
+  });
+});
+
+describe("esquemaTextosDoComunicado (o mesmo na tela, na ação e nas regras)", () => {
+  it.each([
+    ["título vazio", { titulo: "  ", texto: "Texto" }, "titulo", "Escreva o título do comunicado."],
+    ["título com 141", { titulo: "x".repeat(141), texto: "Texto" }, "titulo", "O título pode ter até 140 caracteres."],
+    ["texto vazio", { titulo: "Título", texto: " \n " }, "texto", "Escreva o texto do comunicado."],
+    ["texto com 1.001", { titulo: "Título", texto: "y".repeat(1001) }, "texto", "O texto pode ter até 1000 caracteres."],
+  ])("recusa %s, no campo certo", (_nome, dados, campo, mensagem) => {
+    expect(primeiroErroDosTextos(dados)).toEqual({ campo, mensagem });
+  });
+
+  it("aceita 140 e 1.000, junta os espaços do título e guarda as quebras de linha do texto", () => {
+    expect(primeiroErroDosTextos({ titulo: "x".repeat(140), texto: "y".repeat(1000) })).toBeNull();
+    expect(esquemaTextosDoComunicado.parse({ titulo: "  Sede   fechada ", texto: " Linha 1\r\nLinha 2 " })).toEqual({
+      titulo: "Sede fechada",
+      texto: "Linha 1\nLinha 2",
+    });
+  });
+
+  it("com os dois errados, o primeiro é o título", () => {
+    expect(primeiroErroDosTextos({ titulo: "", texto: "" })?.campo).toBe("titulo");
   });
 });

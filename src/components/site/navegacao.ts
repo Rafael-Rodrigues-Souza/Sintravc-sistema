@@ -4,7 +4,8 @@
  * Notícias, Benefícios, Documentos e Rádio Chofer chegam nas issues #15 a #18.
  */
 export type ItemDeMenu = { rotulo: string; href: string };
-export type GrupoDeMenu = { rotulo: string; itens: ItemDeMenu[]; base: string };
+/** `id` nomeia o submenu no menu do celular (`submenu-<id>`); o grupo fica ativo pelos itens (`estaAtivo`). */
+export type GrupoDeMenu = { rotulo: string; itens: ItemDeMenu[]; id: string };
 export type EntradaDoMenu = ItemDeMenu | GrupoDeMenu;
 
 export const LINKS = {
@@ -28,19 +29,19 @@ export const LINKS = {
  */
 export const NOTICIAS: GrupoDeMenu = {
   rotulo: "Notícias",
-  base: "/noticias",
+  id: "noticias",
   itens: [LINKS.noticias, LINKS.comunicados],
 };
 
 export const SINDICATO: GrupoDeMenu = {
   rotulo: "Sindicato",
-  base: "/sindicato",
+  id: "sindicato",
   itens: [LINKS.instituicao, LINKS.diretoria, LINKS.beneficios],
 };
 
 export const DOCUMENTOS: GrupoDeMenu = {
   rotulo: "Documentos",
-  base: "/documentos",
+  id: "documentos",
   itens: [LINKS.acordos, LINKS.editais],
 };
 

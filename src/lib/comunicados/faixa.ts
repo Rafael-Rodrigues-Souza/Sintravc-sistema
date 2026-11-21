@@ -1,10 +1,11 @@
 import { asc, eq } from "drizzle-orm";
 
+import { enderecoPublicoDoConteudo } from "@/lib/conteudos/enderecos";
 import { banco } from "@/lib/db";
 import { comunicado, conteudo } from "@/lib/db/schema";
 
 import { filtroNoAr } from "./comum";
-import { enderecoPublicoDoConteudo, type TipoDoLink } from "./regras";
+import type { TipoDoLink } from "./regras";
 
 export type ComunicadoDaFaixa = {
   id: string;

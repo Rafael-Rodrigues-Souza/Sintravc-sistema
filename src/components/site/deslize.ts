@@ -19,6 +19,14 @@ export function passoDoDeslize(inicio: Ponto, fim: Ponto): -1 | 0 | 1 {
 }
 
 /**
+ * O vizinho na fila (E58): o próximo depois do último volta ao primeiro, e o anterior do primeiro vai
+ * ao último. Usado pela faixa (setas, deslize e troca automática) e pela janela.
+ */
+export function vizinhoNaFila(indice: number, passo: -1 | 1, total: number): number {
+  return (indice + passo + total) % total;
+}
+
+/**
  * Deslize de lado com o dedo (E58). Só o toque conta: o mouse e a caneta continuam com as setas.
  * Quem usa põe `touch-pan-y` no elemento: o navegador cuida da rolagem vertical e só manda para cá o
  * movimento de lado (a rolagem vertical vira pointercancel, que não passa). O dedo que andou não gera

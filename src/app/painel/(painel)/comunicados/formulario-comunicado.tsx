@@ -12,7 +12,7 @@ import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LIMITE_TEXTO, LIMITE_TITULO, normalizarLinkDoComunicado, type CampoDoComunicado } from "@/lib/comunicados/regras";
+import { LIMITE_TEXTO, LIMITE_TITULO, normalizarLinkDoComunicado, primeiroErroDosTextos, type CampoDoComunicado } from "@/lib/comunicados/regras";
 import { bahiaParaUtc, camposEmTexto } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 
@@ -155,12 +155,21 @@ function Corpo({
   const fimCampos = doCampo(fim);
   const inicioUtc = inicioCampos ? bahiaParaUtc(inicioCampos.data, inicioCampos.hora) : null;
   const entraAgora = !noAr && !!inicioUtc && inicioUtc.getTime() <= abertoEm;
+  // A prévia mostra o título que está sendo escrito (na faixa e no comunicado aberto).
+  const tituloDaPrevia = titulo.trim() || "O título aparece aqui.";
   const erroNo = (campo: Campo) => (erro?.campo === campo ? erro.mensagem : undefined);
 
   const rotuloPrincipal =
     situacao === "agendado" || noAr ? "Salvar alterações" : entraAgora ? (grande ? "Publicar agora" : "Publicar") : grande ? "Agendar comunicado" : "Agendar";
 
   const salvar = async (modo: "rascunho" | "programar") => {
+    // Título e texto: o mesmo esquema do servidor, conferido aqui para o erro aparecer antes de mandar.
+    const errado = primeiroErroDosTextos({ titulo, texto });
+    if (errado) {
+      setErro(errado);
+      document.getElementById(`comunicado-${errado.campo}`)?.focus();
+      return;
+    }
     // Texto digitado no link e não escolhido na lista: vale como endereço, se for um.
     let linkFinal = link;
     if (!linkFinal && textoDoLink.trim()) {
@@ -267,7 +276,7 @@ function Corpo({
               comunicados={[
                 {
                   id: "previa",
-                  titulo: titulo.trim() || "O título aparece aqui.",
+                  titulo: tituloDaPrevia,
                   texto: "",
                   link: link || textoDoLink.trim() ? { href: "#", externo: false } : null,
                 },
@@ -276,7 +285,7 @@ function Corpo({
           </div>
           {/* Ao abrir o comunicado (janela e página Comunicados): o título e o texto inteiro. */}
           <div data-testid="previa-aberta" className="flex max-h-48 flex-col gap-1.5 overflow-y-auto rounded-[8px] bg-destaque-amarelo px-4 py-3 text-destaque-marinho-fixo">
-            <p className="texto-titulo-card-pequeno break-words">{titulo.trim() || "O título aparece aqui."}</p>
+            <p className="texto-titulo-card-pequeno break-words">{tituloDaPrevia}</p>
             <p className="texto-pequeno break-words whitespace-pre-line">{texto.trim() || "O texto do comunicado aparece aqui."}</p>
           </div>
         </div>
