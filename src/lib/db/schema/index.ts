@@ -8,3 +8,4 @@ export * from "./conteudo";
 export * from "./notificacao";
 export * from "./config-site";
 export * from "./comunicado";
+export * from "./episodio";

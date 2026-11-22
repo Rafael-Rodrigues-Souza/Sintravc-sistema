@@ -4,6 +4,7 @@ import { CalendarDays, Link2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { useTelaGrande } from "@/components/painel/use-tela-grande";
 import { FaixaComunicado } from "@/components/site/faixa-comunicado";
 import { Alerta } from "@/components/ui/alerta";
 import { Button } from "@/components/ui/button";
@@ -69,19 +70,6 @@ function CampoDeTexto({
 /** "2026-10-24T08:00" (datetime-local) ⇄ { data, hora } no horário da Bahia. */
 const paraCampo = (q: { data: string; hora: string } | null) => (q ? `${q.data}T${q.hora}` : "");
 const doCampo = (valor: string) => (valor ? { data: valor.slice(0, 10), hora: valor.slice(11, 16) } : null);
-
-/** Computador e tablet deitado: modal (165:16711). Abaixo de lg: folha inferior (170:18978, E49). */
-function useTelaGrande() {
-  const [grande, setGrande] = React.useState(true);
-  React.useEffect(() => {
-    const consulta = window.matchMedia("(min-width: 1024px)");
-    const mudar = () => setGrande(consulta.matches);
-    mudar();
-    consulta.addEventListener("change", mudar);
-    return () => consulta.removeEventListener("change", mudar);
-  }, []);
-  return grande;
-}
 
 /**
  * Novo comunicado e edição (RF43; Figma 165:16711 e 170:18978): título de até 140 caracteres (o que a

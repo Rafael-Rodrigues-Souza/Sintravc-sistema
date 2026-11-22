@@ -337,3 +337,37 @@ export const DOCUMENTOS_PAGINA = {
     voltar: { editais: "Ver todos os editais", acordos: "Ver todos os acordos coletivos" },
   },
 };
+
+/** Página Rádio Chofer (Figma 157:8305 / 157:8607; RF05, E55, E61). */
+export const RADIO_PAGINA = {
+  migalha: "Rádio Chofer",
+  eyebrow: "Programa do sindicato",
+  titulo: "Rádio Chofer",
+  texto: "O programa de comunicação do SINTRAVC, feito para motoristas e trabalhadores do transporte coletivo de Vitória da Conquista.",
+  assistir: "Assistir no YouTube",
+  inscrever: "Inscrever-se no canal",
+  notaDoPlayer: "O vídeo vem do YouTube e só carrega quando você clica em reproduzir.",
+  ultimoPrograma: "Último programa",
+  semEpisodioNoTopo: "Os episódios aparecem aqui assim que forem publicados.",
+  listaEyebrow: "Episódios",
+  listaTitulo: "Todos os programas",
+  buscaRotulo: "Buscar episódio",
+  buscaDica: "Tema, convidado ou número",
+  buscar: "Buscar",
+  limparBusca: "Limpar a busca",
+  temaRotulo: "Tema",
+  todosOsTemas: "Todos os temas",
+  carregarMais: "Carregar mais episódios",
+  ouvirAgora: "Ouvir agora",
+  lerTranscricao: "Ler transcrição",
+  transcricao: "Transcrição",
+  transcricaoCarregando: "Carregando a transcrição…",
+  transcricaoErro: "Não conseguimos carregar a transcrição. Confira a internet e tente de novo.",
+  tentarDeNovo: "Tentar de novo",
+  vazioTitulo: "Nenhum episódio publicado ainda",
+  vazioTexto: "Quando o sindicato publicar um programa, ele aparece aqui.",
+  nadaEncontradoTitulo: "Nenhum episódio encontrado",
+  nadaEncontradoTexto: "Tente outra palavra, o número do episódio ou outro tema.",
+  limparFiltros: "Limpar filtros",
+};
+

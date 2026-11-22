@@ -22,6 +22,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { IconeFigma } from "@/components/icone-figma";
+import { SEM_CONEXAO } from "@/components/painel/sem-conexao";
 import { FaixaComunicado, type ComunicadoNaFaixa } from "@/components/site/faixa-comunicado";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -72,8 +73,6 @@ const VAZIO: Record<Aba, string> = {
 
 /** O encerrado vindo do calendário (E58): contorno marinho e fundo amarelo claro, nos dois temas. */
 const DESTAQUE = "bg-destaque-amarelo/20 outline-2 -outline-offset-2 outline-destaque-marinho-fixo dark:outline-destaque-amarelo";
-
-const SEM_CONEXAO = { tipo: "erro" as const, mensagem: "Sem conexão com o servidor. Confira a internet e tente de novo." };
 
 type Confirmacao = { tipo: "encerrar" | "excluir"; item: ItemNaTela } | null;
 

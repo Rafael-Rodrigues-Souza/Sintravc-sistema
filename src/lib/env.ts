@@ -51,6 +51,17 @@ const esquemaAcesso = z.object({
   URL_SITE: esquemaSite.shape.URL_SITE,
 });
 
+const esquemaYoutube = z.object({
+  /** "1" no e2e: o YouTube simulado, sem rede (E61). */
+  YOUTUBE_SIMULADO: z.literal("1").optional().catch(undefined),
+  /** Chave da YouTube Data API (D4). Opcional: sem ela, a duração dos episódios é digitada. */
+  YOUTUBE_API_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || undefined),
+});
+
 export type EnvBanco = z.infer<typeof esquemaBanco>;
 export type EnvEmail = z.infer<typeof esquemaEmail>;
 export type EnvArmazenamento = z.infer<typeof esquemaArmazenamento>;
@@ -72,5 +83,6 @@ export const lerEnvBanco = (fonte: Fonte = process.env) => validar("banco", esqu
 export const lerEnvEmail = (fonte: Fonte = process.env) => validar("e-mail", esquemaEmail, fonte);
 export const lerEnvSite = (fonte: Fonte = process.env) => validar("site", esquemaSite, fonte);
 export const lerEnvAcesso = (fonte: Fonte = process.env) => validar("acesso", esquemaAcesso, fonte);
+export const lerEnvYoutube = (fonte: Fonte = process.env) => validar("YouTube", esquemaYoutube, fonte);
 export const lerEnvArmazenamento = (fonte: Fonte = process.env) =>
   validar("armazenamento", esquemaArmazenamento, fonte);

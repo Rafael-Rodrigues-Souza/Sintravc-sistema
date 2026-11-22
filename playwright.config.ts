@@ -33,6 +33,8 @@ export const ambienteE2E = {
   S3_CHAVE_SECRETA: process.env.S3_CHAVE_SECRETA_E2E ?? "sintravc-segredo",
   S3_FORCAR_CAMINHO: "true",
   S3_URL_PUBLICA: `${process.env.S3_ENDPOINT_E2E ?? "http://localhost:9000"}/sintravc-e2e`,
+  // Rádio Chofer (E61): o YouTube simulado, sem rede; os ids especiais simulam os erros.
+  YOUTUBE_SIMULADO: "1",
 };
 
 /** API do Mailpit, para ler os e-mails nos testes. */
