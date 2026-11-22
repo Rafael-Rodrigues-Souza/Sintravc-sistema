@@ -221,6 +221,17 @@ test.describe("Rádio Chofer no site, no celular", { tag: "@responsivo" }, () =>
     await page.goto("/radio-chofer");
     await expect(cartoes(page)).toHaveCount(3);
     await semRolagemLateral(page);
+
+    // Topo (decisão do Rafael, 22/11/2026): player, depois “Ao vivo…”, depois os dois botões do canal.
+    const topo = page.getByRole("region", { name: "Rádio Chofer" });
+    const player = await topo.getByRole("button", { name: /Ouvir agora/ }).boundingBox();
+    const aoVivo = await topo.getByText("Ao vivo de segunda a sexta · 13h").boundingBox();
+    const assistir = await topo.getByRole("link", { name: /Assistir no YouTube/ }).boundingBox();
+    const inscrever = await topo.getByRole("link", { name: /Inscrever-se no canal/ }).boundingBox();
+    expect(aoVivo!.y).toBeGreaterThan(player!.y + player!.height);
+    expect(assistir!.y).toBeGreaterThan(aoVivo!.y + aoVivo!.height);
+    expect(inscrever!.y).toBeGreaterThanOrEqual(assistir!.y);
+    expect(Math.min(assistir!.height, inscrever!.height)).toBeGreaterThanOrEqual(RESPONSIVO.alvoDeToque);
     if (hasTouch) {
       const pequenos = await page.evaluate(alvosDeToquePequenos, { minimo: RESPONSIVO.alvoDeToque, dentro: "main" });
       expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);

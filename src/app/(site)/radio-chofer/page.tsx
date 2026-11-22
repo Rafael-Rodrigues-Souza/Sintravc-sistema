@@ -59,35 +59,6 @@ export default async function PaginaRadioChofer({ searchParams }: { searchParams
               {t.titulo}
             </h1>
             <p className="texto-corpo text-texto-invertido-sec lg:texto-corpo-grande">{t.texto}</p>
-            {programa.ativo ? (
-              <p className="flex items-center gap-2 texto-titulo-card-pequeno text-texto-invertido">
-                <IconeFigma src="/site/icone-relogio.svg" tamanho={18} className="text-destaque-amarelo" />
-                {linhaAoVivo(programa)}
-              </p>
-            ) : null}
-            {canal ? (
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <a
-                  href={canal.assistir}
-                  target="_blank"
-                  rel="noopener"
-                  className="alvo-toque inline-flex h-12 items-center justify-center gap-2 rounded-full bg-destaque-amarelo pr-6 pl-5 texto-botao text-destaque-amarelo-texto outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo focus-visible:ring-offset-2 focus-visible:ring-offset-fundo-marinho"
-                >
-                  <IconeFigma src="/site/icone-youtube.svg" tamanho={18} />
-                  {t.assistir}
-                  <span className="sr-only">(abre o YouTube em nova aba)</span>
-                </a>
-                <a
-                  href={canal.inscrever}
-                  target="_blank"
-                  rel="noopener"
-                  className="alvo-toque inline-flex h-12 items-center justify-center rounded-full border-[1.5px] border-sobre-escuro-borda bg-sobre-escuro-superficie px-6 texto-botao text-texto-invertido outline-none hover:bg-sobre-escuro-chip focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo"
-                >
-                  {t.inscrever}
-                  <span className="sr-only">(abre o YouTube em nova aba)</span>
-                </a>
-              </div>
-            ) : null}
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -120,6 +91,40 @@ export default async function PaginaRadioChofer({ searchParams }: { searchParams
                 <p className="texto-corpo text-texto-invertido-sec">{t.semEpisodioNoTopo}</p>
               </div>
             )}
+            {/* Abaixo do player, no computador e no celular: o horário ao vivo e os botões do canal (decisão do Rafael, 22/11/2026). */}
+            {programa.ativo || canal ? (
+              <div data-testid="programa-ao-vivo" className="flex flex-col gap-4 pt-2">
+                {programa.ativo ? (
+                  <p className="flex items-center gap-2 texto-titulo-card-pequeno text-texto-invertido">
+                    <IconeFigma src="/site/icone-relogio.svg" tamanho={18} className="text-destaque-amarelo" />
+                    {linhaAoVivo(programa)}
+                  </p>
+                ) : null}
+                {canal ? (
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href={canal.assistir}
+                      target="_blank"
+                      rel="noopener"
+                      className="alvo-toque inline-flex h-12 grow items-center justify-center gap-2 rounded-full bg-destaque-amarelo pr-6 pl-5 texto-botao whitespace-nowrap text-destaque-amarelo-texto outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo focus-visible:ring-offset-2 focus-visible:ring-offset-fundo-marinho sm:grow-0"
+                    >
+                      <IconeFigma src="/site/icone-youtube.svg" tamanho={18} />
+                      {t.assistir}
+                      <span className="sr-only">(abre o YouTube em nova aba)</span>
+                    </a>
+                    <a
+                      href={canal.inscrever}
+                      target="_blank"
+                      rel="noopener"
+                      className="alvo-toque inline-flex h-12 grow items-center justify-center rounded-full border-[1.5px] border-sobre-escuro-borda bg-sobre-escuro-superficie px-6 texto-botao whitespace-nowrap text-texto-invertido outline-none hover:bg-sobre-escuro-chip focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo sm:grow-0"
+                    >
+                      {t.inscrever}
+                      <span className="sr-only">(abre o YouTube em nova aba)</span>
+                    </a>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
