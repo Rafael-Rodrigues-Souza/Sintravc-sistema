@@ -358,7 +358,7 @@ function Menu({
         <button
           type="button"
           aria-label={`Ações do Ep. ${item.numero}`}
-          className="alvo-toque inline-flex size-9 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
+          className="alvo-toque inline-flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
         >
           <MoreHorizontal aria-hidden className="size-4" />
         </button>

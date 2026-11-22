@@ -85,7 +85,8 @@ export function ProgramaAoVivo({ programa, podeGerenciar }: { programa: Programa
             onClick={() => setEditando(true)}
           >
             <SquarePlay aria-hidden className="size-[18px] shrink-0 text-texto-terciario" />
-            <span id="programa-canal-valor" className="min-w-0 truncate">
+            {/* Quebra em vez de cortar: no celular estreito, o endereço inteiro continua à vista. */}
+            <span id="programa-canal-valor" className="min-w-0 break-all">
               {programa.canal ? canalCurto(programa.canal) : "Sem canal"}
             </span>
           </button>
