@@ -293,6 +293,8 @@ test.describe("Rádio Chofer no celular", { tag: "@responsivo" }, () => {
     }
     await semRolagemLateral(page);
     if (hasTouch) {
+      // O aviso “Episódio publicado” (6 s) fica por cima do fim da lista no celular baixo: mede depois que ele some.
+      await expect(page.getByText("Episódio publicado: já está no site")).toBeHidden({ timeout: 10_000 });
       await semAnimacao(page);
       const pequenos = await page.evaluate(alvosDeToquePequenos, RESPONSIVO.alvoDeToque);
       expect(pequenos.map((p) => `${p.alvo} · ${p.tamanho}`)).toEqual([]);

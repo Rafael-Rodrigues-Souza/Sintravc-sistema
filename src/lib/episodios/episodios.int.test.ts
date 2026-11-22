@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import { eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { eq, inArray, sql } from "drizzle-orm";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { lerConfigSite, limparCacheConfigSite } from "@/lib/config-site";
 import { banco } from "@/lib/db";
@@ -63,11 +63,20 @@ async function publicado(mais: Partial<CamposEpisodio> = {}) {
   return { ...r, quem };
 }
 
+/** Categorias que este arquivo cria: apagadas no fim, para não aparecerem nos testes de outros arquivos. */
+const categoriasCriadas: string[] = [];
+
+afterAll(async () => {
+  await semEpisodios();
+  if (categoriasCriadas.length > 0) await banco().delete(categoria).where(inArray(categoria.id, categoriasCriadas));
+});
+
 async function temaDoRadio(nome = `Tema ${randomUUID().slice(0, 6)}`) {
   const [t] = await banco()
     .insert(categoria)
     .values({ nome, cor: "azul", ordem: 50, escopos: ["radio"] })
     .returning({ id: categoria.id, nome: categoria.nome });
+  categoriasCriadas.push(t!.id);
   return t!;
 }
 
@@ -167,6 +176,7 @@ describe("Episódios: salvar, agendar e publicar (E61)", () => {
       .insert(categoria)
       .values({ nome: `Só notícia ${randomUUID().slice(0, 6)}`, cor: "azul", ordem: 60, escopos: ["noticias"] })
       .returning({ id: categoria.id });
+    categoriasCriadas.push(deNoticia!.id);
     await expect(salvarEpisodio({ campos: campos({ temaId: deNoticia!.id }), modo: "rascunho" }, { quem, fila })).rejects.toMatchObject({
       campo: "tema",
     });
