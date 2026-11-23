@@ -6,7 +6,7 @@ A especificação está em [`docs/spec.md`](docs/spec.md). As regras para quem d
 
 ## O que precisa estar instalado
 
-- **Node 22.23.4** (`.nvmrc`). Com o nvm-windows: `nvm install 22.23.4` e `nvm use 22.23.4`.
+- **Node 22.23.5** (`.nvmrc`). Com o nvm-windows: `nvm install 22.23.5` e `nvm use 22.23.5`.
 - **pnpm 10**: `corepack enable pnpm` ou `npm i -g pnpm@10`.
 - **Docker Desktop**, com WSL2.
 
