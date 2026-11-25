@@ -149,6 +149,9 @@ Pelas decisões da entrevista. As demais seguem o padrão do E23.
 | E62 | Home (32:550 / 35:722) · Últimas notícias | Chips Todas, Geral, Jurídico, Esportes e Rádio Chofer. | Seletor “Todas as categorias”, que envia sozinho, como em Documentos e Rádio (E60, E61). | E62 | ☐ |
 | E62 | Home (32:550 / 35:722) · Acesso rápido | — | Sem “Agendar” na Fase 1 (RN41, C13). | RN41 | ☐ |
 | E62 | Home (32:550 / 35:722) · redes | “[nº] rodoviários já recebem os avisos por aqui” fixo no cartão do canal. | O número vem da ConfigSite (`contadores`, P6), um por rede; sem número, a linha some. Rede sem link fica escondida (E57). | P6, E57, E62 | ☐ |
+| E62 | Home (32:550 / 35:722) · redes | Prévia de três posts do Instagram e de dois vídeos do YouTube nos cartões. | Sem as prévias: não há integração com as redes (P6), e foto de exemplo não entra no site. O cartão inteiro é o link. | P6, E62 | ☐ |
+| E62 | Home (32:550) · faixa de comunicado | A faixa aparece entre o carrossel e o Acesso rápido. | A faixa fica logo abaixo do cabeçalho, como em todas as páginas do site (E58). | E58 | ☐ |
+| E62 | Home (34:668 / 36:810) · Último programa | “Ouvir agora”, “Compartilhar” e o botão de copiar o link. | O player já tem o “Ouvir agora” (toca no clique, E56). Ficam a linha do programa ao vivo (“Ao vivo agora”, com “Assistir ao vivo”, no horário; fora dele, o horário) e “Todos os programas”. | E61, E62 | ☐ |
 
 Não afetam regras e não precisam de correção no Figma:
 
