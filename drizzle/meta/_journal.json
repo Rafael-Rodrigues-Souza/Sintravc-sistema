@@ -141,6 +141,13 @@
       "when": 1795296282736,
       "tag": "0019_radio_chofer",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795632365613,
+      "tag": "0020_pagina_inicial",
+      "breakpoints": true
     }
   ]
 }
