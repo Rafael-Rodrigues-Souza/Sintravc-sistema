@@ -25,10 +25,11 @@ import { executarViradaDoDestaque } from "./tarefa";
 /**
  * Página inicial (RF46, US26, E13, E62). A Home é uma só no banco: cada teste volta ao estado da
  * migração (só o slide do programa, no rascunho e no publicado). As notícias deste arquivo são
- * publicadas em 2045, depois de tudo o que os outros arquivos publicam, para a lista automática.
+ * publicadas em 2001, antes de tudo o que os outros arquivos publicam: com o relógio dos testes em
+ * 2001, a lista automática só vê as daqui, e as daqui nunca são as “mais recentes” dos outros arquivos.
  */
 
-let relogio = new Date("2045-01-01T12:00:00Z").getTime();
+let relogio = new Date("2001-01-01T12:00:00Z").getTime();
 function proximaHora() {
   relogio += 60 * 60 * 1000;
   return new Date(relogio);
@@ -318,7 +319,7 @@ describe("Home do site: segue o relógio (E62)", () => {
     const a = await publicada(quem);
     const b = await publicada(quem);
     const c = await publicada(quem);
-    const ep = await episodioNoAr(quem, new Date("2026-11-20T16:00:00Z"));
+    const ep = await episodioNoAr(quem, new Date("2000-06-01T16:00:00Z"));
     const agora = agoraDepois();
     await salvar(quem, dados([{ tipo: "episodio", itemId: ep, entraEm: null, saiEm: null }, noticia(a)], [null, { noticiaId: a }, null]), agora);
     await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
