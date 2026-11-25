@@ -341,3 +341,19 @@ export async function noticiaPeloSlug(slug: string): Promise<NoticiaPublica | nu
     enderecoDe,
   };
 }
+
+/** As notícias no ar com estes ids, na ordem do banco (a Home, E62). As que saíram do ar ficam de fora. */
+export async function noticiasNoArPorIds(ids: string[]): Promise<NoticiaDoSite[]> {
+  if (ids.length === 0) return [];
+  return paraCartoes(await selecionarCartoes().where(and(noAr, inArray(conteudo.id, ids))));
+}
+
+/** As mais recentes no ar até agora, sem as de `excluir` (a lista automática da Home, E62). */
+export async function noticiasRecentes(quantidade: number, agora: Date = new Date(), excluir: string[] = []): Promise<NoticiaDoSite[]> {
+  return paraCartoes(
+    await selecionarCartoes()
+      .where(and(noAr, lte(conteudo.publicadoEm, agora), excluir.length ? notInArray(conteudo.id, excluir) : undefined))
+      .orderBy(...maisRecentes)
+      .limit(quantidade),
+  );
+}
