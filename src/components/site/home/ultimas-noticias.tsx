@@ -15,7 +15,7 @@ import { SeletorDeCategoria } from "./seletor-de-categoria";
 
 const t = HOME_PAGINA;
 
-/** Quantas notícias a seção mostra: a grande e mais quatro (no celular, três). */
+/** Quantas notícias a seção mostra: a grande e mais quatro (no celular, três). Tamanho de tela, não regra (E62). */
 export const NOTICIAS_NA_HOME = 5;
 
 /**

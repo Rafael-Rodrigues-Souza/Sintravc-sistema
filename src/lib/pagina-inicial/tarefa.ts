@@ -6,7 +6,7 @@ import { atividade, destaqueHome } from "@/lib/db/schema";
 import { revalidarSitePublico } from "@/lib/site/revalidar";
 import type { PedidoDestaque } from "@/lib/tarefas/fila";
 
-import { detalhesDosItens } from "./rascunho";
+import { detalhesDosItens } from "./itens";
 import { chaveDoItem, type TipoDoItem } from "./regras";
 
 export type ResultadoVirada = { tipo: "feita" } | { tipo: "ignorada" };

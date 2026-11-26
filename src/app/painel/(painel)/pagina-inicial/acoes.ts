@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { sessaoDaEquipe } from "@/lib/acesso/sessao-da-equipe";
-import { opcoesDeDestaque, type OpcaoDeDestaque } from "@/lib/pagina-inicial/opcoes";
+import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/itens";
+import { opcoesDeDestaque } from "@/lib/pagina-inicial/opcoes";
 import { descartarAlteracoes, lerPainel, publicarAlteracoes, salvarRascunho, tirarDoArAgora, type PainelDaHome } from "@/lib/pagina-inicial/rascunho";
 import { ErroPaginaInicial, esquemaDadosDaHome, type DadosDaHomeNoNavegador } from "@/lib/pagina-inicial/regras";
 import { SemPermissao } from "@/lib/permissoes";
@@ -33,7 +34,7 @@ function erroParaResposta(erro: unknown, contexto: string): { tipo: "erro"; mens
 
 const esquemaSalvar = z.object({ revisaoBase: z.number().int().nonnegative(), dados: esquemaDadosDaHome });
 const esquemaRevisao = z.object({ revisaoBase: z.number().int().nonnegative() });
-const esquemaTirar = z.object({ chave: z.string().max(80), rotulo: z.string().max(300) });
+const esquemaTirar = z.object({ chave: z.string().max(80), revisaoBase: z.number().int().nonnegative() });
 const esquemaOpcoes = z.object({ tipo: z.enum(["noticia", "episodio"]), busca: z.string().max(120) });
 
 /** Salvamento automático do rascunho (E62): sem revalidar nem Atividade. */

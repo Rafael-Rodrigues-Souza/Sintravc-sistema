@@ -6,6 +6,13 @@ import { z } from "zod";
  */
 
 export type TipoDoItem = "noticia" | "episodio" | "programa";
+export type AreaDoDestaque = "carrossel" | "lista";
+
+/** A capa padrão do Rádio Chofer: a do slide do programa e a da rota de capas quando o YouTube falha (E61). */
+export const CAPA_DO_PROGRAMA = "/site/radio/capa-padrao.jpg";
+
+/** Os limites da Home, todos da Parametro (`home.*`). */
+export type LimitesDaHome = { carrosselMaximo: number; listaPosicoes: number; fraseChamadaMaximo: number };
 
 /** Um item do carrossel, como fica no rascunho e no publicado. */
 export type ItemDoCarrossel = {
@@ -36,6 +43,11 @@ export class ErroPaginaInicial extends Error {
 /** A identidade do item, igual no rascunho e no publicado (o id da linha muda a cada publicação). */
 export function chaveDoItem(item: Pick<ItemDoCarrossel, "tipo" | "itemId">): string {
   return `${item.tipo}:${item.itemId ?? "programa"}`;
+}
+
+/** O item numa área (“lista:noticia:<id>”): a mesma notícia pode estar no carrossel e na lista, escolhida por pessoas diferentes. */
+export function chaveNaArea(area: AreaDoDestaque, item: Pick<ItemDoCarrossel, "tipo" | "itemId">): string {
+  return `${area}:${chaveDoItem(item)}`;
 }
 
 export type EstadoDoItem =
@@ -82,7 +94,7 @@ export function alteracoesNaoPublicadas(rascunho: DadosDaHome, publicado: DadosD
  * Os limites vêm da Parametro (`home.carrossel_maximo`, `home.lista_posicoes` e
  * `home.frase_chamada_maximo`). Lança ErroPaginaInicial.
  */
-export function conferirDados(dados: DadosDaHome, limites: { carrosselMaximo: number; listaPosicoes: number; fraseChamadaMaximo: number }) {
+export function conferirDados(dados: DadosDaHome, limites: LimitesDaHome) {
   if (dados.carrossel.length > limites.carrosselMaximo) {
     throw new ErroPaginaInicial(`O carrossel aceita até ${limites.carrosselMaximo} destaques. Remova um para pôr outro.`, "carrossel");
   }

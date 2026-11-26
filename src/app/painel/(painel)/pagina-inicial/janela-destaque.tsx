@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { HOME_PAGINA } from "@/conteudo/site";
 import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
-import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/opcoes";
-import { chaveDoItem } from "@/lib/pagina-inicial/regras";
+import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/itens";
 import { cn } from "@/lib/utils";
 
 import { acaoOpcoesDeDestaque } from "./acoes";
@@ -117,7 +117,7 @@ function Conteudo({
     if (!comBusca || tipo === "programa") return;
     // A sugerida (E43) aparece mesmo se for mais antiga que as primeiras da lista.
     const comAEscolhida = (lista: OpcaoDeDestaque[]) =>
-      !escolhida || escolhida.tipo !== tipo || busca.trim() || lista.some((o) => o.id === escolhida.id) ? lista : [escolhida, ...lista];
+      !escolhida || escolhida.tipo !== tipo || busca.trim() || lista.some((o) => o.itemId === escolhida.itemId) ? lista : [escolhida, ...lista];
     let valendo = true;
     const relogio = setTimeout(async () => {
       setErroDaBusca(null);
@@ -138,8 +138,8 @@ function Conteudo({
   }, [tipo, busca, comBusca]);
 
   const travadaPorque = (o: OpcaoDeDestaque): string | null => {
-    if (pedido.modo === "trocar") return naLista.has(o.id) ? "Já está na lista" : null;
-    if (noCarrossel.has(chaveDoItem({ tipo: o.tipo, itemId: o.id }))) return "Já está no carrossel";
+    if (pedido.modo === "trocar") return naLista.has(o.itemId) ? "Já está na lista" : null;
+    if (noCarrossel.has(o.chave)) return "Já está no carrossel";
     if (!o.temCapa) return "Esta notícia não tem capa";
     return null;
   };
@@ -218,7 +218,7 @@ function Conteudo({
 
         {comBusca && tipo === "programa" ? (
           <p className="rounded-[12px] bg-fundo-superficie-alt p-4 texto-pequeno text-texto-primario">
-            O slide do programa mostra “A voz dos rodoviários de Conquista”, o horário do programa ao vivo e os botões para ouvir o último programa e ver todos.
+            O slide do programa mostra “{HOME_PAGINA.programaTitulo}”, o horário do programa ao vivo e os botões para ouvir o último programa e ver todos.
           </p>
         ) : null}
 
@@ -256,7 +256,7 @@ function Conteudo({
                   {opcoes.map((o) => {
                     const motivo = travadaPorque(o);
                     return (
-                      <li key={o.id}>
+                      <li key={o.itemId}>
                         <label
                           className={cn(
                             "flex cursor-pointer items-center gap-3 rounded-[12px] border border-borda-padrao p-2.5 has-[:checked]:border-destaque-azul has-[:checked]:bg-destaque-azul-suave has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring",
@@ -266,8 +266,8 @@ function Conteudo({
                           <input
                             type="radio"
                             name="opcao"
-                            value={o.id}
-                            checked={escolhida?.id === o.id}
+                            value={o.itemId}
+                            checked={escolhida?.itemId === o.itemId}
                             disabled={!!motivo}
                             onChange={() => {
                               setEscolhida(o);

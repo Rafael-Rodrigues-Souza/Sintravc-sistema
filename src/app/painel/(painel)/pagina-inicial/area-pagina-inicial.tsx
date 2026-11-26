@@ -14,11 +14,12 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogFooter }
 import { Button } from "@/components/ui/button";
 import { armazemDoNavegador, criarFilaDoRascunho } from "@/lib/conteudos/fila-rascunho";
 import { dataNaBahia, horaNaBahia } from "@/lib/datas";
-import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/opcoes";
-import type { DetalheDoItem, PainelDaHome } from "@/lib/pagina-inicial/rascunho";
+import type { DetalheDoItem, OpcaoDeDestaque } from "@/lib/pagina-inicial/itens";
+import type { PainelDaHome } from "@/lib/pagina-inicial/rascunho";
 import {
   alteracoesNaoPublicadas,
   chaveDoItem,
+  chaveNaArea,
   estadoDoItem,
   esquemaDadosDaHome,
   paraONavegador,
@@ -53,9 +54,6 @@ function textoDoEstado(item: ItemNoNavegador, detalhe: DetalheDoItem | undefined
   return { texto: item.saiEm ? `Sai do destaque em ${diaEHora(item.saiEm)}` : `${tipo} · sem data de saída`, apagado: false };
 }
 
-function paraDetalhe(o: OpcaoDeDestaque): DetalheDoItem {
-  return { chave: chaveDoItem({ tipo: o.tipo, itemId: o.id }), tipo: o.tipo, itemId: o.id, titulo: o.titulo, rotulo: o.rotulo, capaUrl: o.capaUrl, noSite: true, temCapa: o.temCapa };
-}
 
 export function AreaPaginaInicial({
   pessoaId,
@@ -155,10 +153,11 @@ export function AreaPaginaInicial({
 
   const aoEscolher = (resultado: ResultadoDaJanela) => {
     if (!janela) return;
-    if (resultado.opcao) setItens((atual) => ({ ...atual, [chaveDoItem({ tipo: resultado.opcao!.tipo, itemId: resultado.opcao!.id })]: paraDetalhe(resultado.opcao!) }));
+    const opcao = resultado.opcao;
+    if (opcao) setItens((atual) => ({ ...atual, [opcao.chave]: opcao }));
     if (janela.modo === "adicionar") {
       const item: ItemNoNavegador = resultado.opcao
-        ? { tipo: resultado.opcao.tipo, itemId: resultado.opcao.id, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada }
+        ? { tipo: resultado.opcao.tipo, itemId: resultado.opcao.itemId, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada }
         : { tipo: "programa", itemId: null, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada };
       mudar({ ...dados, carrossel: [...dados.carrossel, item] }, "Destaque posto no fim do carrossel.");
     } else if (janela.modo === "editar") {
@@ -167,7 +166,7 @@ export function AreaPaginaInicial({
       );
       mudar({ ...dados, carrossel }, "Destaque alterado.");
     } else if (resultado.opcao) {
-      const lista = Array.from({ length: listaPosicoes }, (_, k) => (k === janela.posicao ? { noticiaId: resultado.opcao!.id } : (dados.lista[k] ?? null)));
+      const lista = Array.from({ length: listaPosicoes }, (_, k) => (k === janela.posicao ? { noticiaId: resultado.opcao!.itemId } : (dados.lista[k] ?? null)));
       mudar({ ...dados, lista }, `Posição ${janela.posicao + 1} da lista: ${resultado.opcao.titulo}.`);
     }
     setJanela(null);
@@ -199,7 +198,8 @@ export function AreaPaginaInicial({
     if (!pedida) return;
     setOcupado(true);
     try {
-      if (pedida.tipo !== "tirar") {
+      // Antes de qualquer ação, o que estiver pendente vai ao servidor: nada do rascunho se perde (revisão do código).
+      {
         await fila.salvarAgora();
         if (fila.estado().situacao !== "sincronizado") {
           toast.error("O rascunho ainda não foi salvo. Confira a internet e tente de novo.", { duration: Infinity, closeButton: true });
@@ -211,7 +211,7 @@ export function AreaPaginaInicial({
         ? acaoPublicarHome({ revisaoBase })
         : pedida.tipo === "descartar"
           ? acaoDescartarHome({ revisaoBase })
-          : acaoTirarDoArAgora({ chave: pedida.chave, rotulo: pedida.titulo })
+          : acaoTirarDoArAgora({ chave: pedida.chave, revisaoBase })
       ).catch(() => SEM_CONEXAO);
       if (r.tipo === "erro") {
         toast.error(r.mensagem, { duration: Infinity, closeButton: true });
@@ -427,9 +427,10 @@ export function AreaPaginaInicial({
         <ol aria-label="Posições da lista Em destaque" className="flex flex-col">
           {Array.from({ length: listaPosicoes }, (_, i) => {
             const posicao = dados.lista[i] ?? null;
-            const chave = posicao ? chaveDoItem({ tipo: "noticia", itemId: posicao.noticiaId }) : null;
+            const item = posicao ? ({ tipo: "noticia", itemId: posicao.noticiaId } as const) : null;
+            const chave = item ? chaveDoItem(item) : null;
             const detalhe = chave ? itens[chave] : undefined;
-            const quem = chave ? painel.escolhidoPor[`lista:${chave}`] : undefined;
+            const quem = item ? painel.escolhidoPor[chaveNaArea("lista", item)] : undefined;
             return (
               <li key={i} data-testid="posicao-lista" className="flex items-center gap-2 border-t border-borda-padrao py-3 first:border-t-0 sm:gap-3">
                 <span aria-hidden className="w-5 shrink-0 text-center texto-titulo-card-pequeno text-texto-secundario">

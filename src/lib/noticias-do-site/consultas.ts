@@ -48,8 +48,8 @@ export type OrdemDaLista = "recentes" | "antigas";
 
 const dados = sql`${conteudoVersao.snapshot} -> 'dados'`;
 
-/** A notícia está no ar: publicada, com endereço e data. */
-const noAr = and(eq(conteudo.tipo, "noticia"), eq(conteudo.estado, "publicado"), isNotNull(conteudo.slug), isNotNull(conteudo.publicadoEm));
+/** A notícia está no ar: publicada, com endereço e data. Também vale para os destaques da Home (E62). */
+export const noAr = and(eq(conteudo.tipo, "noticia"), eq(conteudo.estado, "publicado"), isNotNull(conteudo.slug), isNotNull(conteudo.publicadoEm));
 
 const colunasDoCartao = {
   id: conteudo.id,

@@ -104,7 +104,11 @@ test("CA-US26.1 · reordenar pelo teclado e pelo menu, a prévia confere com o s
   const [publicacao] = await consultar((sql) => sql<{ acao: string }[]>`select acao from atividade where acao = 'pagina_inicial.publicar' order by id desc limit 1`);
   expect(publicacao?.acao).toBe("pagina_inicial.publicar");
 
-  // “Tirar do ar agora”: só no item no ar, com confirmação; sai do site na hora.
+  // “Tirar do ar agora”: só no item no ar, com confirmação; sai do site na hora. Uma mudança feita logo
+  // antes (ainda esperando o salvamento automático) não se perde.
+  await page.getByRole("button", { name: new RegExp(`^Posição 3 de 3 no carrossel: ${noticia}`) }).focus();
+  await page.keyboard.press("ArrowUp");
+  expect(await ordemNoPainel(page)).toEqual([episodio, noticia, PROGRAMA]);
   await page.getByRole("button", { name: `Ações do destaque “${episodio}”` }).click();
   await page.getByRole("menuitem", { name: "Tirar do ar agora" }).click();
   const tirar = page.getByRole("alertdialog", { name: "Tirar o destaque do ar agora?" });
@@ -112,6 +116,10 @@ test("CA-US26.1 · reordenar pelo teclado e pelo menu, a prévia confere com o s
   await tirar.getByRole("button", { name: "Tirar do ar agora" }).click();
   await expect(page.getByText("Destaque tirado do ar. Ele já não aparece no site.")).toBeVisible();
   await expect(itensDoCarrossel(page).first().getByTestId("estado-do-item")).toContainText(/^Saiu em /);
+  expect(await ordemNoPainel(page)).toEqual([episodio, noticia, PROGRAMA]);
+  await esperarSalvo(page);
+  await page.reload();
+  expect(await ordemNoPainel(page)).toEqual([episodio, noticia, PROGRAMA]);
   await site.reload();
   expect(await ordemNaHome(site)).toEqual([PROGRAMA, noticia]);
   const [registro] = await consultar(

@@ -135,7 +135,7 @@ describe("Página inicial: permissões (spec §4)", () => {
     await expect(salvarRascunho({ revisaoBase: 0, dados: dados([programa]) }, { quem: atd })).rejects.toBeInstanceOf(SemPermissao);
     await expect(publicarAlteracoes({ revisaoBase: 0 }, { quem: atd, fila: filaEmMemoria().fila })).rejects.toBeInstanceOf(SemPermissao);
     await expect(descartarAlteracoes({ revisaoBase: 0 }, { quem: atd })).rejects.toBeInstanceOf(SemPermissao);
-    await expect(tirarDoArAgora({ chave: "programa:programa", rotulo: "Programa" }, { quem: atd })).rejects.toBeInstanceOf(SemPermissao);
+    await expect(tirarDoArAgora({ chave: "programa:programa", revisaoBase: 0 }, { quem: atd })).rejects.toBeInstanceOf(SemPermissao);
     await expect(opcoesDeDestaque({ tipo: "noticia", busca: "" }, { quem: atd })).rejects.toBeInstanceOf(SemPermissao);
 
     for (const perfil of ["ADM", "COM"] as const) {
@@ -296,14 +296,15 @@ describe("Página inicial: publicar e descartar (E13, E62)", () => {
 describe("Página inicial: “Tirar do ar agora” (E62)", () => {
   it("grava sai_em = agora no publicado e no rascunho, com a Atividade, e o item some do site", async () => {
     const quem = await pessoaDaEquipe("COM");
-    const a = await publicada(quem);
+    const titulo = `Home tirar ${randomUUID().slice(0, 8)}`;
+    const a = await publicada(quem, { titulo });
     const agora = agoraDepois();
     await salvar(quem, dados([noticia(a), programa]), agora);
     await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
     const antes = await revisaoAtual();
 
     const depois = horas(agora, 1);
-    const r = await tirarDoArAgora({ chave: `noticia:${a}`, rotulo: "Assembleia" }, { quem, agora: depois });
+    const r = await tirarDoArAgora({ chave: `noticia:${a}`, revisaoBase: antes }, { quem, agora: depois });
 
     expect(r).toEqual({ tipo: "salvo", revisao: antes + 1, salvoEm: depois.toISOString() });
     const painel = await lerPainel({ quem, agora: depois });
@@ -311,7 +312,7 @@ describe("Página inicial: “Tirar do ar agora” (E62)", () => {
     expect(painel.rascunho.carrossel[0]!.saiEm).toEqual(depois);
     expect(idsDosSlides((await destaquesDaHome(depois)).slides)).toEqual(["programa"]);
     const [registro] = await atividadesDaHome("destaque.tirar_do_ar");
-    expect(registro).toMatchObject({ atorTipo: "pessoa", atorId: quem.id, alvoRotulo: "Assembleia", detalhe: { item: `noticia:${a}`, sai_em_antes: null } });
+    expect(registro).toMatchObject({ atorTipo: "pessoa", atorId: quem.id, alvoRotulo: titulo, detalhe: { item: `noticia:${a}`, sai_em_antes: null } });
   });
 
   it("item agendado ou que já saiu não pode ser tirado do ar", async () => {
@@ -320,11 +321,45 @@ describe("Página inicial: “Tirar do ar agora” (E62)", () => {
     const agora = agoraDepois();
     await salvar(quem, dados([noticia(a, { entraEm: horas(agora, 5) })]), agora);
     await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
-    await expect(tirarDoArAgora({ chave: `noticia:${a}`, rotulo: "x" }, { quem, agora })).rejects.toThrow("Este destaque não está no ar.");
-    await expect(tirarDoArAgora({ chave: "noticia:00000000-0000-7000-8000-000000000000", rotulo: "x" }, { quem, agora })).rejects.toThrow(
+    await expect(tirarDoArAgora({ chave: `noticia:${a}`, revisaoBase: await revisaoAtual() }, { quem, agora })).rejects.toThrow("Este destaque não está no ar.");
+    await expect(tirarDoArAgora({ chave: "noticia:00000000-0000-7000-8000-000000000000", revisaoBase: await revisaoAtual() }, { quem, agora })).rejects.toThrow(
       "Este destaque não está no ar.",
     );
     expect(await atividadesDaHome("destaque.tirar_do_ar")).toHaveLength(1);
+  });
+});
+
+describe("Página inicial: “Tirar do ar agora” respeita o rascunho e a Atividade (revisão do código)", () => {
+  it("com a revisão velha (rascunho mudado depois), recusa sem mudar nada", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const a = await publicada(quem);
+    const agora = agoraDepois();
+    await salvar(quem, dados([noticia(a), programa]), agora);
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
+    const velha = await revisaoAtual();
+    // Outra aba (ou outra pessoa) reordena o rascunho depois.
+    await salvar(quem, dados([programa, noticia(a)]), agora);
+
+    await expect(tirarDoArAgora({ chave: `noticia:${a}`, revisaoBase: velha }, { quem, agora: horas(agora, 1) })).rejects.toThrow(CONFLITO);
+    const painel = await lerPainel({ quem, agora: horas(agora, 1) });
+    expect(painel.publicado.carrossel[0]!.saiEm).toBeNull();
+    expect(painel.rascunho.carrossel.map(chaveDoItem)).toEqual(["programa:programa", `noticia:${a}`]);
+  });
+
+  it("o rótulo da Atividade é o título do item no servidor, nunca o texto que veio do navegador", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const titulo = `Home rótulo ${randomUUID().slice(0, 8)}`;
+    const a = await publicada(quem, { titulo });
+    const agora = agoraDepois();
+    await salvar(quem, dados([noticia(a)]), agora);
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
+
+    await tirarDoArAgora({ chave: `noticia:${a}`, revisaoBase: await revisaoAtual(), rotulo: "Texto inventado pelo navegador" } as { chave: string; revisaoBase: number }, {
+      quem,
+      agora: horas(agora, 1),
+    });
+    const registros = await atividadesDaHome("destaque.tirar_do_ar");
+    expect(registros.at(-1)).toMatchObject({ alvoRotulo: titulo });
   });
 });
 
@@ -404,7 +439,7 @@ describe("Opções da janela “Adicionar destaque”", () => {
     await rascunhoSalvo(quem, await noticiaCompleta({ titulo: `Home opção ${marca} rascunho` }));
 
     const opcoes = await opcoesDeDestaque({ tipo: "noticia", busca: `opcao ${marca}` }, { quem });
-    expect(opcoes.map((o) => [o.id, o.temCapa])).toEqual([
+    expect(opcoes.map((o) => [o.itemId, o.temCapa])).toEqual([
       [semCapa, false],
       [comCapa, true],
     ]);

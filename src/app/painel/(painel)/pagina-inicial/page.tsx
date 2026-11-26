@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 
 import { exigirArea } from "@/lib/acesso/sessao-da-equipe";
 import { lerParametro } from "@/lib/parametros";
-import { opcoesDeDestaque } from "@/lib/pagina-inicial/opcoes";
-import { detalhesDosItens, lerPainel } from "@/lib/pagina-inicial/rascunho";
+import { detalhesDosItens, type OpcaoDeDestaque } from "@/lib/pagina-inicial/itens";
+import { lerPainel } from "@/lib/pagina-inicial/rascunho";
+import { chaveDoItem } from "@/lib/pagina-inicial/regras";
 import { ultimoPrograma } from "@/lib/episodios/site";
 import { ehUuid } from "@/lib/uuid";
 
@@ -27,17 +28,11 @@ export default async function PaginaPaginaInicial({ searchParams }: { searchPara
     ultimoPrograma(),
   ]);
   // A notícia sugerida só vale publicada (E43); fora do ar, a tela avisa.
-  let sugerida: { opcao: Awaited<ReturnType<typeof opcoesDeDestaque>>[number] | null } | null = null;
+  let sugerida: { opcao: OpcaoDeDestaque | null } | null = null;
   if (ehUuid(sugerir)) {
-    const opcoes = await opcoesDeDestaque({ tipo: "noticia", busca: "" }, deps);
-    let opcao = opcoes.find((o) => o.id === sugerir) ?? null;
-    if (!opcao) {
-      const detalhe = (await detalhesDosItens([{ tipo: "noticia", itemId: sugerir }]))[`noticia:${sugerir}`];
-      opcao = detalhe?.noSite
-        ? { tipo: "noticia", id: sugerir, titulo: detalhe.titulo, rotulo: detalhe.rotulo, capaUrl: detalhe.capaUrl, temCapa: detalhe.temCapa, quando: new Date() }
-        : null;
-    }
-    sugerida = { opcao };
+    const item = { tipo: "noticia", itemId: sugerir } as const;
+    const detalhe = (await detalhesDosItens([item]))[chaveDoItem(item)];
+    sugerida = { opcao: detalhe?.noSite ? (detalhe as OpcaoDeDestaque) : null };
   }
 
   return (

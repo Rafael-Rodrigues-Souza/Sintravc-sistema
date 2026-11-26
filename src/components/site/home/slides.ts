@@ -4,10 +4,8 @@ import type { ProgramaAoVivo } from "@/lib/config-site/esquema";
 import { dataCurtaNaBahia } from "@/lib/datas";
 import { textoDoHorario, programaNoAr } from "@/lib/episodios/programa";
 import type { NoticiaDoSite } from "@/lib/noticias-do-site/consultas";
+import { CAPA_DO_PROGRAMA, chaveDoItem } from "@/lib/pagina-inicial/regras";
 import type { SlideDaHome } from "@/lib/pagina-inicial/site";
-
-/** A capa padrão do Rádio Chofer, a mesma da rota de capas quando o YouTube falha (E61). */
-export const CAPA_DO_PROGRAMA = "/site/radio/capa-padrao.jpg";
 
 export type SeloDoSlide = { texto: string; tom: "amarelo" | "escuro" | "ao-vivo" | "categoria"; cor?: string };
 
@@ -46,7 +44,7 @@ export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, ag
     if (s.tipo === "noticia") {
       const n = s.noticia;
       return {
-        chave: `noticia:${n.id}`,
+        chave: chaveDoItem({ tipo: "noticia", itemId: n.id }),
         selos: n.categoria ? [{ texto: n.categoria.nome, tom: "categoria", cor: n.categoria.cor }] : [],
         titulo: n.titulo,
         resumo: s.frase ?? (n.resumo || null),
@@ -57,7 +55,7 @@ export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, ag
     if (s.tipo === "episodio") {
       const e = s.episodio;
       return {
-        chave: `episodio:${e.id}`,
+        chave: chaveDoItem({ tipo: "episodio", itemId: e.id }),
         selos: [
           { texto: t.programaSelo, tom: "amarelo" },
           { texto: `Ep. ${e.numero}`, tom: "escuro" },
@@ -70,7 +68,7 @@ export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, ag
     }
     const aoVivo = programaNoAr(programa, agora);
     return {
-      chave: "programa:programa",
+      chave: chaveDoItem({ tipo: "programa", itemId: null }),
       selos: [
         { texto: t.programaSelo, tom: "amarelo" },
         ...(programa.ativo ? [{ texto: aoVivo ? t.aoVivoAgora : textoDoHorario(programa), tom: aoVivo ? ("ao-vivo" as const) : ("escuro" as const) }] : []),
