@@ -17,9 +17,16 @@ const antes = (horas: number) => new Date(AGORA.getTime() - horas * 3_600_000);
 const depois = (horas: number) => new Date(AGORA.getTime() + horas * 3_600_000);
 
 const ID = (n: number) => `00000000-0000-7000-8000-${String(n).padStart(12, "0")}`;
-const noticia = (n: number, mais: Partial<ItemDoCarrossel> = {}): ItemDoCarrossel => ({ tipo: "noticia", itemId: ID(n), entraEm: null, saiEm: null, ...mais });
-const programa: ItemDoCarrossel = { tipo: "programa", itemId: null, entraEm: null, saiEm: null };
-const LIMITES = { carrosselMaximo: 5, listaPosicoes: 3 };
+const noticia = (n: number, mais: Partial<ItemDoCarrossel> = {}): ItemDoCarrossel => ({
+  tipo: "noticia",
+  itemId: ID(n),
+  entraEm: null,
+  saiEm: null,
+  fraseChamada: null,
+  ...mais,
+});
+const programa: ItemDoCarrossel = { tipo: "programa", itemId: null, entraEm: null, saiEm: null, fraseChamada: null };
+const LIMITES = { carrosselMaximo: 5, listaPosicoes: 3, fraseChamadaMaximo: 90 };
 
 describe("estadoDoItem: o carrossel segue o relógio (E62)", () => {
   it("sem datas, está no ar sem data de saída", () => {
@@ -86,7 +93,7 @@ describe("montarHome: o que o site mostra (E62)", () => {
           noticia(3, { saiEm: antes(1) }),
           noticia(4),
           noticia(5),
-          { tipo: "episodio", itemId: ID(70), entraEm: null, saiEm: null },
+          { tipo: "episodio", itemId: ID(70), entraEm: null, saiEm: null, fraseChamada: null },
           programa,
         ],
         lista: [],
@@ -109,7 +116,7 @@ describe("montarHome: o que o site mostra (E62)", () => {
       listaPosicoes: 3,
       agora: AGORA,
     });
-    expect(slides).toEqual([{ tipo: "programa" }]);
+    expect(slides).toEqual([{ tipo: "programa", frase: null }]);
   });
 
   it("a lista mostra as escolhidas na posição e completa com as recentes, sem repetir o carrossel nem as escolhidas", () => {
@@ -157,5 +164,47 @@ describe("o pedido do painel", () => {
   it("a chave do item não depende do id da linha", () => {
     expect(chaveDoItem(noticia(1))).toBe(`noticia:${ID(1)}`);
     expect(chaveDoItem(programa)).toBe("programa:programa");
+  });
+});
+
+describe("frase de chamada (E62, #75)", () => {
+  it("mudar a frase conta como alteração; igual não", () => {
+    const publicado: DadosDaHome = { carrossel: [noticia(1, { fraseChamada: "Venha para a assembleia" })], lista: [] };
+    expect(alteracoesNaoPublicadas(structuredClone(publicado), publicado)).toBe(0);
+    expect(alteracoesNaoPublicadas({ ...publicado, carrossel: [noticia(1)] }, publicado)).toBe(1);
+  });
+
+  it("recusa frase maior que `home.frase_chamada_maximo`", () => {
+    const longa = "a".repeat(91);
+    expect(() => conferirDados({ carrossel: [noticia(1, { fraseChamada: longa })], lista: [] }, LIMITES)).toThrow(
+      "A frase de chamada tem até 90 caracteres.",
+    );
+    expect(() => conferirDados({ carrossel: [noticia(1, { fraseChamada: "a".repeat(90) })], lista: [] }, LIMITES)).not.toThrow();
+  });
+
+  it("o pedido do painel tira os espaços sobrando; vazia vira null", () => {
+    const lido = esquemaDadosDaHome.parse({
+      carrossel: [
+        { tipo: "programa", itemId: null, entraEm: null, saiEm: null, fraseChamada: "  Ouça   hoje às 13h  " },
+        { tipo: "noticia", itemId: ID(1), entraEm: null, saiEm: null, fraseChamada: "   " },
+      ],
+      lista: [],
+    });
+    expect(lido.carrossel.map((i) => i.fraseChamada)).toEqual(["Ouça hoje às 13h", null]);
+  });
+
+  it("o slide leva a frase do item; sem frase, null (o site mostra a linha fina)", () => {
+    const { slides } = montarHome({
+      publicado: { carrossel: [noticia(1, { fraseChamada: "Sua voz na campanha salarial" }), noticia(2)], lista: [] },
+      noticias: new Map([
+        [ID(1), { id: ID(1), capa: { url: "/a.jpg" } }],
+        [ID(2), { id: ID(2), capa: { url: "/b.jpg" } }],
+      ]),
+      episodios: new Map(),
+      recentes: [],
+      listaPosicoes: 3,
+      agora: AGORA,
+    });
+    expect(slides.map((s) => s.frase)).toEqual(["Sua voz na campanha salarial", null]);
   });
 });

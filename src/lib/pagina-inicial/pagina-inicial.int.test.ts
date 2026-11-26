@@ -10,6 +10,7 @@ import { banco } from "@/lib/db";
 import { atividade, destaqueHome, episodio, paginaInicial } from "@/lib/db/schema";
 import { enviarMidia } from "@/lib/midia/enviar";
 import { SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
+import { lerParametro } from "@/lib/parametros";
 import { filaEmMemoria } from "@/lib/tarefas/fila";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
 import { imagem } from "@/testes/arquivos/gerar";
@@ -38,7 +39,7 @@ function proximaHora() {
 const agoraDepois = () => new Date(relogio + 60 * 1000);
 const horas = (base: Date, h: number) => new Date(base.getTime() + h * 3_600_000);
 
-const programa: ItemDoCarrossel = { tipo: "programa", itemId: null, entraEm: null, saiEm: null };
+const programa: ItemDoCarrossel = { tipo: "programa", itemId: null, entraEm: null, saiEm: null, fraseChamada: null };
 
 async function voltarAoInicio() {
   await banco().delete(destaqueHome);
@@ -95,7 +96,14 @@ async function episodioNoAr(quem: QuemDaEquipe, exibicaoEm: Date) {
   return e!.id;
 }
 
-const noticia = (id: string, mais: Partial<ItemDoCarrossel> = {}): ItemDoCarrossel => ({ tipo: "noticia", itemId: id, entraEm: null, saiEm: null, ...mais });
+const noticia = (id: string, mais: Partial<ItemDoCarrossel> = {}): ItemDoCarrossel => ({
+  tipo: "noticia",
+  itemId: id,
+  entraEm: null,
+  saiEm: null,
+  fraseChamada: null,
+  ...mais,
+});
 const dados = (carrossel: ItemDoCarrossel[], lista: DadosDaHome["lista"] = [null, null, null]): DadosDaHome => ({ carrossel, lista });
 
 async function revisaoAtual() {
@@ -182,7 +190,7 @@ describe("Página inicial: rascunho salvo sozinho (E62)", () => {
     await expect(salvar(quem, dados([noticia(rascunho)]))).rejects.toThrow("Esta notícia não está no site");
     await expect(salvar(quem, dados([], [{ noticiaId: rascunho }, null, null]))).rejects.toThrow("Esta notícia não está no site");
     const futuro = await episodioNoAr(quem, horas(agoraDepois(), 24));
-    await expect(salvar(quem, dados([{ tipo: "episodio", itemId: futuro, entraEm: null, saiEm: null }]))).rejects.toThrow("Este episódio não está no site");
+    await expect(salvar(quem, dados([{ tipo: "episodio", itemId: futuro, entraEm: null, saiEm: null, fraseChamada: null }]))).rejects.toThrow("Este episódio não está no site");
   });
 
   it("notícia sem capa não entra no carrossel, mas entra na lista", async () => {
@@ -213,6 +221,25 @@ describe("Página inicial: rascunho salvo sozinho (E62)", () => {
   });
 });
 
+describe("Página inicial: frase de chamada (E62, #75)", () => {
+  it("grava a frase do item, que aparece no slide depois de publicar; acima do limite do Parametro, recusa", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const a = await publicada(quem);
+    const agora = agoraDepois();
+    const maximo = await lerParametro("home.frase_chamada_maximo");
+    await expect(salvar(quem, dados([noticia(a, { fraseChamada: "x".repeat(maximo + 1) })]), agora)).rejects.toThrow(
+      `A frase de chamada tem até ${maximo} caracteres.`,
+    );
+
+    await salvar(quem, dados([noticia(a, { fraseChamada: "Sua voz na campanha salarial" }), programa]), agora);
+    expect((await lerPainel({ quem })).rascunho.carrossel[0]!.fraseChamada).toBe("Sua voz na campanha salarial");
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
+
+    const { slides } = await destaquesDaHome(agora);
+    expect(slides.map((s) => s.frase)).toEqual(["Sua voz na campanha salarial", null]);
+  });
+});
+
 describe("Página inicial: publicar e descartar (E13, E62)", () => {
   it("CA-US26.1 · reordenar e publicar: o site mostra a nova ordem, com a Atividade e a T04 na mesma transação", async () => {
     const quem = await pessoaDaEquipe("COM");
@@ -232,7 +259,7 @@ describe("Página inicial: publicar e descartar (E13, E62)", () => {
     await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila, agora });
     expect(idsDosSlides((await destaquesDaHome(agora)).slides)).toEqual([b, "programa", a]);
 
-    const publicacoes = await atividadesDaHome("pagina_inicial.publicar");
+    const publicacoes = (await atividadesDaHome("pagina_inicial.publicar")).filter((r) => r.atorId === quem.id);
     expect(publicacoes).toHaveLength(2);
     expect(publicacoes[1]).toMatchObject({ atorTipo: "pessoa", atorId: quem.id });
     expect((publicacoes[1]!.detalhe as { depois: { carrossel: { item: string }[] } }).depois.carrossel.map((i) => i.item)).toEqual([
@@ -321,7 +348,7 @@ describe("Home do site: segue o relógio (E62)", () => {
     const c = await publicada(quem);
     const ep = await episodioNoAr(quem, new Date("2000-06-01T16:00:00Z"));
     const agora = agoraDepois();
-    await salvar(quem, dados([{ tipo: "episodio", itemId: ep, entraEm: null, saiEm: null }, noticia(a)], [null, { noticiaId: a }, null]), agora);
+    await salvar(quem, dados([{ tipo: "episodio", itemId: ep, entraEm: null, saiEm: null, fraseChamada: null }, noticia(a)], [null, { noticiaId: a }, null]), agora);
     await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
 
     const home = await destaquesDaHome(agora);

@@ -9,6 +9,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
 import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/opcoes";
 import { chaveDoItem } from "@/lib/pagina-inicial/regras";
@@ -18,10 +19,12 @@ import { acaoOpcoesDeDestaque } from "./acoes";
 
 export type PedidoDaJanela =
   | { modo: "adicionar"; sugerida?: OpcaoDeDestaque }
-  | { modo: "datas"; indice: number; entraEm: string | null; saiEm: string | null; titulo: string }
+  | { modo: "editar"; indice: number; entraEm: string | null; saiEm: string | null; fraseChamada: string | null; titulo: string }
   | { modo: "trocar"; posicao: number };
 
 type Tipo = "noticia" | "episodio" | "programa";
+
+export type ResultadoDaJanela = { opcao: OpcaoDeDestaque | null; entraEm: string | null; saiEm: string | null; fraseChamada: string | null };
 
 const NOME_DO_TIPO: Record<Tipo, string> = { noticia: "Notícia", episodio: "Episódio", programa: "Programa Rádio Chofer" };
 
@@ -40,7 +43,7 @@ function doCampo(valor: string): string | null | undefined {
 
 /**
  * A janela do carrossel e da lista (E62): “Adicionar destaque” (tipo, busca no que está no ar e as
- * datas), “Mudar datas” e “Trocar” (só notícias, para uma posição da lista). Só mostra o que está no
+ * datas e a frase de chamada), “Editar” (datas e frase) e “Trocar” (só notícias, para uma posição da lista). Só mostra o que está no
  * ar; a notícia sem capa fica travada no carrossel.
  */
 export function JanelaDestaque({
@@ -50,19 +53,30 @@ export function JanelaDestaque({
   temPrograma,
   noCarrossel,
   naLista,
+  fraseMaxima,
 }: {
   pedido: PedidoDaJanela | null;
   aoFechar: () => void;
-  aoEscolher: (resultado: { opcao: OpcaoDeDestaque | null; entraEm: string | null; saiEm: string | null }) => void;
+  aoEscolher: (resultado: ResultadoDaJanela) => void;
   temPrograma: boolean;
   noCarrossel: Set<string>;
   naLista: Set<string>;
+  /** `home.frase_chamada_maximo`. */
+  fraseMaxima: number;
 }) {
   return (
     <Dialog open={!!pedido} onOpenChange={(aberta) => !aberta && aoFechar()}>
       {pedido ? (
         <DialogContent className="max-w-[640px]" aria-describedby={undefined}>
-          <Conteudo pedido={pedido} aoFechar={aoFechar} aoEscolher={aoEscolher} temPrograma={temPrograma} noCarrossel={noCarrossel} naLista={naLista} />
+          <Conteudo
+            pedido={pedido}
+            aoFechar={aoFechar}
+            aoEscolher={aoEscolher}
+            temPrograma={temPrograma}
+            noCarrossel={noCarrossel}
+            naLista={naLista}
+            fraseMaxima={fraseMaxima}
+          />
         </DialogContent>
       ) : null}
     </Dialog>
@@ -76,24 +90,27 @@ function Conteudo({
   temPrograma,
   noCarrossel,
   naLista,
+  fraseMaxima,
 }: {
   pedido: PedidoDaJanela;
   aoFechar: () => void;
-  aoEscolher: (resultado: { opcao: OpcaoDeDestaque | null; entraEm: string | null; saiEm: string | null }) => void;
+  aoEscolher: (resultado: ResultadoDaJanela) => void;
   temPrograma: boolean;
   noCarrossel: Set<string>;
   naLista: Set<string>;
+  fraseMaxima: number;
 }) {
-  const comBusca = pedido.modo !== "datas";
+  const comBusca = pedido.modo !== "editar";
   const comDatas = pedido.modo !== "trocar";
   const [tipo, setTipo] = React.useState<Tipo>("noticia");
   const [busca, setBusca] = React.useState("");
   const [opcoes, setOpcoes] = React.useState<OpcaoDeDestaque[] | null>(null);
   const [erroDaBusca, setErroDaBusca] = React.useState<string | null>(null);
   const [escolhida, setEscolhida] = React.useState<OpcaoDeDestaque | null>(pedido.modo === "adicionar" ? (pedido.sugerida ?? null) : null);
-  const [entraEm, setEntraEm] = React.useState(pedido.modo === "datas" ? paraCampo(pedido.entraEm) : "");
-  const [saiEm, setSaiEm] = React.useState(pedido.modo === "datas" ? paraCampo(pedido.saiEm) : "");
-  const [erro, setErro] = React.useState<{ campo: "item" | "entraEm" | "saiEm"; mensagem: string } | null>(null);
+  const [entraEm, setEntraEm] = React.useState(pedido.modo === "editar" ? paraCampo(pedido.entraEm) : "");
+  const [saiEm, setSaiEm] = React.useState(pedido.modo === "editar" ? paraCampo(pedido.saiEm) : "");
+  const [frase, setFrase] = React.useState(pedido.modo === "editar" ? (pedido.fraseChamada ?? "") : "");
+  const [erro, setErro] = React.useState<{ campo: "item" | "entraEm" | "saiEm" | "fraseChamada"; mensagem: string } | null>(null);
 
   // Busca no servidor, com uma pausa curta depois da digitação.
   React.useEffect(() => {
@@ -131,26 +148,30 @@ function Conteudo({
     e.preventDefault();
     setErro(null);
     let opcao: OpcaoDeDestaque | null = null;
-    if (pedido.modo !== "datas" && tipo !== "programa") {
+    if (pedido.modo !== "editar" && tipo !== "programa") {
       if (!escolhida) return setErro({ campo: "item", mensagem: pedido.modo === "trocar" ? "Escolha uma notícia." : "Escolha o que vai para o destaque." });
       opcao = escolhida;
     }
-    if (!comDatas) return aoEscolher({ opcao, entraEm: null, saiEm: null });
+    if (!comDatas) return aoEscolher({ opcao, entraEm: null, saiEm: null, fraseChamada: null });
+    const fraseLimpa = frase.trim().replace(/\s+/g, " ") || null;
+    if (fraseLimpa && fraseLimpa.length > fraseMaxima) {
+      return setErro({ campo: "fraseChamada", mensagem: `A frase de chamada tem até ${fraseMaxima} caracteres.` });
+    }
     const entra = doCampo(entraEm);
     const sai = doCampo(saiEm);
     if (entra === undefined) return setErro({ campo: "entraEm", mensagem: "Esta data não existe. Confira o dia e a hora." });
     if (sai === undefined) return setErro({ campo: "saiEm", mensagem: "Esta data não existe. Confira o dia e a hora." });
     if (entra && sai && new Date(sai) <= new Date(entra)) return setErro({ campo: "saiEm", mensagem: "A saída tem de ser depois da entrada." });
     if (sai && new Date(sai) <= new Date()) return setErro({ campo: "saiEm", mensagem: "A saída já passou. Escolha uma data no futuro." });
-    aoEscolher({ opcao, entraEm: entra, saiEm: sai });
+    aoEscolher({ opcao, entraEm: entra, saiEm: sai, fraseChamada: fraseLimpa });
   };
 
   const titulo =
-    pedido.modo === "adicionar" ? "Adicionar destaque" : pedido.modo === "datas" ? "Mudar datas" : `Escolher a notícia da posição ${pedido.posicao + 1}`;
+    pedido.modo === "adicionar" ? "Adicionar destaque" : pedido.modo === "editar" ? "Editar destaque" : `Escolher a notícia da posição ${pedido.posicao + 1}`;
   const descricao =
     pedido.modo === "adicionar"
       ? "Só aparece o que está no site. O destaque vai para o fim do carrossel."
-      : pedido.modo === "datas"
+      : pedido.modo === "editar"
         ? pedido.titulo
         : "Só aparecem as notícias publicadas.";
 
@@ -283,6 +304,35 @@ function Conteudo({
         ) : null}
 
         {comDatas ? (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="frase-chamada">Frase de chamada (opcional)</Label>
+            <Textarea
+              id="frase-chamada"
+              rows={2}
+              value={frase}
+              onChange={(e) => setFrase(e.target.value)}
+              aria-invalid={erro?.campo === "fraseChamada" ? true : undefined}
+              aria-describedby="frase-chamada-mensagem frase-chamada-contador"
+            />
+            <div className="flex items-start justify-between gap-3">
+              <p
+                id="frase-chamada-mensagem"
+                role={erro?.campo === "fraseChamada" ? "alert" : undefined}
+                className={cn("texto-pequeno", erro?.campo === "fraseChamada" ? "text-status-perigo-texto" : "text-texto-terciario")}
+              >
+                {erro?.campo === "fraseChamada" ? erro.mensagem : "Aparece no site no lugar da linha fina. Vazia, fica a linha fina."}
+              </p>
+              <p
+                id="frase-chamada-contador"
+                className={cn("shrink-0 texto-pequeno tabular-nums", frase.trim().length > fraseMaxima ? "text-status-perigo-texto" : "text-texto-terciario")}
+              >
+                {frase.trim().length}/{fraseMaxima}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {comDatas ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <CampoQuando
               id="entra-em"
@@ -307,7 +357,7 @@ function Conteudo({
         <Button type="button" variant="secundario" onClick={aoFechar}>
           Cancelar
         </Button>
-        <Button type="submit">{pedido.modo === "adicionar" ? "Pôr no carrossel" : pedido.modo === "datas" ? "Salvar datas" : "Escolher notícia"}</Button>
+        <Button type="submit">{pedido.modo === "adicionar" ? "Pôr no carrossel" : pedido.modo === "editar" ? "Salvar" : "Escolher notícia"}</Button>
       </DialogFooter>
     </form>
   );

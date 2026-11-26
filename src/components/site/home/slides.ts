@@ -36,7 +36,10 @@ export function paraALista(n: NoticiaDoSite): ItemDaLista {
   };
 }
 
-/** Os slides do carrossel (E62): notícia, episódio ou o programa Rádio Chofer, com o horário ao vivo. */
+/**
+ * Os slides do carrossel (E62): notícia, episódio ou o programa Rádio Chofer, com o horário ao vivo.
+ * Com frase de chamada (escrita pela Comunicação no painel), ela entra no lugar da linha fina.
+ */
 export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, agora: Date): SlideNaTela[] {
   const t = HOME_PAGINA;
   return slides.map((s) => {
@@ -46,7 +49,7 @@ export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, ag
         chave: `noticia:${n.id}`,
         selos: n.categoria ? [{ texto: n.categoria.nome, tom: "categoria", cor: n.categoria.cor }] : [],
         titulo: n.titulo,
-        resumo: n.resumo || null,
+        resumo: s.frase ?? (n.resumo || null),
         imagem: n.capa ?? { url: CAPA_DO_PROGRAMA, alt: "" },
         acoes: [{ rotulo: t.lerNoticia, href: n.href, principal: true }],
       };
@@ -60,7 +63,7 @@ export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, ag
           { texto: `Ep. ${e.numero}`, tom: "escuro" },
         ],
         titulo: e.titulo,
-        resumo: e.resumo,
+        resumo: s.frase ?? e.resumo,
         imagem: { url: e.capaUrl, alt: "" },
         acoes: [{ rotulo: t.ouvirEpisodio, href: `${LINKS.radio.href}#episodios`, principal: true, tocar: true }],
       };
@@ -73,7 +76,7 @@ export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, ag
         ...(programa.ativo ? [{ texto: aoVivo ? t.aoVivoAgora : textoDoHorario(programa), tom: aoVivo ? ("ao-vivo" as const) : ("escuro" as const) }] : []),
       ],
       titulo: t.programaTitulo,
-      resumo: RADIO_PAGINA.texto,
+      resumo: s.frase ?? RADIO_PAGINA.texto,
       imagem: { url: CAPA_DO_PROGRAMA, alt: "" },
       acoes: [
         { rotulo: t.ouvirUltimo, href: LINKS.radio.href, principal: true, tocar: true },

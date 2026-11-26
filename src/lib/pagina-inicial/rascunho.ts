@@ -41,7 +41,7 @@ async function linhasDa(db: Transacao | ReturnType<typeof banco>, versao: Versao
 function paraDados(linhas: Linha[], listaPosicoes: number): DadosDaHome {
   const carrossel = linhas
     .filter((l) => l.area === "carrossel")
-    .map((l) => ({ tipo: l.itemTipo!, itemId: l.itemId, entraEm: l.entraEm, saiEm: l.saiEm }));
+    .map((l) => ({ tipo: l.itemTipo!, itemId: l.itemId, entraEm: l.entraEm, saiEm: l.saiEm, fraseChamada: l.fraseChamada }));
   const lista = Array.from({ length: listaPosicoes }, (_, i) => {
     const linha = linhas.find((l) => l.area === "lista" && l.posicao === i + 1 && l.modo === "escolhido" && l.itemId);
     return linha ? { noticiaId: linha.itemId! } : null;
@@ -79,6 +79,7 @@ async function gravarVersao(tx: Transacao, versao: Versao, dados: DadosDaHome, a
       itemId: item.itemId,
       entraEm: item.entraEm,
       saiEm: item.saiEm,
+      fraseChamada: item.fraseChamada,
       escolhidoPor: quemEscolheu("carrossel", chaveDoItem(item)),
     })),
     ...dados.lista.flatMap((posicao, i) =>
@@ -152,15 +153,24 @@ async function conferirItensNovos(tx: Transacao, dados: DadosDaHome, anterior: D
 }
 
 async function limites() {
-  const [carrosselMaximo, listaPosicoes] = await Promise.all([lerParametro("home.carrossel_maximo"), lerParametro("home.lista_posicoes")]);
-  return { carrosselMaximo, listaPosicoes };
+  const [carrosselMaximo, listaPosicoes, fraseChamadaMaximo] = await Promise.all([
+    lerParametro("home.carrossel_maximo"),
+    lerParametro("home.lista_posicoes"),
+    lerParametro("home.frase_chamada_maximo"),
+  ]);
+  return { carrosselMaximo, listaPosicoes, fraseChamadaMaximo };
 }
 
 const iguais = (a: DadosDaHome, b: DadosDaHome) => alteracoesNaoPublicadas(a, b) === 0;
 
 function resumo(dados: DadosDaHome) {
   return {
-    carrossel: dados.carrossel.map((i) => ({ item: chaveDoItem(i), entra_em: i.entraEm?.toISOString() ?? null, sai_em: i.saiEm?.toISOString() ?? null })),
+    carrossel: dados.carrossel.map((i) => ({
+      item: chaveDoItem(i),
+      entra_em: i.entraEm?.toISOString() ?? null,
+      sai_em: i.saiEm?.toISOString() ?? null,
+      frase_chamada: i.fraseChamada,
+    })),
     lista: dados.lista.map((p) => p?.noticiaId ?? "automatico"),
   };
 }
@@ -308,7 +318,7 @@ export type PainelDaHome = {
   itens: Record<string, DetalheDoItem>;
   /** Quem escolheu cada item do rascunho, pela chave (“carrossel:noticia:…”, “lista:noticia:…”). */
   escolhidoPor: Record<string, string>;
-  limites: { carrosselMaximo: number; listaPosicoes: number };
+  limites: { carrosselMaximo: number; listaPosicoes: number; fraseChamadaMaximo: number };
 };
 
 export const CAPA_DO_PROGRAMA = "/site/radio/capa-padrao.jpg";

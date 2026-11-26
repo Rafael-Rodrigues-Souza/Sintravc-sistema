@@ -17,6 +17,8 @@ export const tipoItemDestaque = pgEnum("tipo_item_destaque", ["noticia", "episod
  *   mostra o item com `entra_em ≤ agora < sai_em` (vazios = sem limite). A T04 só grava a Atividade.
  * - Lista “Em destaque”: `home.lista_posicoes` posições, só notícias. Posição sem linha é automática.
  * - `programa` é o slide do programa Rádio Chofer, sem `item_id`.
+ * - `frase_chamada`: frase opcional do carrossel, escrita pela Comunicação; no site, aparece no lugar da
+ *   linha fina. O limite vem de `home.frase_chamada_maximo` (E62, #75).
  */
 export const destaqueHome = pgTable(
   "destaque_home",
@@ -30,6 +32,7 @@ export const destaqueHome = pgTable(
     itemId: uuid(),
     entraEm: dataHora(),
     saiEm: dataHora(),
+    fraseChamada: text(),
     escolhidoPor: uuid().references(() => pessoaEquipe.id),
     ...datas,
   },
@@ -45,6 +48,8 @@ export const destaqueHome = pgTable(
         OR (${t.modo} = 'escolhido' AND ${t.itemTipo} = 'programa' AND ${t.itemId} IS NULL)
         OR (${t.modo} = 'escolhido' AND ${t.itemTipo} IN ('noticia', 'episodio') AND ${t.itemId} IS NOT NULL)`,
     ),
+    check("destaque_home_frase_so_no_carrossel", sql`${t.area} = 'carrossel' OR ${t.fraseChamada} IS NULL`),
+    check("destaque_home_frase_nao_vazia", sql`${t.fraseChamada} IS NULL OR btrim(${t.fraseChamada}) <> ''`),
     check("destaque_home_sai_depois_de_entrar", sql`${t.entraEm} IS NULL OR ${t.saiEm} IS NULL OR ${t.saiEm} > ${t.entraEm}`),
   ],
 );

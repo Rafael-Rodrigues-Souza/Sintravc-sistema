@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, CalendarClock, Eye, GripVertical, ImageOff, MoreHorizontal, Plus, Radio, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarClock, Eye, GripVertical, ImageOff, MoreHorizontal, Pencil, Plus, Radio, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 
 import { StatusDoSalvamento } from "../conteudos/pecas-do-editor";
 import { acaoDescartarHome, acaoPublicarHome, acaoSalvarRascunhoDaHome, acaoTirarDoArAgora } from "./acoes";
-import { JanelaDestaque, type PedidoDaJanela } from "./janela-destaque";
+import { JanelaDestaque, type PedidoDaJanela, type ResultadoDaJanela } from "./janela-destaque";
 
 type ItemNoNavegador = DadosDaHomeNoNavegador["carrossel"][number];
 
@@ -153,17 +153,19 @@ export function AreaPaginaInicial({
     mudar({ ...dados, carrossel: dados.carrossel.filter((_, i) => i !== indice) }, `${itens[chaveDoItem(item)]?.titulo ?? "Destaque"} removido do carrossel.`);
   };
 
-  const aoEscolher = (resultado: { opcao: OpcaoDeDestaque | null; entraEm: string | null; saiEm: string | null }) => {
+  const aoEscolher = (resultado: ResultadoDaJanela) => {
     if (!janela) return;
     if (resultado.opcao) setItens((atual) => ({ ...atual, [chaveDoItem({ tipo: resultado.opcao!.tipo, itemId: resultado.opcao!.id })]: paraDetalhe(resultado.opcao!) }));
     if (janela.modo === "adicionar") {
       const item: ItemNoNavegador = resultado.opcao
-        ? { tipo: resultado.opcao.tipo, itemId: resultado.opcao.id, entraEm: resultado.entraEm, saiEm: resultado.saiEm }
-        : { tipo: "programa", itemId: null, entraEm: resultado.entraEm, saiEm: resultado.saiEm };
+        ? { tipo: resultado.opcao.tipo, itemId: resultado.opcao.id, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada }
+        : { tipo: "programa", itemId: null, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada };
       mudar({ ...dados, carrossel: [...dados.carrossel, item] }, "Destaque posto no fim do carrossel.");
-    } else if (janela.modo === "datas") {
-      const carrossel = dados.carrossel.map((i, k) => (k === janela.indice ? { ...i, entraEm: resultado.entraEm, saiEm: resultado.saiEm } : i));
-      mudar({ ...dados, carrossel }, "Datas do destaque alteradas.");
+    } else if (janela.modo === "editar") {
+      const carrossel = dados.carrossel.map((i, k) =>
+        k === janela.indice ? { ...i, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada } : i,
+      );
+      mudar({ ...dados, carrossel }, "Destaque alterado.");
     } else if (resultado.opcao) {
       const lista = Array.from({ length: listaPosicoes }, (_, k) => (k === janela.posicao ? { noticiaId: resultado.opcao!.id } : (dados.lista[k] ?? null)));
       mudar({ ...dados, lista }, `Posição ${janela.posicao + 1} da lista: ${resultado.opcao.titulo}.`);
@@ -384,6 +386,11 @@ export function AreaPaginaInicial({
                   <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5", situacao.apagado && "opacity-60")}>
                     <p className="texto-etiqueta text-destaque-azul uppercase">{detalhe?.rotulo ?? ""}</p>
                     <p className="line-clamp-2 texto-titulo-card-pequeno break-words text-texto-primario">{titulo}</p>
+                    {item.fraseChamada ? (
+                      <p className="line-clamp-2 texto-pequeno break-words text-texto-primario" data-testid="frase-do-item">
+                        <span className="sr-only">Frase de chamada: </span>“{item.fraseChamada}”
+                      </p>
+                    ) : null}
                     <p className={cn("texto-pequeno", situacao.perigo ? "text-status-perigo-texto" : "text-texto-secundario")} data-testid="estado-do-item">
                       {situacao.texto}
                     </p>
@@ -394,7 +401,9 @@ export function AreaPaginaInicial({
                     travado={conflito}
                     podeTirarDoAr={noArNoSite(chave)}
                     aoMover={(passo) => mover(i, i + passo)}
-                    aoMudarDatas={() => setJanela({ modo: "datas", indice: i, entraEm: item.entraEm, saiEm: item.saiEm, titulo })}
+                    aoEditar={() =>
+                      setJanela({ modo: "editar", indice: i, entraEm: item.entraEm, saiEm: item.saiEm, fraseChamada: item.fraseChamada ?? null, titulo })
+                    }
                     aoTirarDoAr={() => setConfirmacao({ tipo: "tirar", chave, titulo })}
                     aoRemover={() => remover(i)}
                   />
@@ -510,6 +519,7 @@ export function AreaPaginaInicial({
         temPrograma={temPrograma}
         noCarrossel={new Set(dados.carrossel.map(chaveDoItem))}
         naLista={new Set(dados.lista.flatMap((p) => (p ? [p.noticiaId] : [])))}
+        fraseMaxima={painel.limites.fraseChamadaMaximo}
       />
 
       <AlertDialog open={!!confirmacao} onOpenChange={(aberta) => !aberta && !ocupado && setConfirmacao(null)}>
@@ -577,7 +587,7 @@ function MenuDoItem({
   travado,
   podeTirarDoAr,
   aoMover,
-  aoMudarDatas,
+  aoEditar,
   aoTirarDoAr,
   aoRemover,
 }: {
@@ -586,7 +596,7 @@ function MenuDoItem({
   travado: boolean;
   podeTirarDoAr: boolean;
   aoMover: (passo: -1 | 1) => void;
-  aoMudarDatas: () => void;
+  aoEditar: () => void;
   aoTirarDoAr: () => void;
   aoRemover: () => void;
 }) {
@@ -622,9 +632,9 @@ function MenuDoItem({
               Mover para baixo
             </DropdownMenu.Item>
           ) : null}
-          <DropdownMenu.Item onSelect={aoMudarDatas} className={classeDoItem}>
-            <CalendarClock aria-hidden className="size-4" />
-            Mudar datas
+          <DropdownMenu.Item onSelect={aoEditar} className={classeDoItem}>
+            <Pencil aria-hidden className="size-4" />
+            Editar
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="mx-2 my-1 h-px bg-borda-padrao" />
           {podeTirarDoAr ? (

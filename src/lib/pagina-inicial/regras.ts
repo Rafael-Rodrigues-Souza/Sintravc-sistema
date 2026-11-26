@@ -14,6 +14,8 @@ export type ItemDoCarrossel = {
   itemId: string | null;
   entraEm: Date | null;
   saiEm: Date | null;
+  /** Frase de chamada (E62, #75): escrita pela Comunicação; no site, no lugar da linha fina. */
+  fraseChamada: string | null;
 };
 
 /** As posições da lista “Em destaque”: a notícia escolhida, ou `null` (automática). */
@@ -52,7 +54,12 @@ const mesmaData = (a: Date | null, b: Date | null) => (a?.getTime() ?? null) ===
 
 function mesmoItem(a: ItemDoCarrossel | undefined, b: ItemDoCarrossel | undefined): boolean {
   if (!a || !b) return a === b;
-  return chaveDoItem(a) === chaveDoItem(b) && mesmaData(a.entraEm, b.entraEm) && mesmaData(a.saiEm, b.saiEm);
+  return (
+    chaveDoItem(a) === chaveDoItem(b) &&
+    mesmaData(a.entraEm, b.entraEm) &&
+    mesmaData(a.saiEm, b.saiEm) &&
+    (a.fraseChamada ?? null) === (b.fraseChamada ?? null)
+  );
 }
 
 const mesmaPosicao = (a: PosicaoDaLista | undefined, b: PosicaoDaLista | undefined) => (a?.noticiaId ?? null) === (b?.noticiaId ?? null);
@@ -71,10 +78,11 @@ export function alteracoesNaoPublicadas(rascunho: DadosDaHome, publicado: DadosD
 }
 
 /**
- * Confere o rascunho que chegou do painel, sem banco: limites, repetidos e datas. Os limites vêm da
- * Parametro (`home.carrossel_maximo` e `home.lista_posicoes`). Lança ErroPaginaInicial.
+ * Confere o rascunho que chegou do painel, sem banco: limites, repetidos, datas e a frase de chamada.
+ * Os limites vêm da Parametro (`home.carrossel_maximo`, `home.lista_posicoes` e
+ * `home.frase_chamada_maximo`). Lança ErroPaginaInicial.
  */
-export function conferirDados(dados: DadosDaHome, limites: { carrosselMaximo: number; listaPosicoes: number }) {
+export function conferirDados(dados: DadosDaHome, limites: { carrosselMaximo: number; listaPosicoes: number; fraseChamadaMaximo: number }) {
   if (dados.carrossel.length > limites.carrosselMaximo) {
     throw new ErroPaginaInicial(`O carrossel aceita até ${limites.carrosselMaximo} destaques. Remova um para pôr outro.`, "carrossel");
   }
@@ -90,12 +98,16 @@ export function conferirDados(dados: DadosDaHome, limites: { carrosselMaximo: nu
     if (item.entraEm && item.saiEm && item.saiEm.getTime() <= item.entraEm.getTime()) {
       throw new ErroPaginaInicial("A saída tem de ser depois da entrada.", "saiEm");
     }
+    if (item.fraseChamada && item.fraseChamada.length > limites.fraseChamadaMaximo) {
+      throw new ErroPaginaInicial(`A frase de chamada tem até ${limites.fraseChamadaMaximo} caracteres.`, "fraseChamada");
+    }
   }
 }
 
 // --- O que o site mostra -----------------------------------------------------------------------
 
-export type Slide<N, E> = { tipo: "noticia"; noticia: N } | { tipo: "episodio"; episodio: E } | { tipo: "programa" };
+/** `frase`: a frase de chamada do item, quando houver (no site, no lugar da linha fina). */
+export type Slide<N, E> = ({ tipo: "noticia"; noticia: N } | { tipo: "episodio"; episodio: E } | { tipo: "programa" }) & { frase: string | null };
 
 /**
  * Monta o carrossel e a lista a partir do publicado (E62):
@@ -117,16 +129,17 @@ export function montarHome<N extends { id: string; capa: unknown }, E extends { 
   const slides: Slide<N, E>[] = [];
   for (const item of publicado.carrossel) {
     if (estadoDoItem(item, agora).tipo !== "no_ar") continue;
-    if (item.tipo === "programa") slides.push({ tipo: "programa" });
+    const frase = item.fraseChamada ?? null;
+    if (item.tipo === "programa") slides.push({ tipo: "programa", frase });
     else if (item.tipo === "noticia") {
       const noticia = noticias.get(item.itemId!);
-      if (noticia?.capa) slides.push({ tipo: "noticia", noticia });
+      if (noticia?.capa) slides.push({ tipo: "noticia", noticia, frase });
     } else {
       const episodio = episodios.get(item.itemId!);
-      if (episodio) slides.push({ tipo: "episodio", episodio });
+      if (episodio) slides.push({ tipo: "episodio", episodio, frase });
     }
   }
-  if (slides.length === 0) slides.push({ tipo: "programa" });
+  if (slides.length === 0) slides.push({ tipo: "programa", frase: null });
 
   const escolhidas = Array.from({ length: entrada.listaPosicoes }, (_, i) => {
     const posicao = publicado.lista[i];
@@ -160,6 +173,12 @@ export const esquemaDadosDaHome = z.object({
         itemId: z.uuid().nullable(),
         entraEm: dataOuVazio,
         saiEm: dataOuVazio,
+        // Espaços nas pontas saem; vazia vira null. O limite é conferido com a Parametro (conferirDados).
+        fraseChamada: z
+          .string()
+          .max(1000)
+          .nullish()
+          .transform((v) => v?.trim().replace(/\s+/g, " ") || null),
       }),
     )
     .max(50),

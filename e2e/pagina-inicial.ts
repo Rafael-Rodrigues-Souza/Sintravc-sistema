@@ -59,7 +59,13 @@ export async function esperarSalvo(page: Page) {
  */
 export async function adicionarDestaquePelaTela(
   page: Page,
-  { tipo, titulo, entraEm, saiEm }: { tipo: "Notícia" | "Episódio" | "Programa Rádio Chofer"; titulo?: string; entraEm?: string; saiEm?: string },
+  {
+    tipo,
+    titulo,
+    entraEm,
+    saiEm,
+    frase,
+  }: { tipo: "Notícia" | "Episódio" | "Programa Rádio Chofer"; titulo?: string; entraEm?: string; saiEm?: string; frase?: string },
   { toque = false } = {},
 ) {
   await apertar(page.getByRole("button", { name: "Adicionar destaque" }), toque);
@@ -70,6 +76,7 @@ export async function adicionarDestaquePelaTela(
     await janela.getByLabel(tipo === "Episódio" ? "Buscar episódio" : "Buscar notícia").fill(titulo);
     await apertar(janela.getByRole("radio", { name: new RegExp(titulo) }).locator(".."), toque);
   }
+  if (frase) await janela.getByLabel("Frase de chamada (opcional)").fill(frase);
   if (entraEm) await janela.getByLabel("Entra em").fill(entraEm);
   if (saiEm) await janela.getByLabel("Sai em").fill(saiEm);
   await apertar(janela.getByRole("button", { name: "Pôr no carrossel" }), toque);

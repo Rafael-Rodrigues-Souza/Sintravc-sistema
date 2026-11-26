@@ -39,8 +39,22 @@ test("CA-US26.1 · reordenar pelo teclado e pelo menu, a prévia confere com o s
   expect(await ordemNoPainel(page)).toEqual([PROGRAMA]);
   await expect(page.getByTestId("alteracoes-nao-publicadas")).toContainText("Igual ao site");
 
-  await adicionarDestaquePelaTela(page, { tipo: "Notícia", titulo: noticia });
+  await adicionarDestaquePelaTela(page, { tipo: "Notícia", titulo: noticia, frase: "Sua voz na campanha salarial" });
   await adicionarDestaquePelaTela(page, { tipo: "Episódio", titulo: episodio, saiEm: campoDaqui(2 * DIA) });
+  await expect(itensDoCarrossel(page).nth(1).getByTestId("frase-do-item")).toContainText("Sua voz na campanha salarial");
+
+  // “Editar”: a frase do episódio, com o contador e o limite do Parametro (90).
+  await page.getByRole("button", { name: `Ações do destaque “${episodio}”` }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  const editar = page.getByRole("dialog", { name: "Editar destaque" });
+  await editar.getByLabel("Frase de chamada (opcional)").fill("x".repeat(91));
+  await expect(editar.getByText("91/90")).toBeVisible();
+  await editar.getByRole("button", { name: "Salvar" }).click();
+  await expect(editar.getByRole("alert")).toHaveText("A frase de chamada tem até 90 caracteres.");
+  await editar.getByLabel("Frase de chamada (opcional)").fill("Ouça o programa desta semana");
+  await editar.getByRole("button", { name: "Salvar" }).click();
+  await expect(editar).toBeHidden();
+  await expect(itensDoCarrossel(page).nth(2).getByTestId("frase-do-item")).toContainText("Ouça o programa desta semana");
   await esperarSalvo(page);
   expect(await ordemNoPainel(page)).toEqual([PROGRAMA, noticia, episodio]);
   await expect(page.getByTestId("alteracoes-nao-publicadas")).toContainText("2 alterações ainda não publicadas");
@@ -84,6 +98,9 @@ test("CA-US26.1 · reordenar pelo teclado e pelo menu, a prévia confere com o s
   await site.reload();
   expect(await ordemNaHome(site)).toEqual(ordemDaPrevia);
   await expect(site.getByTestId("slide-home").and(site.locator("[data-ativo]"))).toContainText(episodio);
+  // A frase de chamada aparece no lugar da linha fina.
+  await expect(site.getByTestId("slide-home").and(site.locator("[data-ativo]"))).toContainText("Ouça o programa desta semana");
+  await expect(site.getByTestId("slide-home").filter({ hasText: noticia })).toContainText("Sua voz na campanha salarial");
   const [publicacao] = await consultar((sql) => sql<{ acao: string }[]>`select acao from atividade where acao = 'pagina_inicial.publicar' order by id desc limit 1`);
   expect(publicacao?.acao).toBe("pagina_inicial.publicar");
 

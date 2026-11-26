@@ -148,6 +148,13 @@
       "when": 1795632365613,
       "tag": "0020_pagina_inicial",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795699319034,
+      "tag": "0021_frase_de_chamada",
+      "breakpoints": true
     }
   ]
 }
