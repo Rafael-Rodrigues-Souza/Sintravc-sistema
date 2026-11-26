@@ -156,7 +156,7 @@ export function CarrosselHome({
     >
       <div className="flex min-w-0 flex-col gap-4">
         {/* Slides empilhados no mesmo lugar: a altura é a do maior e nada pula ao trocar. */}
-        <div className={cn("grid", varios && "touch-pan-y touch-pinch-zoom")} {...(varios ? deslize : {})}>
+        <div className={cn("grid min-w-0", varios && "touch-pan-y touch-pinch-zoom")} {...(varios ? deslize : {})}>
           {slides.map((s, i) => {
             const ativo = i === indice;
             return (
@@ -170,7 +170,7 @@ export function CarrosselHome({
                 data-testid="slide-home"
                 data-ativo={ativo ? "" : undefined}
                 className={cn(
-                  "col-start-1 row-start-1 flex flex-col gap-4 transition-[opacity,visibility] duration-300 ease-out motion-reduce:duration-0",
+                  "col-start-1 row-start-1 flex min-w-0 flex-col gap-4 transition-[opacity,visibility] duration-300 ease-out motion-reduce:duration-0",
                   ativo ? "opacity-100" : "invisible opacity-0",
                 )}
               >
@@ -247,7 +247,7 @@ function Slide({ slide: s, primeiro }: { slide: SlideNaTela; primeiro: boolean }
               ))}
             </div>
           ) : null}
-          <h2 className="texto-display-mobile break-words text-texto-invertido uppercase lg:texto-display">{s.titulo}</h2>
+          <h2 className="texto-display-mobile [overflow-wrap:anywhere] text-texto-invertido uppercase lg:texto-display">{s.titulo}</h2>
           {s.resumo ? <p className="line-clamp-3 texto-corpo text-texto-invertido-sec lg:texto-corpo-grande">{s.resumo}</p> : null}
           <div className="hidden flex-wrap gap-3 pt-1 lg:flex">
             <Acoes slide={s} />

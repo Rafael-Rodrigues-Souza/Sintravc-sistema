@@ -29,14 +29,14 @@ export function UltimoPrograma({ episodio, programa, agora }: { episodio: Episod
     <section aria-labelledby="titulo-ultimo-programa" className="bg-fundo-marinho">
       <ProvedorDoPlayer>
         {/* Celular (36:810): título, player e texto. Computador (34:668): player à esquerda, título e texto à direita. */}
-        <div className="conteudo-site grid gap-x-16 gap-y-6 py-11 [grid-template-areas:'cab'_'player'_'info'] lg:grid-cols-[minmax(0,660px)_minmax(0,1fr)] lg:grid-rows-[auto_auto] lg:content-center lg:py-24 lg:[grid-template-areas:'player_cab'_'player_info']">
-          <div className="flex flex-col gap-3 [grid-area:cab] lg:self-end">
+        <div className="conteudo-site grid gap-x-16 gap-y-6 py-11 [grid-template-areas:'cab'_'player'_'info'] lg:grid-cols-[minmax(0,660px)_minmax(0,1fr)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-y-5 lg:py-24 lg:[grid-template-areas:'player_.'_'player_cab'_'player_info'_'player_.']">
+          <div className="flex flex-col gap-3 [grid-area:cab]">
             <Cabecalho />
           </div>
           <div className="[grid-area:player] lg:self-center">
             <PlayerYoutube episodio={episodio} variante="topo" selo={`Ep. ${episodio.numero} · ${RADIO_PAGINA.ultimoPrograma}`} className="rounded-[20px] lg:rounded-[24px]" />
           </div>
-          <div className="flex min-w-0 flex-col gap-4 [grid-area:info] lg:gap-5 lg:self-start">
+          <div className="flex min-w-0 flex-col gap-4 [grid-area:info] lg:gap-5">
             <p className="texto-titulo-card break-words text-texto-invertido">
               Ep. {episodio.numero} — {episodio.titulo}
             </p>

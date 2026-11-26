@@ -508,7 +508,9 @@ export function AreaPaginaInicial({
 
       {/* Celular e tablet em pé (E50): ações numa barra fixa, acima da barra de navegação. */}
       <div aria-hidden className="h-[72px] shrink-0 lg:hidden" />
-      <div className="fixed inset-x-0 bottom-[calc(var(--altura-barra-de-baixo)+env(safe-area-inset-bottom))] z-30 grid grid-cols-2 items-center gap-3 border-t border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:hidden [&>*]:w-full">
+      <div
+        data-barra-de-baixo
+        className="fixed inset-x-0 bottom-[calc(var(--altura-barra-de-baixo)+env(safe-area-inset-bottom))] z-30 grid grid-cols-2 items-center gap-3 border-t border-borda-padrao bg-fundo-cabecalho px-4 py-3 lg:hidden [&>*]:w-full">
         {botaoPrevia}
         {botaoPublicar}
       </div>

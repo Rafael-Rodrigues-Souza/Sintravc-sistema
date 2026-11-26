@@ -56,7 +56,7 @@ export function UltimasNoticias({
       {total > 0 ? <SeletorDeCategoria categorias={categorias} atual={categoriaAtual} total={total} /> : null}
 
       {primeira ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:gap-6" data-testid="ultimas-noticias">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start lg:gap-6" data-testid="ultimas-noticias">
           <CartaoNoticia noticia={primeira} />
           {outras.length > 0 ? (
             <ul className="flex flex-col divide-y divide-borda-padrao rounded-[24px] border border-borda-padrao bg-fundo-superficie px-4 lg:px-7">

@@ -20,7 +20,7 @@ export default async function PreviaPaginaInicial({ searchParams }: { searchPara
       <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 bg-fundo-marinho-profundo px-4 py-3 text-texto-invertido sm:px-8">
         <Link
           href="/painel/pagina-inicial"
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-sobre-escuro-borda px-4 texto-botao outline-none hover:bg-sobre-escuro-superficie focus-visible:ring-[3px] focus-visible:ring-ring"
+          className="inline-flex h-11 items-center gap-2 rounded-full border border-sobre-escuro-borda px-4 texto-botao outline-none hover:bg-sobre-escuro-superficie focus-visible:ring-[3px] focus-visible:ring-ring"
         >
           <ChevronLeft aria-hidden className="size-[18px]" />
           Voltar à Página inicial
