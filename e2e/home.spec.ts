@@ -157,7 +157,7 @@ test("lista “Em destaque” automática e últimas notícias com o seletor de 
 });
 
 test("contadores das redes vêm da ConfigSite (P6): sem número, a linha some", async ({ page }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(240_000);
   const [antes] = await consultar((sql) => sql<{ dados: Record<string, unknown> }[]>`select dados from config_site where id = 'site'`);
   try {
     await consultar(
@@ -181,6 +181,16 @@ test("contadores das redes vêm da ConfigSite (P6): sem número, a linha some", 
     await expect(page.getByTestId("contador-instagram")).toHaveCount(0);
   } finally {
     await consultar((sql) => sql`update config_site set dados = ${sql.json(antes!.dados as never)} where id = 'site' returning id`);
+    // Só termina quando o site já leu a ConfigSite devolvida: senão o canal de teste vaza para o próximo spec.
+    await expect
+      .poll(
+        async () => {
+          await page.goto("/");
+          return page.getByTestId("contador-canalWhatsapp").count();
+        },
+        { timeout: 90_000, intervals: [5_000] },
+      )
+      .toBe(0);
   }
 });
 
