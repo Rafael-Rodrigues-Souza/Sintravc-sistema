@@ -48,8 +48,8 @@ export type OrdemDaLista = "recentes" | "antigas";
 
 const dados = sql`${conteudoVersao.snapshot} -> 'dados'`;
 
-/** A notícia está no ar: publicada, com endereço e data. */
-const noAr = and(eq(conteudo.tipo, "noticia"), eq(conteudo.estado, "publicado"), isNotNull(conteudo.slug), isNotNull(conteudo.publicadoEm));
+/** A notícia está no ar: publicada, com endereço e data. Também vale para os destaques da Home (E62). */
+export const noAr = and(eq(conteudo.tipo, "noticia"), eq(conteudo.estado, "publicado"), isNotNull(conteudo.slug), isNotNull(conteudo.publicadoEm));
 
 const colunasDoCartao = {
   id: conteudo.id,
@@ -340,4 +340,20 @@ export async function noticiaPeloSlug(slug: string): Promise<NoticiaPublica | nu
       : null,
     enderecoDe,
   };
+}
+
+/** As notícias no ar com estes ids, na ordem do banco (a Home, E62). As que saíram do ar ficam de fora. */
+export async function noticiasNoArPorIds(ids: string[]): Promise<NoticiaDoSite[]> {
+  if (ids.length === 0) return [];
+  return paraCartoes(await selecionarCartoes().where(and(noAr, inArray(conteudo.id, ids))));
+}
+
+/** As mais recentes no ar até agora, sem as de `excluir` (a lista automática da Home, E62). */
+export async function noticiasRecentes(quantidade: number, agora: Date = new Date(), excluir: string[] = []): Promise<NoticiaDoSite[]> {
+  return paraCartoes(
+    await selecionarCartoes()
+      .where(and(noAr, lte(conteudo.publicadoEm, agora), excluir.length ? notInArray(conteudo.id, excluir) : undefined))
+      .orderBy(...maisRecentes)
+      .limit(quantidade),
+  );
 }

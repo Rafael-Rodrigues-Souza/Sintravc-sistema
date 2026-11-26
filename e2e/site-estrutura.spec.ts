@@ -39,8 +39,9 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     await expect(rodape(page)).toContainText(HORARIO);
     await expect(page.getByText(`Atendimento: ${HORARIO}`)).toBeVisible();
 
-    const filiar = page.getByRole("link", { name: "Filiar-se pelo WhatsApp" });
-    await expect(filiar).toHaveCount(2); // cabeçalho e rodapé
+    // Cabeçalho e rodapé (a Home tem também a seção Filie-se, fora desta conta).
+    const filiar = page.getByRole("banner").or(rodape(page)).getByRole("link", { name: "Filiar-se pelo WhatsApp" });
+    await expect(filiar).toHaveCount(2);
     for (const link of await filiar.all()) {
       await expect(link).toHaveAttribute("href", FILIACAO);
       await expect(link).toHaveAttribute("target", "_blank");

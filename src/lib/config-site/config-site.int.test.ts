@@ -81,6 +81,35 @@ describe("ConfigSite: redes do sindicato (E57)", () => {
   });
 });
 
+describe("ConfigSite: contadores das redes (P6, E62)", () => {
+  const MIGRACAO = "drizzle/0020_pagina_inicial.sql";
+
+  it("o seed traz um contador por rede, todos vazios (nada de número inventado)", async () => {
+    const config = await lerConfigSite();
+    expect(config.contadores).toEqual({ instagram: null, youtube: null, canalWhatsapp: null });
+  });
+
+  it("a migração não apaga um número que alguém já tenha posto", async () => {
+    const copia = structuredClone(original) as ConfigSite;
+    copia.contadores = { instagram: 1200, youtube: null, canalWhatsapp: 850 };
+    await gravar(copia);
+
+    const trecho = readFileSync(MIGRACAO, "utf8").split("--> statement-breakpoint").find((s) => s.includes("'{contadores}'"));
+    await banco().execute(sql.raw(trecho!));
+
+    const [linha] = await banco().select({ dados: configSite.dados }).from(configSite);
+    expect((linha?.dados as ConfigSite).contadores).toEqual({ instagram: 1200, youtube: null, canalWhatsapp: 850 });
+  });
+
+  it("número negativo ou quebrado dá erro claro, com o campo", async () => {
+    const copia = structuredClone(original) as ConfigSite;
+    copia.contadores = { instagram: -3, youtube: null, canalWhatsapp: null };
+    await gravar(copia);
+    limparCacheConfigSite();
+    await expect(lerConfigSite()).rejects.toThrow(/contadores\.instagram/);
+  });
+});
+
 describe("ConfigSite: atualização em até 1 minuto (RN43)", () => {
   it("mudança no banco não aparece antes de 60 s e aparece depois", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });

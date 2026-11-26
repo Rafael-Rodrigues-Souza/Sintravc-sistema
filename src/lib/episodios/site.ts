@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 
 import { slugificar } from "@/lib/conteudos/publicar";
 import { banco } from "@/lib/db";
@@ -125,6 +125,13 @@ export async function episodiosDoSite(
   ]);
   const total = contagem?.total ?? 0;
   return { itens: linhas.map(paraOSite), total, temMais: total > limite };
+}
+
+/** Os episódios no ar com estes ids (o carrossel da Home, E62). Os que saíram do ar ficam de fora. */
+export async function episodiosNoArPorIds(ids: string[], agora: Date = new Date()): Promise<EpisodioDoSite[]> {
+  if (ids.length === 0) return [];
+  const linhas = await selecionar().where(and(filtroNoAr(agora), inArray(episodio.id, ids)));
+  return linhas.map(paraOSite);
 }
 
 /** O topo da página (R12): o último programa no ar ou, sem ele, o episódio mais recente no ar. */

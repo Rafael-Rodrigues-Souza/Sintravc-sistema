@@ -371,3 +371,58 @@ export const RADIO_PAGINA = {
   limparFiltros: "Limpar filtros",
 };
 
+
+/**
+ * Home (Figma 32:550 / 35:722; RF01, E62). Os textos vêm do Figma; o título do slide do programa foi
+ * aprovado pelo Rafael (25/11/2026) e o texto dele é o mesmo da página Rádio Chofer.
+ */
+export const HOME_PAGINA = {
+  carrosselRotulo: "Destaques",
+  emDestaque: "Em destaque",
+  anterior: "Destaque anterior",
+  proximo: "Próximo destaque",
+  pausar: "Pausar a troca automática",
+  continuar: "Continuar a troca automática",
+  programaSelo: "Rádio Chofer",
+  programaTitulo: "A voz dos rodoviários de Conquista",
+  ouvirUltimo: "Ouvir o último programa",
+  todosOsProgramas: "Todos os programas",
+  lerNoticia: "Ler notícia",
+  ouvirEpisodio: "Ouvir no Rádio Chofer",
+  acessoEyebrow: "Serviços ao trabalhador",
+  acessoTitulo: "Acesso rápido",
+  acessoTexto: "Os documentos e canais que a categoria mais procura, a um clique de distância.",
+  atalhos: {
+    acordos: { titulo: "Acordos coletivos", texto: "Convenções e acordos em vigor para a categoria." },
+    beneficios: { titulo: "Benefícios", texto: "O que o associado tem direito e como usar cada um." },
+    editais: { titulo: "Editais", texto: "Convocações e editais oficiais em PDF." },
+    whatsapp: { titulo: "Fale no WhatsApp", texto: "Tire dúvidas direto com o atendimento do sindicato." },
+  },
+  noticiasEyebrow: "Fique por dentro",
+  noticiasTitulo: "Últimas notícias",
+  verTodas: "Ver todas as notícias",
+  categoriaRotulo: "Categoria",
+  todasAsCategorias: "Todas as categorias",
+  semNoticiasTitulo: "Nenhuma notícia publicada ainda",
+  semNoticiasTexto: "Quando o sindicato publicar uma notícia, ela aparece aqui.",
+  semNoticiasNaCategoria: "Nenhuma notícia nesta categoria.",
+  verTodasAsCategorias: "Ver todas as categorias",
+  radioEyebrow: "Rádio Chofer · Novo episódio",
+  radioTitulo: "Último programa",
+  aoVivoAgora: "Ao vivo agora",
+  assistirAoVivo: "Assistir ao vivo",
+  redesEyebrow: "Conecte-se",
+  redesTitulo: "O sindicato também está nas redes",
+  redesTexto: "Avisos em primeira mão, bastidores das ações e o Rádio Chofer completo.",
+  redes: {
+    instagram: { subtitulo: "Fotos e avisos", texto: "Fotos das assembleias, avisos rápidos e os bastidores das ações do sindicato.", acao: "Seguir no Instagram", contador: "seguidores" },
+    facebook: { subtitulo: "Página do sindicato", texto: "Notícias e avisos do sindicato.", acao: "Seguir no Facebook", contador: "seguidores" },
+    youtube: { subtitulo: "Rádio Chofer", texto: "Todos os episódios do Rádio Chofer, transmissões de assembleias e entrevistas.", acao: "Inscrever-se no canal", contador: "inscritos" },
+    canalWhatsapp: {
+      subtitulo: "Avisos oficiais",
+      texto: "Receba os comunicados do sindicato direto no celular, sem precisar procurar.",
+      acao: "Entrar no canal",
+      contador: "rodoviários já recebem os avisos por aqui",
+    },
+  },
+} as const;

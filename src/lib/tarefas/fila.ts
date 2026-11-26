@@ -9,6 +9,8 @@ export const FILA_COMUNICADO = "comunicado-periodo";
 export const FILA_DESAFIXAR = "noticia-desafixar";
 /** Fila da T03 (spec §6): o episódio agendado do Rádio Chofer vai ao ar na hora da exibição (E61). */
 export const FILA_EPISODIO = "episodio-entrar-no-ar";
+/** Fila da T04 (spec §6): o destaque entra e sai do carrossel da Home (E62). */
+export const FILA_DESTAQUE = "destaque-home-virada";
 
 /**
  * O pedido guardado na fila: a notícia e a hora marcada, em texto ISO (UTC). A hora vai junto
@@ -36,6 +38,13 @@ export type PedidoDesafixar = { conteudoId: string; para: string };
 export type PedidoEpisodio = { episodioId: string; para: string };
 
 /**
+ * T04: o item do carrossel (`chave`, como “noticia:<id>”, porque o id da linha muda a cada
+ * publicação), a virada e a hora, em ISO (UTC). Se o item não está mais no publicado com essa hora,
+ * o pedido não faz nada (E62).
+ */
+export type PedidoDestaque = { chave: string; virada: "entrar" | "sair"; para: string };
+
+/**
  * A fila de tarefas (pg-boss, E44). O pedido entra **na mesma transação** da ação que agendou:
  * se a ação falhar, o pedido também não fica na fila.
  */
@@ -44,6 +53,7 @@ export interface Fila {
   agendarComunicado(tx: Transacao, pedido: { comunicadoId: string; virada: PedidoComunicado["virada"]; para: Date }): Promise<void>;
   agendarDesafixar(tx: Transacao, pedido: { conteudoId: string; para: Date }): Promise<void>;
   agendarEpisodio(tx: Transacao, pedido: { episodioId: string; para: Date }): Promise<void>;
+  agendarDestaque(tx: Transacao, pedido: { chave: string; virada: PedidoDestaque["virada"]; para: Date }): Promise<void>;
 }
 
 /** Fila em memória, para os testes das regras (sem o pg-boss). */
@@ -52,6 +62,7 @@ export function filaEmMemoria() {
   const pedidosComunicado: PedidoComunicado[] = [];
   const pedidosDesafixar: PedidoDesafixar[] = [];
   const pedidosEpisodio: PedidoEpisodio[] = [];
+  const pedidosDestaque: PedidoDestaque[] = [];
   const fila: Fila = {
     async agendarPublicacao(_tx, { conteudoId, para }) {
       pedidos.push({ conteudoId, para: para.toISOString() });
@@ -65,6 +76,9 @@ export function filaEmMemoria() {
     async agendarEpisodio(_tx, { episodioId, para }) {
       pedidosEpisodio.push({ episodioId, para: para.toISOString() });
     },
+    async agendarDestaque(_tx, { chave, virada, para }) {
+      pedidosDestaque.push({ chave, virada, para: para.toISOString() });
+    },
   };
-  return { fila, pedidos, pedidosComunicado, pedidosDesafixar, pedidosEpisodio };
+  return { fila, pedidos, pedidosComunicado, pedidosDesafixar, pedidosEpisodio, pedidosDestaque };
 }

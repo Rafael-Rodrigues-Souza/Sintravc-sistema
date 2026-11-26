@@ -58,6 +58,15 @@ export const esquemaConfigSite = z.object({
     facebook: linkDaRede,
     canalWhatsapp: linkDaRede,
   }),
+  /**
+   * Contadores manuais das redes (P6, E62), como “1.200 rodoviários no canal”. Sem integração com
+   * as redes: o número vem daqui. Vazio, a linha some (nada de número inventado).
+   */
+  contadores: z.object({
+    instagram: z.number().int().nonnegative().nullable(),
+    youtube: z.number().int().nonnegative().nullable(),
+    canalWhatsapp: z.number().int().nonnegative().nullable(),
+  }),
   missao: texto,
   /** Programa ao vivo do Rádio Chofer (E61, P10): editável por ADM e COM, na área Rádio Chofer. */
   programa: esquemaProgramaAoVivo,

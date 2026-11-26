@@ -101,10 +101,13 @@ export async function entrarComo(page: Page, pessoa: PessoaDeTeste, destino: str
 
 /**
  * Espera as animações em andamento terminarem (diálogo e menu abrem com zoom de 95%: medido no meio,
- * o alvo parece menor do que é).
+ * o alvo parece menor do que é). As que repetem sem fim (o ponto pulsando de “Ao vivo agora”, durante
+ * o programa) nunca terminam e não mudam o tamanho de nada: ficam de fora.
  */
 export async function semAnimacao(page: Page) {
-  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity),
+  );
 }
 
 /** Espera dois quadros, para a tela assentar depois de mudar o tamanho da janela. */
