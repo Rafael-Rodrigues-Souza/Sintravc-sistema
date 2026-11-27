@@ -144,9 +144,11 @@ Valores que hoje são fixos nas regras. Recomenda-se guardá-los em configuraç�
 | Tempo de aviso rápido na tela | 6 segundos | RN42 |
 | Troca da faixa com vários comunicados no ar | 8 segundos | E58 |
 | Itens no carrossel da Home | até 5 | R8, E62 |
-| Posições da lista “Em destaque” da Home | 3 | R8, E62 |
 | Troca do carrossel da Home | 8 segundos | E62 |
 | Frase de chamada de cada item do carrossel da Home | até 90 caracteres | E62 |
+| Frase de cada Chamada do carrossel da Home | até 70 caracteres | E63 |
+| Texto de apoio de cada Chamada | até 160 caracteres | E63 |
+| Texto do botão de cada Chamada | até 24 caracteres | E63 |
 | Validade do X do visitante na faixa de comunicado | 365 dias | E58 |
 | Janela das “Mais lidas” | 7 dias | E30, E59 |
 | Quantidade de “Mais lidas” | 3 notícias | E30, E59 |

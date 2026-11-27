@@ -479,7 +479,7 @@ Não são contradições, mas precisam entrar no spec ou ser descartadas. **[FAT
 | R5 | Comunicado com até 140 caracteres. | 165:16711 |
 | R6 | Limites do editor: manchete com 110, linha fina com 200 e resumo do documento com 400. | 112:1091, 114:1972 |
 | R7 | Mídia: até 10 MB por arquivo. Logo de parceiro: PNG ou SVG até 2 MB. | 116:2727, 167:18087 |
-| R8 | Carrossel com até 5 destaques e entrada e saída agendadas; lista “Em destaque” com 3 posições, automática ou escolhida. | 166:16879 |
+| R8 | Carrossel com até 5 destaques e entrada e saída agendadas; lista “Em destaque” com 3 posições, automática ou escolhida (a lista saiu no E63, #75). | 166:16879 |
 | R9 | “Fixar no topo de Notícias até <data>”. | 115:2324 |
 | R10 | “Mais lidas da semana”, o que exige contar visualizações. | 80:629 |
 | R11 | Parceiro sai do site sozinho ao vencer e gera um alerta de “vence em N dias”. O N não está definido (o exemplo é 18). | 167:17772 |
