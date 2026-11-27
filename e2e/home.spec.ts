@@ -7,7 +7,7 @@ import { RESPONSIVO } from "../playwright.config";
 import { ALTURA_DO_CARROSSEL } from "../src/components/site/home/altura-do-carrossel";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { publicarNoticiaPelaTela } from "./noticias";
-import { carrosselMisturado, episodioNoAr, limparHome, ordemNaHome } from "./pagina-inicial";
+import { apagarNoticiaComCapa, carrosselMisturado, episodioNoAr, limparHome, ordemNaHome } from "./pagina-inicial";
 import { consultar } from "./radio";
 import { entrarComo, semAnimacao, semRolagemLateral } from "./responsivo";
 
@@ -126,8 +126,17 @@ test("os 4 tipos publicados aparecem no site: notícia com capa, episódio, prog
   const episodio = `Home e2e episódio misto ${Date.now()}`;
   await entrarComo(page, pessoas.com, "/painel");
   await publicarNoticiaPelaTela(page, noticia, { capa: "Assembleia na sede, foto de teste" });
-  const [linha] = await consultar((sql) => sql<{ id: string }[]>`select id from conteudo where titulo = ${noticia}`);
-  const chamadas = await carrosselMisturado({ noticiaId: linha!.id, episodioId: await episodioNoAr(episodio) });
+  try {
+    const [linha] = await consultar((sql) => sql<{ id: string }[]>`select id from conteudo where titulo = ${noticia}`);
+    await conferirOsQuatroTipos(page, noticia, linha!.id, episodio);
+  } finally {
+    await limparHome();
+    await apagarNoticiaComCapa(noticia);
+  }
+});
+
+async function conferirOsQuatroTipos(page: Page, noticia: string, noticiaId: string, episodio: string) {
+  const chamadas = await carrosselMisturado({ noticiaId, episodioId: await episodioNoAr(episodio) });
 
   await page.goto("/");
   expect(await ordemNaHome(page)).toEqual([noticia, episodio, PROGRAMA, chamadas[0]!.frase, chamadas[1]!.frase]);
@@ -142,7 +151,7 @@ test("os 4 tipos publicados aparecem no site: notícia com capa, episódio, prog
   await expect(filiacao).toHaveAttribute("target", "_blank");
   await traco(page, 5, 5).click();
   await expect(ativo(page).getByRole("link", { name: /Ver benefícios/ })).toHaveAttribute("href", "/sindicato/beneficios");
-});
+}
 
 test("a seção do carrossel ocupa a tela abaixo do topo, com uma sobra para o começo da próxima seção (E63)", async ({ page }) => {
   await carrosselComDois(`Home e2e altura ${Date.now()}`);

@@ -22,7 +22,26 @@ export async function limparHome() {
   );
   await consultar((sql) => sql`update pagina_inicial set revisao = revisao + 1, salvo_em = null, salvo_por = null returning id`);
   await consultar((sql) => sql`delete from episodio where titulo like 'Home e2e%' returning id`);
-  await consultar((sql) => sql`delete from midia where nome_arquivo like 'home-e2e-%' returning id`);
+  // As fotos das Chamadas (as do banco e as enviadas pela tela): a Mídia fica como estava (o midia.spec começa vazio).
+  await consultar((sql) => sql`delete from midia where nome_arquivo like 'home-e2e-%' or nome_arquivo like 'chamada-e2e-%' returning id`);
+}
+
+/**
+ * Apaga a notícia publicada pelo teste e a capa dela na Mídia (testes limpam o que criam: o
+ * midia.spec começa com a Mídia vazia).
+ */
+export async function apagarNoticiaComCapa(titulo: string) {
+  const linhas = await consultar(
+    (sql) => sql<{ id: string; capa: string | null }[]>`
+      select c.id, n.capa_midia_id as capa from conteudo c join noticia n on n.conteudo_id = c.id where c.titulo = ${titulo}`,
+  );
+  for (const { id, capa } of linhas) {
+    await consultar((sql) => sql`delete from conteudo where id = ${id} returning id`);
+    if (capa) {
+      await consultar((sql) => sql`delete from midia_uso where midia_id = ${capa} returning midia_id`);
+      await consultar((sql) => sql`delete from midia where id = ${capa} returning id`);
+    }
+  }
 }
 
 /**
