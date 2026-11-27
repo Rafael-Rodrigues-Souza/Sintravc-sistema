@@ -25,7 +25,8 @@
     "criar-admin": "tsx scripts/criar-admin.ts",
     "dev:pessoas-teste": "tsx scripts/dev-pessoas-teste.ts",
     "dev:noticias-exemplo": "tsx scripts/dev-noticias-exemplo.ts",
-    "dev:documentos-exemplo": "tsx scripts/dev-documentos-exemplo.ts"
+    "dev:documentos-exemplo": "tsx scripts/dev-documentos-exemplo.ts",
+    "dev:chamadas-exemplo": "tsx scripts/dev-chamadas-exemplo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1175.0",

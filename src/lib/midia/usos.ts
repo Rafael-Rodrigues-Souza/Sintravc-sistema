@@ -3,7 +3,7 @@ import { inArray } from "drizzle-orm";
 import { rotuloDaNoticia } from "@/lib/conteudos/dados";
 import { rotuloDoDocumento, type TipoDocumento } from "@/lib/documentos/dados";
 import { banco, type Transacao } from "@/lib/db";
-import { conteudo, midiaUso } from "@/lib/db/schema";
+import { conteudo, destaqueHome, midiaUso } from "@/lib/db/schema";
 
 import type { UsoDaMidia } from "./erros";
 
@@ -32,6 +32,17 @@ const DESCRITORES: Record<string, (ids: string[], tx: Transacao | ReturnType<typ
           l.id,
           { rotulo: rotuloDoDocumento(l.tipo as TipoDocumento, l.titulo), href: `/painel/conteudos/documento/${l.id}` },
         ]),
+      );
+    },
+    // A foto de uma Chamada da Página inicial (E63): o dono é o id da Chamada; o rótulo, a frase.
+    destaque: async (ids, tx) => {
+      const linhas = await tx
+        .selectDistinctOn([destaqueHome.itemId], { id: destaqueHome.itemId, frase: destaqueHome.fraseChamada })
+        .from(destaqueHome)
+        .where(inArray(destaqueHome.itemId, ids))
+        .orderBy(destaqueHome.itemId, destaqueHome.versao);
+      return new Map(
+        linhas.flatMap((l) => (l.id ? [[l.id, { rotulo: `Página inicial · Chamada “${l.frase ?? ""}”`, href: "/painel/pagina-inicial" }] as const] : [])),
       );
     },
   };

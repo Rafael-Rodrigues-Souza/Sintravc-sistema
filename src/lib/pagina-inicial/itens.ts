@@ -9,12 +9,13 @@ import { filtroNoAr as episodioNoAr } from "@/lib/episodios/comum";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { noAr as noticiaNoAr } from "@/lib/noticias-do-site/consultas";
 
-import { CAPA_DO_PROGRAMA, chaveDoItem, type TipoDoItem } from "./regras";
+import { CAPA_DO_PROGRAMA, chaveDoItem, NOME_DO_DESTINO, type ItemDoCarrossel, type TipoDoItem } from "./regras";
 
 /**
- * Os itens que a Página inicial mostra no painel (E62): a notícia e o episódio, com o título, o
- * rótulo (“Notícia · Geral”, “Rádio Chofer · Ep. 42”), a capa e se ainda estão no site. Um lugar só
- * para a lista do painel, as opções da janela, a conferência do servidor e o rótulo da Atividade.
+ * Os itens que a Página inicial mostra no painel (E62, E63): a notícia, o episódio e a Chamada, com
+ * o título, o rótulo (“Notícia · Geral”, “Rádio Chofer · Ep. 42”, “Chamada · Filie-se”), a capa e se
+ * ainda estão no site. Um lugar só para a lista do painel, as opções da janela, a conferência do
+ * servidor e o rótulo da Atividade. O título da Chamada é a frase gravada, lida no servidor.
  */
 export type DetalheDoItem = {
   chave: string;
@@ -107,15 +108,39 @@ export const PROGRAMA: DetalheDoItem = {
   temCapa: true,
 };
 
-/** Os detalhes dos itens pedidos, inclusive dos que saíram do ar, pela chave. O programa vem sempre. */
-export async function detalhesDosItens(itens: { tipo: TipoDoItem; itemId: string | null }[], agora: Date = new Date()): Promise<Record<string, DetalheDoItem>> {
+type ItemPedido = Pick<ItemDoCarrossel, "tipo" | "itemId"> & Partial<Pick<ItemDoCarrossel, "fraseChamada" | "chamada">>;
+
+/**
+ * Os detalhes dos itens pedidos, inclusive dos que saíram do ar, pela chave. O programa vem sempre.
+ * A Chamada vem dos próprios dados (a frase e a foto); se aparecer duas vezes (publicado e
+ * rascunho), vale a última.
+ */
+export async function detalhesDosItens(itens: ItemPedido[], agora: Date = new Date()): Promise<Record<string, DetalheDoItem>> {
   const ids = (tipo: TipoDoItem) => [...new Set(itens.filter((i) => i.tipo === tipo).map((i) => i.itemId!))];
-  const [noticias, episodios] = await Promise.all([
+  const chamadas = itens.filter((i) => i.tipo === "chamada" && i.chamada);
+  const idsFotos = [...new Set(chamadas.map((c) => c.chamada!.fotoMidiaId))];
+  const [noticias, episodios, fotos] = await Promise.all([
     ids("noticia").length ? selecionarNoticias(inArray(conteudo.id, ids("noticia"))) : [],
     ids("episodio").length ? selecionarEpisodios(inArray(episodio.id, ids("episodio")), agora) : [],
+    idsFotos.length ? banco().select({ id: midia.id, chave: midia.chaveR2 }).from(midia).where(inArray(midia.id, idsFotos)) : [],
   ]);
-  const env = envSeHouverCapa(noticias);
-  const lista = [PROGRAMA, ...noticias.map((n) => daNoticia(n, env)), ...episodios.map(doEpisodio)];
+  const env = noticias.some((n) => n.capaChave) || fotos.length ? lerEnvArmazenamento() : null;
+  const urlDaFoto = new Map(fotos.map((f) => [f.id, env ? urlPublica(f.chave, env) : null]));
+  const lista: DetalheDoItem[] = [
+    PROGRAMA,
+    ...noticias.map((n) => daNoticia(n, env)),
+    ...episodios.map(doEpisodio),
+    ...chamadas.map((c) => ({
+      chave: chaveDoItem(c),
+      tipo: "chamada" as const,
+      itemId: c.itemId,
+      titulo: c.fraseChamada ?? "Chamada",
+      rotulo: `Chamada · ${NOME_DO_DESTINO[c.chamada!.destino].replace(/ \(.*\)$/, "")}`,
+      capaUrl: urlDaFoto.get(c.chamada!.fotoMidiaId) ?? null,
+      noSite: true,
+      temCapa: true,
+    })),
+  ];
   return Object.fromEntries(lista.map((d) => [d.chave, d]));
 }
 
