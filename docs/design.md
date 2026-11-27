@@ -64,7 +64,8 @@ Os tamanhos ficam só no objeto `RESPONSIVO` do `playwright.config.ts`. No celul
 
 - A foto ocupa a seção marinha de ponta a ponta. O texto fica sobre um degradê marinho forte do lado dele (embaixo no celular, à esquerda no computador). É isso que garante o contraste com qualquer foto.
 - Tipos: notícia (com capa), episódio, programa e Chamada (foto, frase, texto de apoio e botão para um destino fechado).
-- Controles: Anterior, Próximo, Pausar/Continuar, deslize, ←/→; no computador, o contador “01 / 05”; no celular, os indicadores.
+- Altura da tela: do fim do topo até o fim da janela, com mínimo e máximo (o “Acesso rápido” não aparece logo de cara).
+- Controles: Anterior, Próximo e os traços (um por slide; o atual mais longo e amarelo; tocar leva ao slide), deslize e ←/→. Sem botão Pausar: a troca para com o mouse em cima ou o foco dentro, para de vez quando a pessoa passa os slides e não acontece com “reduzir movimento” (como a faixa do E58).
 
 ### Cartões
 
@@ -90,5 +91,5 @@ Os tamanhos ficam só no objeto `RESPONSIVO` do `playwright.config.ts`. No celul
 - Texto sobre foto sem degradê ou fundo que garanta contraste.
 - Hexadecimal solto no código, tamanho de tela repetido fora do `RESPONSIVO`, fonte nova.
 - Caixa alta em frase longa, amarelo em todo lugar, sombra em todo cartão.
-- Movimento que não responde a um gesto da pessoa, a não ser a troca do carrossel, que tem Pausar e respeita o “reduzir movimento”.
+- Movimento que não responde a um gesto da pessoa, a não ser a troca do carrossel e da faixa de comunicado, que param com o mouse, o foco e o gesto da pessoa e respeitam o “reduzir movimento”.
 - Conteúdo inventado: textos institucionais e jurídicos vêm do sindicato (veja o `CLAUDE.md`).

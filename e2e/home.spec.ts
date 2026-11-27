@@ -6,7 +6,7 @@ import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { RESPONSIVO } from "../playwright.config";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { publicarNoticiaPelaTela } from "./noticias";
-import { episodioNoAr, limparHome, ordemNaHome } from "./pagina-inicial";
+import { carrosselMisturado, episodioNoAr, limparHome, ordemNaHome } from "./pagina-inicial";
 import { consultar } from "./radio";
 import { entrarComo, semAnimacao, semRolagemLateral } from "./responsivo";
 
@@ -34,7 +34,8 @@ async function carrosselComDois(titulo: string) {
 
 const carrossel = (page: Page) => page.getByTestId("carrossel-home");
 const ativo = (page: Page) => page.locator("[data-testid=slide-home][data-ativo]");
-const contador = (page: Page) => page.getByTestId("contador-carrossel");
+/** O traço do slide N (1, 2…): o atual tem aria-current. */
+const traco = (page: Page, n: number, total: number) => carrossel(page).getByRole("button", { name: `Ir para o destaque ${n} de ${total}` });
 
 test.beforeEach(limparHome);
 test.afterAll(limparHome);
@@ -58,77 +59,104 @@ test("CA-US01.3 · sem conexão, a Home não tem “Agendar”; o acesso rápido
   await expect(carrossel(page).getByRole("button", { name: "Próximo destaque" })).toHaveCount(0);
 });
 
-test("carrossel: troca sozinho, Próximo e Anterior, ← e →, e Pausar para de vez", async ({ page }) => {
+test("carrossel (E58, E63): troca sozinho, para com o mouse em cima, e setas, traços e teclado param de vez; sem botão Pausar", async ({ page }) => {
   const episodio = `Home e2e carrossel ${Date.now()}`;
   await carrosselComDois(episodio);
   await page.clock.install();
   await page.goto("/");
-  await expect(contador(page)).toHaveText("01 / 02");
   await expect(ativo(page)).toContainText(PROGRAMA);
+  await expect(traco(page, 1, 2)).toHaveAttribute("aria-current", "true");
   await expect(carrossel(page)).toHaveAttribute("data-movimento", "normal");
+  await expect(carrossel(page).getByRole("button", { name: /Pausar|Continuar/ })).toHaveCount(0);
 
   // Troca sozinho depois do tempo do parâmetro (8 s).
+  await page.mouse.move(0, 0);
   await page.clock.runFor(8_500);
   await expect(ativo(page)).toContainText(episodio);
-  await expect(contador(page)).toHaveText("02 / 02");
+  await expect(traco(page, 2, 2)).toHaveAttribute("aria-current", "true");
 
-  // Botões, com o mouse.
+  // Com o mouse em cima, não troca; ao sair, volta a trocar.
+  await carrossel(page).getByRole("heading", { level: 2 }).filter({ visible: true }).hover();
+  await page.clock.runFor(20_000);
+  await expect(ativo(page)).toContainText(episodio);
+  await page.mouse.move(0, 0);
+  await page.clock.runFor(8_500);
+  await expect(ativo(page)).toContainText(PROGRAMA);
+
+  // O traço leva ao slide; depois disso, não troca mais sozinho.
+  await traco(page, 2, 2).click();
+  await expect(ativo(page)).toContainText(episodio);
+  await page.mouse.move(0, 0);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.clock.runFor(30_000);
+  await expect(ativo(page)).toContainText(episodio);
+
+  // Setas e teclado.
   await carrossel(page).getByRole("button", { name: "Próximo destaque" }).click();
   await expect(ativo(page)).toContainText(PROGRAMA);
   await carrossel(page).getByRole("button", { name: "Destaque anterior" }).click();
   await expect(ativo(page)).toContainText(episodio);
-  // Depois que a pessoa usou as setas, fica parado e o botão passa a “Continuar”.
-  await expect(carrossel(page).getByRole("button", { name: "Continuar a troca automática" })).toBeVisible();
-  await page.mouse.move(0, 0);
-  await page.clock.runFor(20_000);
-  await expect(ativo(page)).toContainText(episodio);
-
-  // Teclado: com o foco dentro, ← e →.
   await carrossel(page).getByRole("button", { name: "Próximo destaque" }).focus();
-  await page.keyboard.press("ArrowLeft");
-  await expect(ativo(page)).toContainText(PROGRAMA);
   await page.keyboard.press("ArrowRight");
+  await expect(ativo(page)).toContainText(PROGRAMA);
+  await page.keyboard.press("ArrowLeft");
   await expect(ativo(page)).toContainText(episodio);
   await expect(page.getByText("Destaque 2 de 2")).toBeAttached();
-
-  // Continuar volta a trocar (com o foco e o mouse fora, que também param a troca); Pausar para.
-  const sairDoCarrossel = async () => {
-    await page.mouse.move(0, 0);
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  };
-  await carrossel(page).getByRole("button", { name: "Continuar a troca automática" }).click();
-  await sairDoCarrossel();
-  await page.clock.runFor(8_500);
-  await expect(ativo(page)).toContainText(PROGRAMA);
-  await carrossel(page).getByRole("button", { name: "Pausar a troca automática" }).click();
-  await page.mouse.move(0, 0);
-  await page.clock.runFor(20_000);
-  await expect(ativo(page)).toContainText(PROGRAMA);
 });
 
-test("com “reduzir movimento”, não troca sozinho, e o botão tem o mesmo HTML (sem piscar)", async ({ browser }) => {
+test("com “reduzir movimento”, não troca sozinho", async ({ browser }) => {
   const episodio = `Home e2e reduzir ${Date.now()}`;
   await carrosselComDois(episodio);
-  const html: string[] = [];
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
     const contexto = await browser.newContext({ reducedMotion });
     const page = await contexto.newPage();
     await page.clock.install();
-    // O HTML que o servidor manda, antes da hidratação.
-    const resposta = await page.request.get("/");
-    const bruto = await resposta.text();
-    html.push(/<button[^>]*data-testid="pausar-carrossel"[^>]*>.*?<\/button>/s.exec(bruto)?.[0] ?? "");
     await page.goto("/");
-    const botao = carrossel(page).getByTestId("pausar-carrossel").filter({ visible: true });
-    await expect(botao).toHaveAccessibleName(reducedMotion === "reduce" ? "Continuar a troca automática" : "Pausar a troca automática");
     await expect(carrossel(page)).toHaveAttribute("data-movimento", reducedMotion === "reduce" ? "reduzido" : "normal");
     // Uma troca (8 s): sem a preferência, vai ao episódio; com ela, fica no programa.
     await page.clock.runFor(8_500);
     await expect(ativo(page)).toContainText(reducedMotion === "reduce" ? PROGRAMA : episodio);
     await contexto.close();
   }
-  expect(html[0]).not.toBe("");
-  expect(html[0]).toBe(html[1]);
+});
+
+test("os 4 tipos publicados aparecem no site: notícia com capa, episódio, programa e Chamadas para Filie-se e Benefícios (E62, E63)", async ({ page }) => {
+  const noticia = `Home e2e misto ${Date.now()}`;
+  const episodio = `Home e2e episódio misto ${Date.now()}`;
+  await entrarComo(page, pessoas.com, "/painel");
+  await publicarNoticiaPelaTela(page, noticia, { capa: "Assembleia na sede, foto de teste" });
+  const [linha] = await consultar((sql) => sql<{ id: string }[]>`select id from conteudo where titulo = ${noticia}`);
+  const chamadas = await carrosselMisturado({ noticiaId: linha!.id, episodioId: await episodioNoAr(episodio) });
+
+  await page.goto("/");
+  expect(await ordemNaHome(page)).toEqual([noticia, episodio, PROGRAMA, chamadas[0]!.frase, chamadas[1]!.frase]);
+  await expect(carrossel(page).getByTestId("tracos-carrossel").getByRole("button")).toHaveCount(5);
+
+  await traco(page, 1, 5).click();
+  await expect(ativo(page).getByRole("link", { name: /Ler notícia/ })).toBeVisible();
+  await traco(page, 4, 5).click();
+  await expect(ativo(page).getByRole("img", { name: "Foto de teste 1" })).toBeAttached();
+  const filiacao = ativo(page).getByRole("link", { name: /Filie-se/ });
+  await expect(filiacao).toHaveAttribute("href", /^https:\/\/wa\.me\/55\d+/);
+  await expect(filiacao).toHaveAttribute("target", "_blank");
+  await traco(page, 5, 5).click();
+  await expect(ativo(page).getByRole("link", { name: /Ver benefícios/ })).toHaveAttribute("href", "/sindicato/beneficios");
+});
+
+test("a seção do carrossel ocupa a altura da tela abaixo do topo, sem mostrar o Acesso rápido logo de cara (E63)", async ({ page }) => {
+  await carrosselComDois(`Home e2e altura ${Date.now()}`);
+  for (const [largura, altura] of [
+    [1920, 1080],
+    [1280, 720],
+  ] as const) {
+    await page.setViewportSize({ width: largura, height: altura });
+    await page.goto("/");
+    await expect(carrossel(page)).toHaveAttribute("data-movimento", /./);
+    const caixa = (await carrossel(page).boundingBox())!;
+    // Vai até o fim da janela (com a régua de 520 a 960 px).
+    expect(Math.round(caixa.y + caixa.height)).toBeGreaterThanOrEqual(Math.min(altura, Math.round(caixa.y) + 960) - 1);
+    await expect(page.getByTestId("acesso-rapido")).not.toBeInViewport();
+  }
 });
 
 test("sem a lista “Em destaque” (E63); últimas notícias com o seletor de categoria", async ({ page }) => {

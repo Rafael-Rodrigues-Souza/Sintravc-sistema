@@ -22,6 +22,46 @@ export async function limparHome() {
   );
   await consultar((sql) => sql`update pagina_inicial set revisao = revisao + 1, salvo_em = null, salvo_por = null returning id`);
   await consultar((sql) => sql`delete from episodio where titulo like 'Home e2e%' returning id`);
+  await consultar((sql) => sql`delete from midia where nome_arquivo like 'home-e2e-%' returning id`);
+}
+
+/**
+ * O carrossel publicado com um slide de cada tipo (E62, E63), direto no banco: a notícia dada (com
+ * capa), o episódio dado, o programa e duas Chamadas, uma para o Filie-se e outra para Benefícios. A
+ * foto das Chamadas é só uma linha da Mídia (o e2e confere o texto alternativo, não a imagem).
+ */
+export async function carrosselMisturado({ noticiaId, episodioId }: { noticiaId: string; episodioId: string }) {
+  const [pessoa] = await consultar((sql) => sql<{ id: string }[]>`select id from pessoa_equipe where perfil = 'COM' order by criado_em limit 1`);
+  const fotos = [];
+  for (const n of [1, 2]) {
+    const [foto] = await consultar(
+      (sql) => sql<{ id: string }[]>`
+        insert into midia (chave_r2, nome_arquivo, tipo, mime, largura, altura, bytes, alt, enviado_por)
+        values (${`e2e/home-e2e-${randomUUID()}.jpg`}, ${`home-e2e-${n}.jpg`}, 'imagem', 'image/jpeg', 1600, 900, 1000, ${`Foto de teste ${n}`}, ${pessoa!.id})
+        returning id`,
+    );
+    fotos.push(foto!.id);
+  }
+  const chamadas = [
+    { id: randomUUID(), foto: fotos[0]!, frase: "Seu sindicato é feito por quem está ao volante.", apoio: "Faça parte.", destino: "filie_se" },
+    { id: randomUUID(), foto: fotos[1]!, frase: "Conheça o que o associado tem direito.", apoio: "Veja na página Benefícios.", destino: "beneficios" },
+  ];
+  await consultar((sql) => sql`delete from destaque_home where versao = 'publicado' returning id`);
+  await consultar(
+    (sql) => sql`
+      insert into destaque_home (versao, posicao, item_tipo, item_id) values
+        ('publicado', 1, 'noticia', ${noticiaId}), ('publicado', 2, 'episodio', ${episodioId}), ('publicado', 3, 'programa', null)
+      returning id`,
+  );
+  for (const [i, c] of chamadas.entries()) {
+    await consultar(
+      (sql) => sql`
+        insert into destaque_home (versao, posicao, item_tipo, item_id, frase_chamada, foto_midia_id, foto_alt, texto_apoio, destino)
+        values ('publicado', ${4 + i}, 'chamada', ${c.id}, ${c.frase}, ${c.foto}, ${`Foto de teste ${i + 1}`}, ${c.apoio}, ${c.destino})
+        returning id`,
+    );
+  }
+  return chamadas;
 }
 
 /** Um episódio no ar, direto no banco (o fluxo do episódio tem os próprios e2e, #17). */

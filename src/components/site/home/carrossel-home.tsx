@@ -16,21 +16,23 @@ const t = HOME_PAGINA;
 const botaoRedondo =
   "alvo-toque flex size-11 shrink-0 items-center justify-center rounded-full border-[1.5px] border-sobre-escuro-borda bg-sobre-escuro-superficie text-texto-invertido outline-none hover:bg-sobre-escuro-chip focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo";
 
-/** "01 / 05". */
-const doisDigitos = (n: number) => String(n).padStart(2, "0");
-
 /**
  * Carrossel da Home (E62; visual do E63, “variação 2”): a foto de cada slide ocupa a seção marinha de
  * ponta a ponta, e o texto fica por cima, sobre um degradê marinho forte do lado do texto (embaixo no
  * celular, à esquerda no computador), para qualquer foto ter contraste. A lista “Em destaque” saiu
- * (E63). No computador, o contador “01 / 05” fica junto dos controles; no celular, os indicadores.
+ * (E63).
  *
- * - Troca sozinho a cada `intervaloSegundos`. Para com o mouse em cima, com o foco do teclado dentro,
- *   depois que a pessoa usa as setas ou o deslize, e com o botão Pausar (WCAG 2.2.2).
- * - Com “reduzir movimento” no sistema, não troca sozinho. O servidor e o navegador desenham o mesmo
- *   HTML (lição do E58): o botão tem os dois textos, e o CSS mostra o certo para cada preferência; a
- *   troca automática só começa num efeito, depois de conferir a preferência.
- * - Setas, ← e → com o foco dentro, e deslize do dedo de lado.
+ * - Altura da tela (E63): a seção vai do fim do topo (cabeçalho e faixa de comunicado) até o fim da
+ *   janela, para o “Acesso rápido” não aparecer logo de cara. O topo é medido no navegador (e de novo
+ *   quando a janela muda ou a faixa fecha); antes disso, vale uma reserva. Com mínimo e máximo, para
+ *   telas baixas e muito altas. São medidas de layout, não regra: ficam aqui (como no E62).
+ * - Troca sozinho a cada `intervaloSegundos`, na regra da faixa de comunicado (E58): para enquanto o
+ *   mouse está em cima ou o foco do teclado está dentro, para de vez quando a pessoa usa as setas, os
+ *   traços ou o deslize, e não troca sozinho com “reduzir movimento”. Sem botão Pausar (E63, decisão do
+ *   Rafael). A troca automática só começa num efeito, depois de ler a preferência: o servidor e o
+ *   navegador desenham o mesmo HTML (lição do E58).
+ * - Setas e traços (um por slide, o atual mais longo e amarelo; tocar num traço vai ao slide), ← e →
+ *   com o foco dentro, e deslize do dedo de lado.
  */
 export function CarrosselHome({
   slides,
@@ -43,8 +45,8 @@ export function CarrosselHome({
   modo?: "site" | "previa";
 }) {
   const [atual, setAtual] = React.useState(0);
-  /** null: o padrão (troca sozinho, menos com “reduzir movimento”). */
-  const [escolha, setEscolha] = React.useState<"pausado" | "tocando" | null>(null);
+  /** A pessoa já passou os slides (setas, traços, deslize, teclado): a troca automática para de vez. */
+  const [passouPelaPessoa, setPassouPelaPessoa] = React.useState(false);
   const [emUso, setEmUso] = React.useState(false);
   const [focoDentro, setFocoDentro] = React.useState(false);
   const [anunciar, setAnunciar] = React.useState(false);
@@ -62,8 +64,7 @@ export function CarrosselHome({
     return () => consulta.removeEventListener("change", ler);
   }, []);
 
-  const tocando = escolha === "tocando" || (escolha === null && reduzMovimento === false);
-  const trocaSozinho = varios && modo === "site" && tocando && !emUso && !focoDentro;
+  const trocaSozinho = varios && modo === "site" && reduzMovimento === false && !passouPelaPessoa && !emUso && !focoDentro;
 
   React.useEffect(() => {
     if (!trocaSozinho) return;
@@ -71,17 +72,27 @@ export function CarrosselHome({
     return () => window.clearInterval(relogio);
   }, [trocaSozinho, total, intervaloSegundos]);
 
-  function ir(passo: -1 | 1) {
+  function irPara(i: number) {
     setAnunciar(true);
-    setEscolha("pausado");
-    setAtual(vizinhoNaFila(indice, passo, total));
+    setPassouPelaPessoa(true);
+    setAtual(i);
   }
+  const ir = (passo: -1 | 1) => irPara(vizinhoNaFila(indice, passo, total));
   const deslize = useDeslize(ir);
 
-  const alternar = () => {
-    setAnunciar(false);
-    setEscolha(tocando ? "pausado" : "tocando");
-  };
+  // A altura da tela menos o topo (cabeçalho e faixa), medida no navegador.
+  const secao = React.useRef<HTMLElement>(null);
+  const [topo, setTopo] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const medir = () => {
+      if (secao.current) setTopo(Math.round(secao.current.getBoundingClientRect().top + window.scrollY));
+    };
+    medir();
+    // A página muda de altura quando a faixa de comunicado fecha ou a janela muda de tamanho.
+    const observador = new ResizeObserver(medir);
+    observador.observe(document.documentElement);
+    return () => observador.disconnect();
+  }, []);
 
   const controles = varios ? (
     <div className="flex items-center gap-3">
@@ -91,47 +102,32 @@ export function CarrosselHome({
       <button type="button" onClick={() => ir(1)} aria-label={t.proximo} className={botaoRedondo}>
         <IconeFigma src="/site/icone-seta-direita.svg" tamanho={18} />
       </button>
-      {modo === "site" ? (
-        <button type="button" onClick={alternar} className={botaoRedondo} data-testid="pausar-carrossel">
-          {escolha === null ? (
-            <>
-              {/* O padrão depende da preferência: o CSS mostra o texto certo, sem mudar o HTML. */}
-              <span className="contents motion-reduce:hidden">
-                <IconePausar />
-                <span className="sr-only">{t.pausar}</span>
-              </span>
-              <span className="hidden motion-reduce:contents">
-                <IconeTocar />
-                <span className="sr-only">{t.continuar}</span>
-              </span>
-            </>
-          ) : tocando ? (
-            <>
-              <IconePausar />
-              <span className="sr-only">{t.pausar}</span>
-            </>
-          ) : (
-            <>
-              <IconeTocar />
-              <span className="sr-only">{t.continuar}</span>
-            </>
-          )}
-        </button>
-      ) : null}
-      <div aria-hidden className="ml-2 flex items-center gap-1.5 lg:hidden">
+      <div className="ml-1 flex items-center" data-testid="tracos-carrossel">
         {slides.map((s, i) => (
-          <span key={s.chave} className={cn("h-1.5 rounded-full transition-[width] motion-reduce:transition-none", i === indice ? "w-8 bg-destaque-amarelo" : "w-3 bg-sobre-escuro-inativo")} />
+          <button
+            key={s.chave}
+            type="button"
+            onClick={() => irPara(i)}
+            aria-label={`Ir para o destaque ${i + 1} de ${total}`}
+            aria-current={i === indice ? "true" : undefined}
+            className="group flex h-11 min-w-11 items-center justify-center rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo"
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "h-1.5 rounded-full transition-[width,background-color] motion-reduce:transition-none",
+                i === indice ? "w-8 bg-destaque-amarelo" : "w-3 bg-sobre-escuro-inativo group-hover:bg-texto-invertido-sec",
+              )}
+            />
+          </button>
         ))}
       </div>
-      {/* O contador visível (“01 / 05”) só no computador; o leitor de tela ouve “Destaque 2 de 5” quando a pessoa troca. */}
-      <p aria-hidden className="ml-2 hidden texto-pequeno text-texto-invertido-sec tabular-nums lg:block" data-testid="contador-carrossel">
-        {doisDigitos(indice + 1)} / {doisDigitos(total)}
-      </p>
     </div>
   ) : null;
 
   return (
     <section
+      ref={secao}
       aria-roledescription="carrossel"
       aria-label={t.carrosselRotulo}
       data-testid="carrossel-home"
@@ -149,14 +145,16 @@ export function CarrosselHome({
         e.preventDefault();
         ir(e.key === "ArrowLeft" ? -1 : 1);
       }}
-      className="relative isolate overflow-hidden bg-fundo-marinho"
+      style={{ "--topo-carrossel": topo === null ? undefined : `${topo}px` } as React.CSSProperties}
+      // Altura da tela menos o topo (reserva de 150 px até medir), entre 520 e 960 px (E63).
+      className="relative isolate flex min-h-[clamp(520px,calc(100svh-var(--topo-carrossel,150px)),960px)] flex-col overflow-hidden bg-fundo-marinho"
     >
       {/* O degradê marinho fica entre a foto (atrás) e o texto: sólido do lado do texto e some do outro. */}
       <span
         aria-hidden
         className="absolute inset-0 -z-10 bg-gradient-to-t from-fundo-marinho from-40% via-fundo-marinho/85 via-60% to-fundo-marinho/5 lg:bg-gradient-to-r lg:from-30% lg:via-fundo-marinho/80 lg:via-50% lg:to-transparent lg:to-80%"
       />
-      <div className="conteudo-site flex flex-col gap-6 pt-[200px] pb-8 sm:pt-[260px] lg:min-h-[600px] lg:justify-end lg:py-16">
+      <div className="conteudo-site flex flex-1 flex-col justify-end gap-6 pt-40 pb-8 sm:pt-56 lg:py-16">
         {/* Slides empilhados no mesmo lugar: a altura é a do maior e nada pula ao trocar. A foto de
             cada um fica atrás de tudo, na seção inteira (o slide não é posicionado). */}
         <div className={cn("grid min-w-0", varios && "touch-pan-y touch-pinch-zoom")} {...(varios ? deslize : {})}>
@@ -264,15 +262,6 @@ function Selo({ selo }: { selo: SeloDoSlide }) {
       {selo.tom === "ao-vivo" ? <span aria-hidden className="size-2 rounded-full bg-sobre-escuro-ao-vivo motion-safe:animate-pulse" /> : null}
       {selo.texto}
     </span>
-  );
-}
-
-function IconePausar() {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" className="size-[18px]" fill="currentColor">
-      <rect x="6" y="5" width="4" height="14" rx="1" />
-      <rect x="14" y="5" width="4" height="14" rx="1" />
-    </svg>
   );
 }
 

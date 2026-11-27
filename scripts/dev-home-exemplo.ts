@@ -6,6 +6,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import sharp from "sharp";
 
 import { banco, fecharBanco } from "@/lib/db";
+import { ultimoPrograma } from "@/lib/episodios/site";
+import { listarNoticiasDoSite } from "@/lib/noticias-do-site/consultas";
 import { midia, paginaInicial, pessoaEquipe } from "@/lib/db/schema";
 import { enviarMidia } from "@/lib/midia/enviar";
 import { publicarAlteracoes, salvarRascunho } from "@/lib/pagina-inicial/rascunho";
@@ -14,18 +16,22 @@ import { lerParametro } from "@/lib/parametros";
 import type { QuemDaEquipe } from "@/lib/permissoes";
 import { filaEmMemoria } from "@/lib/tarefas/fila";
 
-// SÓ PARA DESENVOLVIMENTO (#75). Publica Chamadas de exemplo no carrossel da Home, com imagens de
-// teste geradas aqui (ilustração de um ônibus, sem pessoas): as fotos de verdade entram só pela Mídia.
-// As frases são as aprovadas pelo Rafael para os exemplos (E63); no site real, quem escreve é a
-// Comunicação, no painel. O carrossel do dev passa a ter só estas Chamadas (até o limite).
+// SÓ PARA DESENVOLVIMENTO (#75). Publica um carrossel de exemplo na Home, com um slide de cada tipo
+// (E62, E63): a notícia mais recente com capa, o último episódio, o programa Rádio Chofer e duas
+// Chamadas, uma para o Filie-se e outra para Benefícios. O carrossel aceita até
+// `home.carrossel_maximo` itens (5): por isso uma notícia só. As Chamadas usam imagens de teste
+// geradas aqui (ilustração de um ônibus, sem pessoas): as fotos de verdade entram só pela Mídia. As
+// frases são as aprovadas pelo Rafael para os exemplos; no site real, quem escreve é a Comunicação.
+// Para ter notícias e episódio, rode antes pnpm dev:noticias-exemplo e publique um episódio.
 //
-// Uso: pnpm dev:chamadas-exemplo
-const FRASES: { frase: string; apoio: string }[] = [
-  { frase: "Seu sindicato é feito por quem está ao volante.", apoio: "O SINTRAVC é dos motoristas e trabalhadores do transporte coletivo de Vitória da Conquista. Faça parte." },
-  { frase: "Junto, o rodoviário pesa mais.", apoio: "Cada trabalhador que se filia fortalece a voz da categoria na hora de negociar com as empresas." },
-  { frase: "Quem está na estrada não precisa estar sozinho.", apoio: "Com o sindicato, você tem a quem procurar quando surgir um problema no trabalho." },
-  { frase: "Seus direitos não podem ficar parados no ponto.", apoio: "Conheça o acordo coletivo da categoria e conte com o sindicato para fazer valer o que foi conquistado." },
-  { frase: "Ainda com dúvida? A gente conversa.", apoio: "Tire suas dúvidas sobre a filiação com a recepção do sindicato, pelo WhatsApp ou pessoalmente." },
+// Uso: pnpm dev:home-exemplo
+const CHAMADAS: { frase: string; apoio: string; destino: "filie_se" | "beneficios" }[] = [
+  {
+    frase: "Seu sindicato é feito por quem está ao volante.",
+    apoio: "O SINTRAVC é dos motoristas e trabalhadores do transporte coletivo de Vitória da Conquista. Faça parte.",
+    destino: "filie_se",
+  },
+  { frase: "Conheça o que o associado tem direito.", apoio: "Veja na página Benefícios o que o sindicato oferece e como usar.", destino: "beneficios" },
 ];
 const CENAS = [
   ["#1b3a6b", "#e8b53a"],
@@ -50,7 +56,7 @@ async function imagemDeTeste(quem: QuemDaEquipe, n: number) {
     <text x="1880" y="1050" text-anchor="end" font-family="Arial" font-size="32" fill="#ffffff" fill-opacity="0.75">Imagem de teste ${n + 1}</text>
   </svg>`;
   const bytes = await sharp(Buffer.from(svg)).jpeg({ quality: 82 }).toBuffer();
-  const { id } = await enviarMidia({ bytes: new Uint8Array(bytes), nome: `chamada-exemplo-${n + 1}.jpg` }, { quem });
+  const { id } = await enviarMidia({ bytes: new Uint8Array(bytes), nome: `chamada-exemplo-${Date.now()}-${n + 1}.jpg` }, { quem });
   const alt = `Imagem de teste ${n + 1}: ilustração de um ônibus na pista`;
   await banco().update(midia).set({ alt }).where(eq(midia.id, id));
   return { id, alt };
@@ -68,9 +74,16 @@ async function main() {
   if (!pessoa) throw new Error("Não há ADM nem COM ativos. Rode antes pnpm criar-admin ou pnpm dev:pessoas-teste.");
   const quem: QuemDaEquipe = { tipo: "equipe", id: pessoa.id, perfil: pessoa.perfil };
 
-  const maximo = await lerParametro("home.carrossel_maximo");
+  const base = { entraEm: null, saiEm: null, fraseChamada: null, chamada: null };
   const carrossel: ItemDoCarrossel[] = [];
-  for (const [n, { frase, apoio }] of FRASES.slice(0, maximo).entries()) {
+  const [noticia] = (await listarNoticiasDoSite({ porPagina: 20 })).itens.filter((n) => n.capa);
+  if (noticia) carrossel.push({ tipo: "noticia", itemId: noticia.id, ...base });
+  else console.log("Sem notícia publicada com capa: rode pnpm dev:noticias-exemplo para ter uma.");
+  const episodio = await ultimoPrograma();
+  if (episodio) carrossel.push({ tipo: "episodio", itemId: episodio.id, ...base });
+  else console.log("Sem episódio no ar: publique um em Rádio Chofer para ter o slide do episódio.");
+  carrossel.push({ tipo: "programa", itemId: null, ...base });
+  for (const [n, { frase, apoio, destino }] of CHAMADAS.entries()) {
     const foto = await imagemDeTeste(quem, n);
     carrossel.push({
       tipo: "chamada",
@@ -78,15 +91,17 @@ async function main() {
       entraEm: null,
       saiEm: null,
       fraseChamada: frase,
-      chamada: { fotoMidiaId: foto.id, fotoAlt: foto.alt, textoApoio: apoio, botaoTexto: null, destino: "filie_se" },
+      chamada: { fotoMidiaId: foto.id, fotoAlt: foto.alt, textoApoio: apoio, botaoTexto: null, destino },
     });
   }
+  const maximo = await lerParametro("home.carrossel_maximo");
+  carrossel.splice(maximo);
 
   const revisao = async () => (await banco().select({ revisao: paginaInicial.revisao }).from(paginaInicial))[0]!.revisao;
   const salvo = await salvarRascunho({ revisaoBase: await revisao(), dados: { carrossel } }, { quem });
   if (salvo.tipo !== "salvo") throw new Error("Outra pessoa mudou a página inicial agora. Rode de novo.");
   await publicarAlteracoes({ revisaoBase: salvo.revisao }, { quem, fila: filaEmMemoria().fila });
-  console.log(`${carrossel.length} Chamadas de exemplo publicadas. Abra http://localhost:3000 e, para mudar, /painel/pagina-inicial.`);
+  console.log(`Carrossel de exemplo publicado (${carrossel.map((i) => i.tipo).join(", ")}). Abra http://localhost:3000 e, para mudar, /painel/pagina-inicial.`);
 }
 
 main()
