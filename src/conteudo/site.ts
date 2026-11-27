@@ -378,7 +378,6 @@ export const RADIO_PAGINA = {
  */
 export const HOME_PAGINA = {
   carrosselRotulo: "Destaques",
-  emDestaque: "Em destaque",
   anterior: "Destaque anterior",
   proximo: "Próximo destaque",
   programaSelo: "Rádio Chofer",

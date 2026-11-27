@@ -9,6 +9,7 @@ import { useDeslize, vizinhoNaFila } from "@/components/site/deslize";
 import { HOME_PAGINA } from "@/conteudo/site";
 import { cn } from "@/lib/utils";
 
+import { alturaMinimaDoCarrossel } from "./altura-do-carrossel";
 import type { SeloDoSlide, SlideNaTela } from "./slides";
 
 const t = HOME_PAGINA;
@@ -23,7 +24,7 @@ const botaoRedondo =
  * (E63).
  *
  * - Altura da tela (E63): a seção vai do fim do topo (cabeçalho e faixa de comunicado) até quase o
- *   fim da janela, com uma sobra de 88 px para aparecer o começo da próxima seção. O topo é medido no navegador (e de novo
+ *   fim da janela, com uma sobra para aparecer o começo da próxima seção (`ALTURA_DO_CARROSSEL`). O topo é medido no navegador (e de novo
  *   quando a janela muda ou a faixa fecha); antes disso, vale uma reserva. Com mínimo e máximo, para
  *   telas baixas e muito altas. São medidas de layout, não regra: ficam aqui (como no E62).
  * - Troca sozinho a cada `intervaloSegundos`, na regra da faixa de comunicado (E58): para enquanto o
@@ -145,10 +146,9 @@ export function CarrosselHome({
         e.preventDefault();
         ir(e.key === "ArrowLeft" ? -1 : 1);
       }}
-      style={{ "--topo-carrossel": topo === null ? undefined : `${topo}px` } as React.CSSProperties}
-      // Altura da tela menos o topo (reserva de 150 px até medir) e menos 88 px de sobra, para o começo da
-      // próxima seção aparecer; entre 520 e 960 px (E63).
-      className="relative isolate flex min-h-[clamp(520px,calc(100svh-var(--topo-carrossel,150px)-88px),960px)] flex-col overflow-hidden bg-fundo-marinho"
+      // Altura da tela menos o topo e uma sobra, para o começo da próxima seção aparecer (E63, ALTURA_DO_CARROSSEL).
+      style={{ minHeight: alturaMinimaDoCarrossel(topo) }}
+      className="relative isolate flex flex-col overflow-hidden bg-fundo-marinho"
     >
       {/* O degradê marinho fica entre a foto (atrás) e o texto: sólido do lado do texto e some do outro. */}
       <span
@@ -212,7 +212,7 @@ function Slide({ slide: s, primeiro }: { slide: SlideNaTela; primeiro: boolean }
           ))}
         </div>
       ) : null}
-      <h2 className="font-condensed text-[38px] leading-[1.02] font-bold text-balance [overflow-wrap:anywhere] text-texto-invertido sm:text-[46px] lg:text-[64px]">{s.titulo}</h2>
+      <h2 className="texto-manchete-mobile text-balance [overflow-wrap:anywhere] text-texto-invertido lg:texto-manchete">{s.titulo}</h2>
       {s.resumo ? <p className="line-clamp-3 max-w-[520px] texto-corpo text-texto-invertido-sec lg:texto-corpo-grande">{s.resumo}</p> : null}
       <div className="flex w-full flex-col gap-3 pt-1 sm:w-auto sm:flex-row sm:flex-wrap">
         <Acoes slide={s} />

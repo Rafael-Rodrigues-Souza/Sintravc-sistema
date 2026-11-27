@@ -7,8 +7,7 @@ import { revalidarSitePublico } from "@/lib/site/revalidar";
 import type { PedidoDestaque } from "@/lib/tarefas/fila";
 
 import { detalhesDosItens } from "./itens";
-import { itemDaLinha } from "./rascunho";
-import { chaveDoItem } from "./regras";
+import { chaveDaLinha, itemDaLinha } from "./rascunho";
 
 export type ResultadoVirada = { tipo: "feita" } | { tipo: "ignorada" };
 
@@ -31,7 +30,7 @@ export async function executarViradaDoDestaque(pedido: PedidoDestaque, deps: { a
       .from(destaqueHome)
       .where(eq(destaqueHome.versao, "publicado"))
       .for("update");
-    const linha = publicados.find((l) => chaveDoItem({ tipo: l.itemTipo, itemId: l.itemId }) === pedido.chave);
+    const linha = publicados.find((l) => chaveDaLinha(l) === pedido.chave);
     const hora = pedido.virada === "entrar" ? linha?.entraEm : linha?.saiEm;
     if (!linha || hora?.getTime() !== marcadoPara.getTime()) return { tipo: "ignorada" } as const;
 

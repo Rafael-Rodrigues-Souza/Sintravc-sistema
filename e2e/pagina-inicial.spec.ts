@@ -50,7 +50,9 @@ test("CA-US26.1 · reordenar pelo teclado e pelo menu, a prévia confere com o s
   await editar.getByLabel("Frase de chamada (opcional)").fill("x".repeat(91));
   await expect(editar.getByText("91/90")).toBeVisible();
   await editar.getByRole("button", { name: "Salvar" }).click();
-  await expect(editar.getByRole("alert")).toHaveText("A frase de chamada tem até 90 caracteres.");
+  // E23: o Alerta 2.0 no topo e a mensagem embaixo do campo.
+  await expect(editar.getByRole("alert").filter({ hasText: "Confira o destaque" })).toContainText("A frase de chamada tem até 90 caracteres.");
+  await expect(editar.getByRole("alert").filter({ hasNotText: "Confira o destaque" })).toHaveText("A frase de chamada tem até 90 caracteres.");
   await editar.getByLabel("Frase de chamada (opcional)").fill("Ouça o programa desta semana");
   await editar.getByRole("button", { name: "Salvar" }).click();
   await expect(editar).toBeHidden();
@@ -169,7 +171,9 @@ test("Chamada (E63): escolher a foto na Mídia, escrever, publicar, ver no site 
   await janela.getByText("Chamada", { exact: true }).click();
   await expect(janela.getByLabel("Texto do botão")).toHaveValue("Filie-se");
   await janela.getByRole("button", { name: "Pôr no carrossel" }).click();
-  await expect(janela.getByRole("alert")).toHaveText("Escolha a foto da Chamada.");
+  // E23: o Alerta 2.0 no topo e a mensagem embaixo do campo.
+  await expect(janela.getByRole("alert").filter({ hasText: "Confira o destaque" })).toContainText("Escolha a foto da Chamada.");
+  await expect(janela.getByRole("alert").filter({ hasNotText: "Confira o destaque" })).toHaveText("Escolha a foto da Chamada.");
   await janela.getByRole("button", { name: "Cancelar" }).click();
 
   await adicionarChamadaPelaTela(page, { frase, apoio, alt });
@@ -227,7 +231,9 @@ test("aba Rádio Chofer (E63): “Sempre o último programa” ou um episódio d
   await expect(janela.getByRole("radio", { name: /Sempre o último programa/ })).toBeDisabled();
   await expect(janela).toContainText("Já está no carrossel");
   await janela.getByRole("button", { name: "Pôr no carrossel" }).click();
-  await expect(janela.getByRole("alert")).toHaveText("Escolha o último programa ou um episódio.");
+  // E23: o Alerta 2.0 no topo e a mensagem embaixo do campo.
+  await expect(janela.getByRole("alert").filter({ hasText: "Confira o destaque" })).toContainText("Escolha o último programa ou um episódio.");
+  await expect(janela.getByRole("alert").filter({ hasNotText: "Confira o destaque" })).toHaveText("Escolha o último programa ou um episódio.");
   await janela.getByRole("button", { name: "Cancelar" }).click();
 
   // Sem o programa, “Sempre o último programa” volta; o episódio entra pela mesma aba.

@@ -9,7 +9,7 @@ import { filtroNoAr as episodioNoAr } from "@/lib/episodios/comum";
 import { lerEnvArmazenamento } from "@/lib/env";
 import { noAr as noticiaNoAr } from "@/lib/noticias-do-site/consultas";
 
-import { CAPA_DO_PROGRAMA, chaveDoItem, NOME_DO_DESTINO, type ItemDoCarrossel, type TipoDoItem } from "./regras";
+import { CAPA_DO_PROGRAMA, chaveDoItem, rotuloDaChamada, type ItemDoCarrossel, type TipoDoItem } from "./regras";
 
 /**
  * Os itens que a Página inicial mostra no painel (E62, E63): a notícia, o episódio e a Chamada, com
@@ -119,13 +119,12 @@ export async function detalhesDosItens(itens: ItemPedido[], agora: Date = new Da
   const ids = (tipo: TipoDoItem) => [...new Set(itens.filter((i) => i.tipo === tipo).map((i) => i.itemId!))];
   const chamadas = itens.filter((i) => i.tipo === "chamada" && i.chamada);
   const idsFotos = [...new Set(chamadas.map((c) => c.chamada!.fotoMidiaId))];
-  const [noticias, episodios, fotos] = await Promise.all([
+  const [noticias, episodios, urlDaFoto] = await Promise.all([
     ids("noticia").length ? selecionarNoticias(inArray(conteudo.id, ids("noticia"))) : [],
     ids("episodio").length ? selecionarEpisodios(inArray(episodio.id, ids("episodio")), agora) : [],
-    idsFotos.length ? banco().select({ id: midia.id, chave: midia.chaveR2 }).from(midia).where(inArray(midia.id, idsFotos)) : [],
+    urlsDasFotos(idsFotos),
   ]);
-  const env = noticias.some((n) => n.capaChave) || fotos.length ? lerEnvArmazenamento() : null;
-  const urlDaFoto = new Map(fotos.map((f) => [f.id, env ? urlPublica(f.chave, env) : null]));
+  const env = envSeHouverCapa(noticias);
   const lista: DetalheDoItem[] = [
     PROGRAMA,
     ...noticias.map((n) => daNoticia(n, env)),
@@ -135,13 +134,21 @@ export async function detalhesDosItens(itens: ItemPedido[], agora: Date = new Da
       tipo: "chamada" as const,
       itemId: c.itemId,
       titulo: c.fraseChamada ?? "Chamada",
-      rotulo: `Chamada · ${NOME_DO_DESTINO[c.chamada!.destino].replace(/ \(.*\)$/, "")}`,
-      capaUrl: urlDaFoto.get(c.chamada!.fotoMidiaId) ?? null,
+      rotulo: rotuloDaChamada(c.chamada!.destino),
+      capaUrl: urlDaFoto[c.chamada!.fotoMidiaId] ?? null,
       noSite: true,
       temCapa: true,
     })),
   ];
   return Object.fromEntries(lista.map((d) => [d.chave, d]));
+}
+
+/** O endereço público das fotos da Mídia pedidas (as das Chamadas), pelo id. Um lugar só para o painel e o site. */
+export async function urlsDasFotos(ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+  const linhas = await banco().select({ id: midia.id, chave: midia.chaveR2 }).from(midia).where(inArray(midia.id, ids));
+  const env = lerEnvArmazenamento();
+  return Object.fromEntries(linhas.map((l) => [l.id, urlPublica(l.chave, env)]));
 }
 
 /** Quantas opções a janela mostra de cada vez (tamanho da lista na tela, não regra: E62). A busca refina. */

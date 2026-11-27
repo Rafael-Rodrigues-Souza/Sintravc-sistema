@@ -2,7 +2,7 @@ import { LINKS } from "@/components/site/navegacao";
 import { HOME_PAGINA, RADIO_PAGINA } from "@/conteudo/site";
 import type { ProgramaAoVivo } from "@/lib/config-site/esquema";
 import { textoDoHorario, programaNoAr } from "@/lib/episodios/programa";
-import { CAPA_DO_PROGRAMA, chaveDoItem, textoDoBotao } from "@/lib/pagina-inicial/regras";
+import { CAPA_DO_PROGRAMA, chaveDoItem, DESTINOS, textoDoBotao } from "@/lib/pagina-inicial/regras";
 import type { SlideDaHome } from "@/lib/pagina-inicial/site";
 
 export type SeloDoSlide = { texto: string; tom: "amarelo" | "escuro" | "ao-vivo" | "categoria"; cor?: string };
@@ -33,14 +33,14 @@ export function slidesNaTela(
   return slides.map((s) => {
     if (s.tipo === "chamada") {
       const c = s.chamada;
-      const filiacao = c.destino === "filie_se";
+      const destino = DESTINOS[c.destino];
       return {
         chave: chaveDoItem({ tipo: "chamada", itemId: c.itemId }),
         selos: [],
         titulo: s.frase ?? "",
         resumo: c.textoApoio,
         imagem: { url: chamadas.fotos[c.fotoMidiaId] ?? CAPA_DO_PROGRAMA, alt: c.fotoAlt },
-        acoes: [{ rotulo: textoDoBotao(c), href: filiacao ? chamadas.linkFiliacao : LINKS.beneficios.href, principal: true, externo: filiacao }],
+        acoes: [{ rotulo: textoDoBotao(c), href: destino.endereco(chamadas), principal: true, externo: destino.externo }],
       };
     }
     if (s.tipo === "noticia") {

@@ -29,7 +29,7 @@ O site é para o trabalhador rodoviário de Vitória da Conquista, que muitas ve
 
 - **Famílias:** Barlow (texto) e Barlow Condensed (títulos), carregadas em `src/app/layout.tsx`.
 - **Estilos:** os utilitários `texto-*` de `globals.css` (`texto-display`, `texto-titulo-secao`, `texto-titulo-card`, `texto-corpo`, `texto-pequeno`, `texto-navegacao`, `texto-botao`, `texto-eyebrow`, `texto-etiqueta`…). Use um deles antes de criar tamanho novo.
-- **Títulos do carrossel (E63):** condensada em negrito, em caixa normal. A caixa alta fica para etiquetas curtas (selos, “Comunicado”).
+- **Títulos do carrossel (E63):** `texto-manchete-mobile` e, do `lg` em diante, `texto-manchete`, em caixa normal. A caixa alta fica para etiquetas curtas (selos, “Comunicado”).
 - **Linhas:** até cerca de 70 caracteres no texto corrido. A frase da Chamada tem limite no Parametro (`home.chamada_frase_maximo`) justamente para caber grande.
 
 ## Espaço, raios e sombras

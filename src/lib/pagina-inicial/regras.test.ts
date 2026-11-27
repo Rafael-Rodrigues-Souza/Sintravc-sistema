@@ -7,7 +7,10 @@ import {
   esquemaDadosDaHome,
   estadoDoItem,
   montarHome,
+  DESTINOS,
+  erroDaChamada,
   paraONavegador,
+  rotuloDaChamada,
   textoDoBotao,
   type DadosDaHome,
   type ItemDoCarrossel,
@@ -222,6 +225,21 @@ describe("Chamada (E63, #75)", () => {
     expect(alteracoesNaoPublicadas(structuredClone(publicado), publicado)).toBe(0);
     expect(alteracoesNaoPublicadas({ carrossel: [chamada(1, { destino: "beneficios" })] }, publicado)).toBe(1);
     expect(alteracoesNaoPublicadas({ carrossel: [chamada(1, { fotoAlt: "Outra descrição" })] }, publicado)).toBe(1);
+  });
+
+  it("erroDaChamada é a mesma regra da janela e do servidor: sem foto, pede a foto antes de tudo", () => {
+    const sem = { frase: "", fotoMidiaId: null, fotoAlt: "", textoApoio: "", botaoTexto: null, destino: "filie_se" as const };
+    expect(erroDaChamada(sem, LIMITES)).toEqual({ campo: "foto", mensagem: "Escolha a foto da Chamada." });
+    expect(erroDaChamada({ ...sem, fotoMidiaId: FOTO }, LIMITES)?.campo).toBe("fotoAlt");
+    expect(erroDaChamada({ frase: "Frase", fotoMidiaId: FOTO, fotoAlt: "Alt", textoApoio: "Apoio", botaoTexto: null, destino: "beneficios" }, LIMITES)).toBeNull();
+  });
+
+  it("cada destino tem nome, rótulo curto, botão padrão e endereço num mapa só", () => {
+    expect(rotuloDaChamada("filie_se")).toBe("Chamada · Filie-se");
+    expect(rotuloDaChamada("beneficios")).toBe("Chamada · Benefícios");
+    expect(DESTINOS.filie_se.endereco({ linkFiliacao: "https://wa.me/5577" })).toBe("https://wa.me/5577");
+    expect(DESTINOS.beneficios.endereco({ linkFiliacao: "x" })).toBe("/sindicato/beneficios");
+    expect([DESTINOS.filie_se.externo, DESTINOS.beneficios.externo]).toEqual([true, false]);
   });
 
   it("textoDoBotao usa o padrão do destino quando o botão está vazio", () => {

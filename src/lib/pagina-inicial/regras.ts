@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { LINKS } from "@/components/site/navegacao";
+
 /**
  * Regras puras da Página inicial (E62, E63): estado de um item pelas datas, o que o site mostra a
  * partir do publicado, e quantas alterações o rascunho tem em relação ao que está no ar. A lista
@@ -12,11 +14,18 @@ export type TipoDoItem = "noticia" | "episodio" | "programa" | "chamada";
 export const DESTINOS_DA_CHAMADA = ["filie_se", "beneficios"] as const;
 export type DestinoDaChamada = (typeof DESTINOS_DA_CHAMADA)[number];
 
-/** O texto padrão do botão de cada destino (E63): a Comunicação pode trocar. */
-export const BOTAO_PADRAO: Record<DestinoDaChamada, string> = { filie_se: "Filie-se", beneficios: "Ver benefícios" };
-
-/** O nome do destino no painel. */
-export const NOME_DO_DESTINO: Record<DestinoDaChamada, string> = { filie_se: "Filie-se (WhatsApp da filiação)", beneficios: "Benefícios" };
+/**
+ * Tudo de cada destino num lugar só (E63): o nome na janela do painel, o nome curto no rótulo da
+ * lista (“Chamada · Filie-se”), o texto padrão do botão (a Comunicação pode trocar) e o endereço. O
+ * Filie-se vai ao mesmo WhatsApp da filiação do “Filiar-se” do topo, em outra aba.
+ */
+export const DESTINOS: Record<
+  DestinoDaChamada,
+  { nome: string; nomeCurto: string; botaoPadrao: string; externo: boolean; endereco: (contexto: { linkFiliacao: string }) => string }
+> = {
+  filie_se: { nome: "Filie-se (WhatsApp da filiação)", nomeCurto: "Filie-se", botaoPadrao: "Filie-se", externo: true, endereco: ({ linkFiliacao }) => linkFiliacao },
+  beneficios: { nome: "Benefícios", nomeCurto: "Benefícios", botaoPadrao: "Ver benefícios", externo: false, endereco: () => LINKS.beneficios.href },
+};
 
 /** Os campos próprios da Chamada (E63). A frase fica em `fraseChamada`, como nos outros itens. */
 export type DadosDaChamada = {
@@ -29,7 +38,39 @@ export type DadosDaChamada = {
 };
 
 export function textoDoBotao(chamada: Pick<DadosDaChamada, "botaoTexto" | "destino">): string {
-  return chamada.botaoTexto ?? BOTAO_PADRAO[chamada.destino];
+  return chamada.botaoTexto ?? DESTINOS[chamada.destino].botaoPadrao;
+}
+
+/** O rótulo da Chamada na lista do painel (“Chamada · Filie-se”). */
+export const rotuloDaChamada = (destino: DestinoDaChamada) => `Chamada · ${DESTINOS[destino].nomeCurto}`;
+
+/** Os limites que valem para a Chamada (da Parametro). */
+export type LimitesDaChamada = Pick<LimitesDaHome, "chamadaFraseMaximo" | "chamadaApoioMaximo" | "chamadaBotaoMaximo">;
+
+/** A Chamada como a janela do painel tem antes de salvar: a foto pode faltar. */
+export type ChamadaParaConferir = { frase: string | null; fotoMidiaId: string | null } & Omit<DadosDaChamada, "fotoMidiaId">;
+
+/**
+ * As regras da Chamada (E63), num lugar só: a janela do painel mostra o erro no campo, e o servidor
+ * recusa com a mesma mensagem (`conferirDados`). Devolve o primeiro problema, na ordem dos campos da
+ * janela, ou null. Os textos já chegam limpos (sem espaços sobrando).
+ */
+export function erroDaChamada(c: ChamadaParaConferir, limites: LimitesDaChamada): { campo: string; mensagem: string } | null {
+  if (!c.fotoMidiaId) return { campo: "foto", mensagem: "Escolha a foto da Chamada." };
+  if (!c.fotoAlt.trim()) return { campo: "fotoAlt", mensagem: "Descreva a foto no texto alternativo." };
+  if (!c.frase?.trim()) return { campo: "fraseChamada", mensagem: "Escreva a frase da Chamada." };
+  if (c.frase.length > limites.chamadaFraseMaximo) {
+    return { campo: "fraseChamada", mensagem: `A frase da Chamada tem até ${limites.chamadaFraseMaximo} caracteres.` };
+  }
+  if (!c.textoApoio.trim()) return { campo: "textoApoio", mensagem: "Escreva o texto de apoio." };
+  if (c.textoApoio.length > limites.chamadaApoioMaximo) {
+    return { campo: "textoApoio", mensagem: `O texto de apoio tem até ${limites.chamadaApoioMaximo} caracteres.` };
+  }
+  if (c.botaoTexto && c.botaoTexto.length > limites.chamadaBotaoMaximo) {
+    return { campo: "botaoTexto", mensagem: `O texto do botão tem até ${limites.chamadaBotaoMaximo} caracteres.` };
+  }
+  if (!DESTINOS_DA_CHAMADA.includes(c.destino)) return { campo: "destino", mensagem: "Escolha para onde vai o botão." };
+  return null;
 }
 
 /** A capa padrão do Rádio Chofer: a do slide do programa e a da rota de capas quando o YouTube falha (E61). */
@@ -137,28 +178,16 @@ export function conferirDados(dados: DadosDaHome, limites: LimitesDaHome) {
     if (item.entraEm && item.saiEm && item.saiEm.getTime() <= item.entraEm.getTime()) {
       throw new ErroPaginaInicial("A saída tem de ser depois da entrada.", "saiEm");
     }
-    if (ehChamada) conferirChamada(item.fraseChamada, item.chamada!, limites);
-    else if (item.fraseChamada && item.fraseChamada.length > limites.fraseChamadaMaximo) {
+    if (ehChamada) {
+      const erro = erroDaChamada({ frase: item.fraseChamada, ...item.chamada! }, limites);
+      if (erro) throw new ErroPaginaInicial(erro.mensagem, erro.campo);
+    } else if (item.fraseChamada && item.fraseChamada.length > limites.fraseChamadaMaximo) {
       throw new ErroPaginaInicial(`A frase de chamada tem até ${limites.fraseChamadaMaximo} caracteres.`, "fraseChamada");
     }
   }
 }
 
-function conferirChamada(frase: string | null, c: DadosDaChamada, limites: LimitesDaHome) {
-  if (!frase?.trim()) throw new ErroPaginaInicial("Escreva a frase da Chamada.", "fraseChamada");
-  if (frase.length > limites.chamadaFraseMaximo) {
-    throw new ErroPaginaInicial(`A frase da Chamada tem até ${limites.chamadaFraseMaximo} caracteres.`, "fraseChamada");
-  }
-  if (!c.textoApoio.trim()) throw new ErroPaginaInicial("Escreva o texto de apoio.", "textoApoio");
-  if (c.textoApoio.length > limites.chamadaApoioMaximo) {
-    throw new ErroPaginaInicial(`O texto de apoio tem até ${limites.chamadaApoioMaximo} caracteres.`, "textoApoio");
-  }
-  if (c.botaoTexto && c.botaoTexto.length > limites.chamadaBotaoMaximo) {
-    throw new ErroPaginaInicial(`O texto do botão tem até ${limites.chamadaBotaoMaximo} caracteres.`, "botaoTexto");
-  }
-  if (!c.fotoAlt.trim()) throw new ErroPaginaInicial("Descreva a foto no texto alternativo.", "fotoAlt");
-  if (!DESTINOS_DA_CHAMADA.includes(c.destino)) throw new ErroPaginaInicial("Escolha para onde vai o botão.", "destino");
-}
+
 
 // --- O que o site mostra -----------------------------------------------------------------------
 

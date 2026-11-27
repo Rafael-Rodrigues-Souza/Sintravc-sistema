@@ -4,6 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import type { PessoaDeTeste } from "../src/lib/acesso/pessoas-de-teste";
 import { RESPONSIVO } from "../playwright.config";
+import { ALTURA_DO_CARROSSEL } from "../src/components/site/home/altura-do-carrossel";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { publicarNoticiaPelaTela } from "./noticias";
 import { carrosselMisturado, episodioNoAr, limparHome, ordemNaHome } from "./pagina-inicial";
@@ -11,7 +12,7 @@ import { consultar } from "./radio";
 import { entrarComo, semAnimacao, semRolagemLateral } from "./responsivo";
 
 /**
- * Home pública (US01, RF01, RN41, P6, E62, E63): carrossel com Anterior, Próximo, teclado, Pausar e
+ * Home pública (US01, RF01, RN41, P6, E62, E63): carrossel com Anterior, Próximo, traços, teclado e
  * “reduzir movimento”, acesso rápido sem “Agendar”, últimas notícias com o seletor, último programa
  * e os contadores das redes.
  */
@@ -145,17 +146,18 @@ test("os 4 tipos publicados aparecem no site: notícia com capa, episódio, prog
 
 test("a seção do carrossel ocupa a tela abaixo do topo, com uma sobra para o começo da próxima seção (E63)", async ({ page }) => {
   await carrosselComDois(`Home e2e altura ${Date.now()}`);
-  for (const [largura, altura] of [
-    [1920, 1080],
-    [1280, 720],
-  ] as const) {
-    await page.setViewportSize({ width: largura, height: altura });
+  const { minimo, maximo, sobra } = ALTURA_DO_CARROSSEL;
+  for (const perfil of [RESPONSIVO.perfis.computador, RESPONSIVO.perfis.notebook]) {
+    const altura = perfil.altura;
+    await page.setViewportSize({ width: perfil.largura, height: altura });
     await page.goto("/");
     await expect(carrossel(page)).toHaveAttribute("data-movimento", /./);
     const caixa = (await carrossel(page).boundingBox())!;
-    // Vai até 88 px antes do fim da janela (com a régua de 520 a 960 px): o começo da próxima seção aparece.
+    // Vai até a sobra antes do fim da janela (até o máximo): o começo da próxima seção aparece.
     const fim = Math.round(caixa.y + caixa.height);
-    expect(Math.abs(fim - Math.min(altura - 88, Math.round(caixa.y) + 960))).toBeLessThanOrEqual(2);
+    const topo = Math.round(caixa.y);
+    const esperada = Math.min(maximo, Math.max(minimo, altura - topo - sobra));
+    expect(Math.abs(fim - (topo + esperada))).toBeLessThanOrEqual(2);
     expect(fim).toBeLessThan(altura);
   }
 });

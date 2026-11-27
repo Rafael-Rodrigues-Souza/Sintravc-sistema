@@ -49,6 +49,9 @@ export function itemDaLinha(l: Linha): ItemDoCarrossel {
   };
 }
 
+/** A chave do item de uma linha (igual no rascunho e no publicado). */
+export const chaveDaLinha = (l: Linha) => chaveDoItem(itemDaLinha(l));
+
 function paraDados(linhas: Linha[]): DadosDaHome {
   return { carrossel: linhas.map(itemDaLinha) };
 }
@@ -70,7 +73,7 @@ async function travarControle(tx: Transacao) {
  */
 async function gravarVersao(tx: Transacao, versao: Versao, dados: DadosDaHome, anteriores: Linha[], quem: string | null) {
   await tx.delete(destaqueHome).where(eq(destaqueHome.versao, versao));
-  const quemEscolheu = (chave: string) => anteriores.find((l) => chaveDoItem({ tipo: l.itemTipo, itemId: l.itemId }) === chave)?.escolhidoPor ?? quem;
+  const quemEscolheu = (chave: string) => anteriores.find((l) => chaveDaLinha(l) === chave)?.escolhidoPor ?? quem;
   const linhas = dados.carrossel.map((item, i) => ({
     versao,
     posicao: i + 1,
@@ -272,7 +275,7 @@ export async function tirarDoArAgora(pedido: { chave: string; revisaoBase: numbe
   return banco().transaction(async (tx) => {
     const controle = await travarControle(tx);
     if (controle.revisao !== pedido.revisaoBase) throw new ErroPaginaInicial(CONFLITO);
-    const daChave = (l: Linha) => chaveDoItem({ tipo: l.itemTipo, itemId: l.itemId }) === pedido.chave;
+    const daChave = (l: Linha) => chaveDaLinha(l) === pedido.chave;
     const [publicado] = (await linhasDa(tx, "publicado")).filter(daChave);
     if (!publicado || estadoDoItem(publicado, agora).tipo !== "no_ar") throw new ErroPaginaInicial("Este destaque não está no ar.");
     await tx.update(destaqueHome).set({ saiEm: agora }).where(eq(destaqueHome.id, publicado.id));
@@ -327,7 +330,7 @@ export async function lerPainel(deps: Deps): Promise<PainelDaHome> {
   const nomes = new Map(pessoas.map((p) => [p.id, p.nome]));
   const escolhidoPor: Record<string, string> = {};
   for (const l of rascunho) {
-    if (l.escolhidoPor && nomes.has(l.escolhidoPor)) escolhidoPor[chaveDoItem({ tipo: l.itemTipo, itemId: l.itemId })] = nomes.get(l.escolhidoPor)!;
+    if (l.escolhidoPor && nomes.has(l.escolhidoPor)) escolhidoPor[chaveDaLinha(l)] = nomes.get(l.escolhidoPor)!;
   }
   return {
     revisao: controle?.revisao ?? 0,

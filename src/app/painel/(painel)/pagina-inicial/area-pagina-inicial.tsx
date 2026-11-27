@@ -22,6 +22,7 @@ import {
   estadoDoItem,
   esquemaDadosDaHome,
   paraONavegador,
+  rotuloDaChamada,
   type DadosDaHomeNoNavegador,
 } from "@/lib/pagina-inicial/regras";
 import { cn } from "@/lib/utils";
@@ -159,7 +160,7 @@ export function AreaPaginaInicial({
     tipo: "chamada",
     itemId: item.itemId,
     titulo: item.fraseChamada ?? "Chamada",
-    rotulo: `Chamada · ${item.chamada?.destino === "beneficios" ? "Benefícios" : "Filie-se"}`,
+    rotulo: rotuloDaChamada(item.chamada?.destino ?? "filie_se"),
     capaUrl: fotoUrl,
     noSite: true,
     temCapa: true,

@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { HOME_PAGINA } from "@/conteudo/site";
 import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
 import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/itens";
-import { BOTAO_PADRAO, DESTINOS_DA_CHAMADA, NOME_DO_DESTINO, type DadosDaChamada, type DestinoDaChamada, type LimitesDaHome } from "@/lib/pagina-inicial/regras";
+import { Alerta } from "@/components/ui/alerta";
+import { DESTINOS, DESTINOS_DA_CHAMADA, erroDaChamada, type DadosDaChamada, type DestinoDaChamada, type LimitesDaHome } from "@/lib/pagina-inicial/regras";
 import { cn } from "@/lib/utils";
 
 import { SeletorDeMidia } from "../conteudos/noticia/seletor-midia";
@@ -69,7 +70,11 @@ function doCampo(valor: string): string | null | undefined {
 
 const limpar = (v: string) => v.trim().replace(/\s+/g, " ");
 
-type Campo = "item" | "entraEm" | "saiEm" | "fraseChamada" | "foto" | "fotoAlt" | "textoApoio" | "botaoTexto";
+/** O chip de escolha (aba do tipo e destino da Chamada): escolhido em marinho no claro e em amarelo no escuro. */
+const CHIP =
+  "alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo";
+
+type Campo = "item" | "entraEm" | "saiEm" | "fraseChamada" | "foto" | "fotoAlt" | "textoApoio" | "botaoTexto" | "destino";
 
 /**
  * A janela do carrossel (E62, E63): “Adicionar destaque” (Notícia, Rádio Chofer — sempre o último
@@ -150,7 +155,9 @@ function Conteudo({
   const [fotoAlt, setFotoAlt] = React.useState(editando?.chamada?.fotoAlt ?? "");
   const [apoio, setApoio] = React.useState(editando?.chamada?.textoApoio ?? "");
   const [destino, setDestino] = React.useState<DestinoDaChamada>(editando?.chamada?.destino ?? "filie_se");
-  const [botao, setBotao] = React.useState(editando?.chamada ? (editando.chamada.botaoTexto ?? BOTAO_PADRAO[editando.chamada.destino]) : BOTAO_PADRAO.filie_se);
+  const [botao, setBotao] = React.useState(
+    editando?.chamada ? (editando.chamada.botaoTexto ?? DESTINOS[editando.chamada.destino].botaoPadrao) : DESTINOS.filie_se.botaoPadrao,
+  );
   const [seletorAberto, setSeletorAberto] = React.useState(false);
   const [erro, setErro] = React.useState<{ campo: Campo; mensagem: string } | null>(null);
   const ehChamada = tipo === "chamada";
@@ -189,7 +196,7 @@ function Conteudo({
 
   /** Trocar o destino troca também o texto do botão, se ele ainda for o padrão do destino anterior. */
   const mudarDestino = (novo: DestinoDaChamada) => {
-    if (limpar(botao) === BOTAO_PADRAO[destino] || !limpar(botao)) setBotao(BOTAO_PADRAO[novo]);
+    if (limpar(botao) === DESTINOS[destino].botaoPadrao || !limpar(botao)) setBotao(DESTINOS[novo].botaoPadrao);
     setDestino(novo);
   };
 
@@ -206,21 +213,13 @@ function Conteudo({
     const fraseLimpa = limpar(frase) || null;
     let chamada: DadosDaChamada | null = null;
     if (ehChamada) {
-      if (!foto) return setErro({ campo: "foto", mensagem: "Escolha a foto da Chamada." });
-      if (!limpar(fotoAlt)) return setErro({ campo: "fotoAlt", mensagem: "Descreva a foto no texto alternativo." });
-      if (!fraseLimpa) return setErro({ campo: "fraseChamada", mensagem: "Escreva a frase da Chamada." });
-      if (fraseLimpa.length > fraseMaxima) return setErro({ campo: "fraseChamada", mensagem: `A frase da Chamada tem até ${fraseMaxima} caracteres.` });
-      const apoioLimpo = limpar(apoio);
-      if (!apoioLimpo) return setErro({ campo: "textoApoio", mensagem: "Escreva o texto de apoio." });
-      if (apoioLimpo.length > limites.chamadaApoioMaximo) {
-        return setErro({ campo: "textoApoio", mensagem: `O texto de apoio tem até ${limites.chamadaApoioMaximo} caracteres.` });
-      }
       const botaoLimpo = limpar(botao);
-      if (botaoLimpo.length > limites.chamadaBotaoMaximo) {
-        return setErro({ campo: "botaoTexto", mensagem: `O texto do botão tem até ${limites.chamadaBotaoMaximo} caracteres.` });
-      }
       // Igual ao padrão do destino (ou vazio): guarda vazio, e o site usa o padrão.
-      chamada = { fotoMidiaId: foto.id, fotoAlt: limpar(fotoAlt), textoApoio: apoioLimpo, botaoTexto: botaoLimpo && botaoLimpo !== BOTAO_PADRAO[destino] ? botaoLimpo : null, destino };
+      const campos = { fotoAlt: limpar(fotoAlt), textoApoio: limpar(apoio), botaoTexto: botaoLimpo && botaoLimpo !== DESTINOS[destino].botaoPadrao ? botaoLimpo : null, destino };
+      // As mesmas regras e mensagens do servidor (regras.ts).
+      const problema = erroDaChamada({ frase: fraseLimpa, fotoMidiaId: foto?.id ?? null, ...campos }, limites);
+      if (problema) return setErro({ campo: problema.campo as Campo, mensagem: problema.mensagem });
+      chamada = { fotoMidiaId: foto!.id, ...campos };
     } else if (fraseLimpa && fraseLimpa.length > fraseMaxima) {
       return setErro({ campo: "fraseChamada", mensagem: `A frase de chamada tem até ${fraseMaxima} caracteres.` });
     }
@@ -241,6 +240,12 @@ function Conteudo({
       <form onSubmit={confirmar} className="flex min-h-0 flex-1 flex-col" noValidate>
         <DialogHeader titulo={titulo} descricao={descricao} />
         <DialogBody>
+          {/* E23: o Alerta 2.0 no topo, além da mensagem embaixo do campo. */}
+          {erro ? (
+            <Alerta tipo="erro" titulo="Confira o destaque antes de pôr no carrossel">
+              {erro.mensagem}
+            </Alerta>
+          ) : null}
           {!editando ? (
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 texto-rotulo text-texto-primario">Tipo</legend>
@@ -248,7 +253,7 @@ function Conteudo({
                 {(["noticia", "radio", "chamada"] as const).map((a) => (
                   <label
                     key={a}
-                    className="alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo"
+                    className={CHIP}
                   >
                     <input
                       type="radio"
@@ -456,10 +461,10 @@ function Conteudo({
                 {DESTINOS_DA_CHAMADA.map((d) => (
                   <label
                     key={d}
-                    className="alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo"
+                    className={CHIP}
                   >
                     <input type="radio" name="destino" value={d} checked={destino === d} onChange={() => mudarDestino(d)} className="sr-only" />
-                    {NOME_DO_DESTINO[d]}
+                    {DESTINOS[d].nome}
                   </label>
                 ))}
               </div>
@@ -473,7 +478,7 @@ function Conteudo({
               valor={botao}
               aoMudar={setBotao}
               maximo={limites.chamadaBotaoMaximo}
-              ajuda={`Vazio: “${BOTAO_PADRAO[destino]}”.`}
+              ajuda={`Vazio: “${DESTINOS[destino].botaoPadrao}”.`}
               erro={erro?.campo === "botaoTexto" ? erro.mensagem : undefined}
             />
           ) : null}

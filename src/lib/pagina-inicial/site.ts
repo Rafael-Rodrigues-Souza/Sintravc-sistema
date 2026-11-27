@@ -1,13 +1,8 @@
-import { inArray } from "drizzle-orm";
-
-import { urlPublica } from "@/lib/armazenamento";
-import { banco } from "@/lib/db";
-import { midia } from "@/lib/db/schema";
-import { lerEnvArmazenamento } from "@/lib/env";
 import { episodiosNoArPorIds, type EpisodioDoSite } from "@/lib/episodios/site";
 import { noticiasNoArPorIds, type NoticiaDoSite } from "@/lib/noticias-do-site/consultas";
 import { lerParametro } from "@/lib/parametros";
 
+import { urlsDasFotos } from "./itens";
 import { lerDadosDaHome } from "./rascunho";
 import { montarHome, type Slide } from "./regras";
 
@@ -37,8 +32,5 @@ export async function destaquesDaHome(agora: Date = new Date(), versao: "publica
     agora,
   });
   const idsFotos = [...new Set(slides.flatMap((s) => (s.tipo === "chamada" ? [s.chamada.fotoMidiaId] : [])))];
-  const linhas = idsFotos.length ? await banco().select({ id: midia.id, chave: midia.chaveR2 }).from(midia).where(inArray(midia.id, idsFotos)) : [];
-  const env = linhas.length ? lerEnvArmazenamento() : null;
-  const fotos = Object.fromEntries(linhas.map((l) => [l.id, urlPublica(l.chave, env!)]));
-  return { slides, fotos, intervaloSegundos };
+  return { slides, fotos: await urlsDasFotos(idsFotos), intervaloSegundos };
 }
