@@ -59,9 +59,11 @@ export const CATALOGO = {
   "comunicados.cookie_fechados_dias": z.number().int().positive(),
   "noticias.mais_lidas_dias": z.number().int().positive(),
   "home.carrossel_maximo": z.number().int().positive(),
-  "home.lista_posicoes": z.number().int().positive(),
   "home.carrossel_alternar_segundos": z.number().int().positive(),
   "home.frase_chamada_maximo": z.number().int().positive(),
+  "home.chamada_frase_maximo": z.number().int().positive(),
+  "home.chamada_apoio_maximo": z.number().int().positive(),
+  "home.chamada_botao_maximo": z.number().int().positive(),
   "noticias.mais_lidas_quantidade": z.number().int().positive(),
 } satisfies Record<string, z.ZodType>;
 

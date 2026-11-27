@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ImageOff, Search } from "lucide-react";
+import { CalendarDays, ImageOff, ImagePlus, Search } from "lucide-react";
 import * as React from "react";
 
 import { SEM_CONEXAO } from "@/components/painel/sem-conexao";
@@ -13,20 +13,47 @@ import { Textarea } from "@/components/ui/textarea";
 import { HOME_PAGINA } from "@/conteudo/site";
 import { bahiaEmCampos, bahiaParaUtc } from "@/lib/datas";
 import type { OpcaoDeDestaque } from "@/lib/pagina-inicial/itens";
+import { Alerta } from "@/components/ui/alerta";
+import { DESTINOS, DESTINOS_DA_CHAMADA, erroDaChamada, type DadosDaChamada, type DestinoDaChamada, type LimitesDaHome } from "@/lib/pagina-inicial/regras";
 import { cn } from "@/lib/utils";
 
+import { SeletorDeMidia } from "../conteudos/noticia/seletor-midia";
 import { acaoOpcoesDeDestaque } from "./acoes";
 
-export type PedidoDaJanela =
-  | { modo: "adicionar"; sugerida?: OpcaoDeDestaque }
-  | { modo: "editar"; indice: number; entraEm: string | null; saiEm: string | null; fraseChamada: string | null; titulo: string }
-  | { modo: "trocar"; posicao: number };
+/** O que a janela edita de um item que já está no carrossel. */
+export type ItemEditado = {
+  indice: number;
+  tipo: "noticia" | "episodio" | "programa" | "chamada";
+  titulo: string;
+  entraEm: string | null;
+  saiEm: string | null;
+  fraseChamada: string | null;
+  chamada: DadosDaChamada | null;
+  /** A foto da Chamada, para a miniatura. */
+  fotoUrl: string | null;
+};
 
-type Tipo = "noticia" | "episodio" | "programa";
+export type PedidoDaJanela = { modo: "adicionar"; sugerida?: OpcaoDeDestaque } | ({ modo: "editar" } & ItemEditado);
 
-export type ResultadoDaJanela = { opcao: OpcaoDeDestaque | null; entraEm: string | null; saiEm: string | null; fraseChamada: string | null };
+type Tipo = "noticia" | "episodio" | "programa" | "chamada";
 
-const NOME_DO_TIPO: Record<Tipo, string> = { noticia: "Notícia", episodio: "Episódio", programa: "Programa Rádio Chofer" };
+export type ResultadoDaJanela = {
+  tipo: Tipo;
+  opcao: OpcaoDeDestaque | null;
+  entraEm: string | null;
+  saiEm: string | null;
+  fraseChamada: string | null;
+  chamada: DadosDaChamada | null;
+  /** A foto escolhida, para a miniatura da lista. */
+  fotoUrl: string | null;
+};
+
+type LimitesDaMidia = { tamanhoMaximoBytes: number; mensagemDeTamanho: string };
+
+/** As abas de “Adicionar destaque” (E63): Rádio Chofer junta o programa (sempre o último) e os episódios. */
+type Aba = "noticia" | "radio" | "chamada";
+const NOME_DA_ABA: Record<Aba, string> = { noticia: "Notícia", radio: "Rádio Chofer", chamada: "Chamada" };
+const abaDoTipo = (tipo: Tipo): Aba => (tipo === "episodio" || tipo === "programa" ? "radio" : tipo);
 
 /** ISO → valor do campo datetime-local, no horário da Bahia (RNF06). */
 function paraCampo(iso: string | null): string {
@@ -41,10 +68,19 @@ function doCampo(valor: string): string | null | undefined {
   return bahiaParaUtc(valor.slice(0, 10), valor.slice(11, 16))?.toISOString();
 }
 
+const limpar = (v: string) => v.trim().replace(/\s+/g, " ");
+
+/** O chip de escolha (aba do tipo e destino da Chamada): escolhido em marinho no claro e em amarelo no escuro. */
+const CHIP =
+  "alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo";
+
+type Campo = "item" | "entraEm" | "saiEm" | "fraseChamada" | "foto" | "fotoAlt" | "textoApoio" | "botaoTexto" | "destino";
+
 /**
- * A janela do carrossel e da lista (E62): “Adicionar destaque” (tipo, busca no que está no ar e as
- * datas e a frase de chamada), “Editar” (datas e frase) e “Trocar” (só notícias, para uma posição da lista). Só mostra o que está no
- * ar; a notícia sem capa fica travada no carrossel.
+ * A janela do carrossel (E62, E63): “Adicionar destaque” (Notícia, Rádio Chofer — sempre o último
+ * programa ou um episódio — ou Chamada; busca no que está no ar, ou os campos
+ * da Chamada, e as datas) e “Editar” (datas e frase; na Chamada, todos os campos). Só mostra o que
+ * está no ar; a notícia sem capa fica travada.
  */
 export function JanelaDestaque({
   pedido,
@@ -52,17 +88,16 @@ export function JanelaDestaque({
   aoEscolher,
   temPrograma,
   noCarrossel,
-  naLista,
-  fraseMaxima,
+  limites,
+  limitesDaMidia,
 }: {
   pedido: PedidoDaJanela | null;
   aoFechar: () => void;
   aoEscolher: (resultado: ResultadoDaJanela) => void;
   temPrograma: boolean;
   noCarrossel: Set<string>;
-  naLista: Set<string>;
-  /** `home.frase_chamada_maximo`. */
-  fraseMaxima: number;
+  limites: LimitesDaHome;
+  limitesDaMidia: LimitesDaMidia;
 }) {
   return (
     <Dialog open={!!pedido} onOpenChange={(aberta) => !aberta && aoFechar()}>
@@ -74,8 +109,8 @@ export function JanelaDestaque({
             aoEscolher={aoEscolher}
             temPrograma={temPrograma}
             noCarrossel={noCarrossel}
-            naLista={naLista}
-            fraseMaxima={fraseMaxima}
+            limites={limites}
+            limitesDaMidia={limitesDaMidia}
           />
         </DialogContent>
       ) : null}
@@ -89,39 +124,55 @@ function Conteudo({
   aoEscolher,
   temPrograma,
   noCarrossel,
-  naLista,
-  fraseMaxima,
+  limites,
+  limitesDaMidia,
 }: {
   pedido: PedidoDaJanela;
   aoFechar: () => void;
   aoEscolher: (resultado: ResultadoDaJanela) => void;
   temPrograma: boolean;
   noCarrossel: Set<string>;
-  naLista: Set<string>;
-  fraseMaxima: number;
+  limites: LimitesDaHome;
+  limitesDaMidia: LimitesDaMidia;
 }) {
-  const comBusca = pedido.modo !== "editar";
-  const comDatas = pedido.modo !== "trocar";
-  const [tipo, setTipo] = React.useState<Tipo>("noticia");
+  const editando = pedido.modo === "editar" ? pedido : null;
+  const [tipo, setTipo] = React.useState<Tipo>(editando?.tipo ?? "noticia");
+  const aba = abaDoTipo(tipo);
+  const comBusca = !editando && aba !== "chamada";
+  /** O que a busca traz: notícias na aba Notícia, episódios na aba Rádio Chofer. */
+  const tipoBusca = aba === "radio" ? "episodio" : "noticia";
   const [busca, setBusca] = React.useState("");
   const [opcoes, setOpcoes] = React.useState<OpcaoDeDestaque[] | null>(null);
   const [erroDaBusca, setErroDaBusca] = React.useState<string | null>(null);
   const [escolhida, setEscolhida] = React.useState<OpcaoDeDestaque | null>(pedido.modo === "adicionar" ? (pedido.sugerida ?? null) : null);
-  const [entraEm, setEntraEm] = React.useState(pedido.modo === "editar" ? paraCampo(pedido.entraEm) : "");
-  const [saiEm, setSaiEm] = React.useState(pedido.modo === "editar" ? paraCampo(pedido.saiEm) : "");
-  const [frase, setFrase] = React.useState(pedido.modo === "editar" ? (pedido.fraseChamada ?? "") : "");
-  const [erro, setErro] = React.useState<{ campo: "item" | "entraEm" | "saiEm" | "fraseChamada"; mensagem: string } | null>(null);
+  const [entraEm, setEntraEm] = React.useState(paraCampo(editando?.entraEm ?? null));
+  const [saiEm, setSaiEm] = React.useState(paraCampo(editando?.saiEm ?? null));
+  const [frase, setFrase] = React.useState(editando?.fraseChamada ?? "");
+  // Chamada (E63)
+  const [foto, setFoto] = React.useState<{ id: string; url: string | null } | null>(
+    editando?.chamada ? { id: editando.chamada.fotoMidiaId, url: editando.fotoUrl } : null,
+  );
+  const [fotoAlt, setFotoAlt] = React.useState(editando?.chamada?.fotoAlt ?? "");
+  const [apoio, setApoio] = React.useState(editando?.chamada?.textoApoio ?? "");
+  const [destino, setDestino] = React.useState<DestinoDaChamada>(editando?.chamada?.destino ?? "filie_se");
+  const [botao, setBotao] = React.useState(
+    editando?.chamada ? (editando.chamada.botaoTexto ?? DESTINOS[editando.chamada.destino].botaoPadrao) : DESTINOS.filie_se.botaoPadrao,
+  );
+  const [seletorAberto, setSeletorAberto] = React.useState(false);
+  const [erro, setErro] = React.useState<{ campo: Campo; mensagem: string } | null>(null);
+  const ehChamada = tipo === "chamada";
+  const fraseMaxima = ehChamada ? limites.chamadaFraseMaximo : limites.fraseChamadaMaximo;
 
   // Busca no servidor, com uma pausa curta depois da digitação.
   React.useEffect(() => {
-    if (!comBusca || tipo === "programa") return;
+    if (!comBusca) return;
     // A sugerida (E43) aparece mesmo se for mais antiga que as primeiras da lista.
     const comAEscolhida = (lista: OpcaoDeDestaque[]) =>
-      !escolhida || escolhida.tipo !== tipo || busca.trim() || lista.some((o) => o.itemId === escolhida.itemId) ? lista : [escolhida, ...lista];
+      !escolhida || escolhida.tipo !== tipoBusca || busca.trim() || lista.some((o) => o.itemId === escolhida.itemId) ? lista : [escolhida, ...lista];
     let valendo = true;
     const relogio = setTimeout(async () => {
       setErroDaBusca(null);
-      const r = await acaoOpcoesDeDestaque({ tipo, busca }).catch(() => SEM_CONEXAO);
+      const r = await acaoOpcoesDeDestaque({ tipo: tipoBusca, busca }).catch(() => SEM_CONEXAO);
       if (!valendo) return;
       if (r.tipo === "erro") {
         setErroDaBusca(r.mensagem);
@@ -135,26 +186,41 @@ function Conteudo({
       clearTimeout(relogio);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo, busca, comBusca]);
+  }, [tipoBusca, busca, comBusca]);
 
   const travadaPorque = (o: OpcaoDeDestaque): string | null => {
-    if (pedido.modo === "trocar") return naLista.has(o.itemId) ? "Já está na lista" : null;
     if (noCarrossel.has(o.chave)) return "Já está no carrossel";
     if (!o.temCapa) return "Esta notícia não tem capa";
     return null;
+  };
+
+  /** Trocar o destino troca também o texto do botão, se ele ainda for o padrão do destino anterior. */
+  const mudarDestino = (novo: DestinoDaChamada) => {
+    if (limpar(botao) === DESTINOS[destino].botaoPadrao || !limpar(botao)) setBotao(DESTINOS[novo].botaoPadrao);
+    setDestino(novo);
   };
 
   const confirmar = (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
     let opcao: OpcaoDeDestaque | null = null;
-    if (pedido.modo !== "editar" && tipo !== "programa") {
-      if (!escolhida) return setErro({ campo: "item", mensagem: pedido.modo === "trocar" ? "Escolha uma notícia." : "Escolha o que vai para o destaque." });
+    if (comBusca && tipo !== "programa") {
+      if (!escolhida) {
+        return setErro({ campo: "item", mensagem: aba === "radio" ? "Escolha o último programa ou um episódio." : "Escolha o que vai para o destaque." });
+      }
       opcao = escolhida;
     }
-    if (!comDatas) return aoEscolher({ opcao, entraEm: null, saiEm: null, fraseChamada: null });
-    const fraseLimpa = frase.trim().replace(/\s+/g, " ") || null;
-    if (fraseLimpa && fraseLimpa.length > fraseMaxima) {
+    const fraseLimpa = limpar(frase) || null;
+    let chamada: DadosDaChamada | null = null;
+    if (ehChamada) {
+      const botaoLimpo = limpar(botao);
+      // Igual ao padrão do destino (ou vazio): guarda vazio, e o site usa o padrão.
+      const campos = { fotoAlt: limpar(fotoAlt), textoApoio: limpar(apoio), botaoTexto: botaoLimpo && botaoLimpo !== DESTINOS[destino].botaoPadrao ? botaoLimpo : null, destino };
+      // As mesmas regras e mensagens do servidor (regras.ts).
+      const problema = erroDaChamada({ frase: fraseLimpa, fotoMidiaId: foto?.id ?? null, ...campos }, limites);
+      if (problema) return setErro({ campo: problema.campo as Campo, mensagem: problema.mensagem });
+      chamada = { fotoMidiaId: foto!.id, ...campos };
+    } else if (fraseLimpa && fraseLimpa.length > fraseMaxima) {
       return setErro({ campo: "fraseChamada", mensagem: `A frase de chamada tem até ${fraseMaxima} caracteres.` });
     }
     const entra = doCampo(entraEm);
@@ -162,177 +228,261 @@ function Conteudo({
     if (entra === undefined) return setErro({ campo: "entraEm", mensagem: "Esta data não existe. Confira o dia e a hora." });
     if (sai === undefined) return setErro({ campo: "saiEm", mensagem: "Esta data não existe. Confira o dia e a hora." });
     if (entra && sai && new Date(sai) <= new Date(entra)) return setErro({ campo: "saiEm", mensagem: "A saída tem de ser depois da entrada." });
-    if (sai && new Date(sai) <= new Date()) return setErro({ campo: "saiEm", mensagem: "A saída já passou. Escolha uma data no futuro." });
-    aoEscolher({ opcao, entraEm: entra, saiEm: sai, fraseChamada: fraseLimpa });
+    if (sai && new Date(sai) <= new Date() && sai !== editando?.saiEm) return setErro({ campo: "saiEm", mensagem: "A saída já passou. Escolha uma data no futuro." });
+    aoEscolher({ tipo, opcao, entraEm: entra, saiEm: sai, fraseChamada: fraseLimpa, chamada, fotoUrl: foto?.url ?? null });
   };
 
-  const titulo =
-    pedido.modo === "adicionar" ? "Adicionar destaque" : pedido.modo === "editar" ? "Editar destaque" : `Escolher a notícia da posição ${pedido.posicao + 1}`;
-  const descricao =
-    pedido.modo === "adicionar"
-      ? "Só aparece o que está no site. O destaque vai para o fim do carrossel."
-      : pedido.modo === "editar"
-        ? pedido.titulo
-        : "Só aparecem as notícias publicadas.";
+  const titulo = editando ? (editando.tipo === "chamada" ? "Editar Chamada" : "Editar destaque") : "Adicionar destaque";
+  const descricao = editando ? editando.titulo : "Só aparece o que está no site. O destaque vai para o fim do carrossel.";
 
   return (
-    <form onSubmit={confirmar} className="flex min-h-0 flex-1 flex-col" noValidate>
-      <DialogHeader titulo={titulo} descricao={descricao} />
-      <DialogBody>
-        {pedido.modo === "adicionar" ? (
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 texto-rotulo text-texto-primario">Tipo</legend>
-            <div className="flex flex-wrap gap-2">
-              {(["noticia", "episodio", "programa"] as const).map((t) => {
-                const travado = t === "programa" && temPrograma;
-                return (
+    <>
+      <form onSubmit={confirmar} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <DialogHeader titulo={titulo} descricao={descricao} />
+        <DialogBody>
+          {/* E23: o Alerta 2.0 no topo, além da mensagem embaixo do campo. */}
+          {erro ? (
+            <Alerta tipo="erro" titulo="Confira o destaque antes de pôr no carrossel">
+              {erro.mensagem}
+            </Alerta>
+          ) : null}
+          {!editando ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 texto-rotulo text-texto-primario">Tipo</legend>
+              <div className="flex flex-wrap gap-2">
+                {(["noticia", "radio", "chamada"] as const).map((a) => (
                   <label
-                    key={t}
-                    className={cn(
-                      "alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho has-[:checked]:bg-destaque-marinho has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo",
-                      travado && "cursor-not-allowed opacity-50",
-                    )}
+                    key={a}
+                    className={CHIP}
                   >
                     <input
                       type="radio"
                       name="tipo"
-                      value={t}
-                      checked={tipo === t}
-                      disabled={travado}
+                      value={a}
+                      checked={aba === a}
                       onChange={() => {
-                        setTipo(t);
+                        // Na aba Rádio Chofer, “Sempre o último programa” já vem escolhido (se ainda não está no carrossel).
+                        setTipo(a === "radio" ? (temPrograma ? "episodio" : "programa") : a);
                         setEscolhida(null);
                         setOpcoes(null);
                         setErro(null);
                       }}
                       className="sr-only"
                     />
-                    {NOME_DO_TIPO[t]}
+                    {NOME_DA_ABA[a]}
                   </label>
-                );
-              })}
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {comBusca ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="busca-destaque">{aba === "radio" ? "Buscar episódio" : "Buscar notícia"}</Label>
+                <div className="relative">
+                  <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-texto-terciario" />
+                  <Input id="busca-destaque" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-10" placeholder="Digite parte do título" />
+                </div>
+              </div>
+              <fieldset aria-describedby={erro?.campo === "item" ? "erro-item" : undefined} className="flex flex-col gap-2">
+                <legend className="sr-only">{aba === "radio" ? "O último programa ou um episódio no ar" : "Notícias publicadas"}</legend>
+                {aba === "radio" ? (
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-[12px] border border-borda-padrao p-2.5 has-[:checked]:border-destaque-azul has-[:checked]:bg-destaque-azul-suave has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring",
+                      temPrograma && "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="opcao"
+                      value="programa"
+                      checked={tipo === "programa"}
+                      disabled={temPrograma}
+                      onChange={() => {
+                        setTipo("programa");
+                        setEscolhida(null);
+                        setErro(null);
+                      }}
+                      className="sr-only"
+                    />
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="texto-titulo-card-pequeno text-texto-primario">Sempre o último programa</span>
+                      <span className="texto-pequeno text-texto-secundario">
+                        {temPrograma
+                          ? "Já está no carrossel"
+                          : `O slide “${HOME_PAGINA.programaTitulo}”, com o horário ao vivo e o botão para ouvir o último programa. Troca sozinho a cada episódio novo.`}
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
+                {opcoes === null ? (
+                  <div className="flex flex-col gap-2" aria-busy="true" aria-label="Carregando">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <Skeleton key={i} className="h-[72px] w-full rounded-[12px]" />
+                    ))}
+                  </div>
+                ) : opcoes.length === 0 ? (
+                  <div className="flex flex-col items-center gap-1 rounded-[12px] border border-dashed border-borda-padrao px-4 py-6 text-center">
+                    <Search aria-hidden className="size-5 text-texto-terciario" />
+                    <p className="texto-pequeno text-texto-primario">
+                      {erroDaBusca ?? (busca.trim() ? "Nada encontrado com essa busca." : aba === "radio" ? "Nenhum episódio no ar." : "Nenhuma notícia publicada.")}
+                    </p>
+                    {busca.trim() ? (
+                      <Button type="button" variant="secundario" size="pequeno" className="mt-2" onClick={() => setBusca("")}>
+                        Limpar busca
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <ul className="flex max-h-[min(340px,40dvh)] flex-col gap-2 overflow-y-auto pr-1">
+                    {opcoes.map((o) => {
+                      const motivo = travadaPorque(o);
+                      return (
+                        <li key={o.itemId}>
+                          <label
+                            className={cn(
+                              "flex cursor-pointer items-center gap-3 rounded-[12px] border border-borda-padrao p-2.5 has-[:checked]:border-destaque-azul has-[:checked]:bg-destaque-azul-suave has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring",
+                              motivo && "cursor-not-allowed opacity-60",
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="opcao"
+                              value={o.itemId}
+                              checked={escolhida?.itemId === o.itemId}
+                              disabled={!!motivo}
+                              onChange={() => {
+                                setTipo(o.tipo);
+                                setEscolhida(o);
+                                setErro(null);
+                              }}
+                              className="sr-only"
+                            />
+                            <span className="flex aspect-video w-20 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-fundo-superficie-alt text-texto-terciario">
+                              {o.capaUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={o.capaUrl} alt="" className="size-full object-cover" loading="lazy" />
+                              ) : (
+                                <ImageOff aria-hidden className="size-5" />
+                              )}
+                            </span>
+                            <span className="flex min-w-0 flex-col gap-0.5">
+                              <span className="texto-etiqueta text-destaque-azul uppercase">{o.rotulo}</span>
+                              <span className="line-clamp-2 texto-titulo-card-pequeno break-words text-texto-primario">{o.titulo}</span>
+                              {motivo ? <span className="texto-pequeno text-texto-secundario">{motivo}</span> : null}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {erro?.campo === "item" ? (
+                  <p id="erro-item" role="alert" className="texto-pequeno text-status-perigo-texto">
+                    {erro.mensagem}
+                  </p>
+                ) : null}
+              </fieldset>
             </div>
-            {temPrograma ? <p className="texto-pequeno text-texto-secundario">O programa Rádio Chofer já está no carrossel.</p> : null}
-          </fieldset>
-        ) : null}
+          ) : null}
 
-        {comBusca && tipo === "programa" ? (
-          <p className="rounded-[12px] bg-fundo-superficie-alt p-4 texto-pequeno text-texto-primario">
-            O slide do programa mostra “{HOME_PAGINA.programaTitulo}”, o horário do programa ao vivo e os botões para ouvir o último programa e ver todos.
-          </p>
-        ) : null}
-
-        {comBusca && tipo !== "programa" ? (
-          <div className="flex flex-col gap-3">
+          {ehChamada ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="busca-destaque">{tipo === "episodio" ? "Buscar episódio" : "Buscar notícia"}</Label>
-              <div className="relative">
-                <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-texto-terciario" />
-                <Input id="busca-destaque" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-10" placeholder="Digite parte do título" />
+              <p className="texto-rotulo text-texto-primario" id="foto-chamada-rotulo">
+                Foto
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <span className="flex aspect-video w-full shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-fundo-superficie-alt text-texto-terciario sm:w-[160px]">
+                  {foto?.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={foto.url} alt="" className="size-full object-cover" />
+                  ) : (
+                    <ImageOff aria-hidden className="size-6" />
+                  )}
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  <Button type="button" variant="secundario" onClick={() => setSeletorAberto(true)} aria-describedby="foto-chamada-mensagem">
+                    <ImagePlus aria-hidden />
+                    {foto ? "Trocar foto" : "Escolher foto"}
+                  </Button>
+                  <p
+                    id="foto-chamada-mensagem"
+                    role={erro?.campo === "foto" ? "alert" : undefined}
+                    className={cn("texto-pequeno", erro?.campo === "foto" ? "text-status-perigo-texto" : "text-texto-terciario")}
+                  >
+                    {erro?.campo === "foto" ? erro.mensagem : "Foto horizontal, da Mídia. Foto com pessoas só com autorização delas."}
+                  </p>
+                </div>
               </div>
             </div>
-            <fieldset aria-describedby={erro?.campo === "item" ? "erro-item" : undefined} className="flex flex-col gap-2">
-              <legend className="sr-only">{tipo === "episodio" ? "Episódios no ar" : "Notícias publicadas"}</legend>
-              {opcoes === null ? (
-                <div className="flex flex-col gap-2" aria-busy="true" aria-label="Carregando">
-                  {Array.from({ length: 3 }, (_, i) => (
-                    <Skeleton key={i} className="h-[72px] w-full rounded-[12px]" />
-                  ))}
-                </div>
-              ) : opcoes.length === 0 ? (
-                <div className="flex flex-col items-center gap-1 rounded-[12px] border border-dashed border-borda-padrao px-4 py-6 text-center">
-                  <Search aria-hidden className="size-5 text-texto-terciario" />
-                  <p className="texto-pequeno text-texto-primario">
-                    {erroDaBusca ?? (busca.trim() ? "Nada encontrado com essa busca." : tipo === "episodio" ? "Nenhum episódio no ar." : "Nenhuma notícia publicada.")}
-                  </p>
-                  {busca.trim() ? (
-                    <Button type="button" variant="secundario" size="pequeno" className="mt-2" onClick={() => setBusca("")}>
-                      Limpar busca
-                    </Button>
-                  ) : null}
-                </div>
-              ) : (
-                <ul className="flex max-h-[min(340px,40dvh)] flex-col gap-2 overflow-y-auto pr-1">
-                  {opcoes.map((o) => {
-                    const motivo = travadaPorque(o);
-                    return (
-                      <li key={o.itemId}>
-                        <label
-                          className={cn(
-                            "flex cursor-pointer items-center gap-3 rounded-[12px] border border-borda-padrao p-2.5 has-[:checked]:border-destaque-azul has-[:checked]:bg-destaque-azul-suave has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring",
-                            motivo && "cursor-not-allowed opacity-60",
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="opcao"
-                            value={o.itemId}
-                            checked={escolhida?.itemId === o.itemId}
-                            disabled={!!motivo}
-                            onChange={() => {
-                              setEscolhida(o);
-                              setErro(null);
-                            }}
-                            className="sr-only"
-                          />
-                          <span className="flex aspect-video w-20 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-fundo-superficie-alt text-texto-terciario">
-                            {o.capaUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={o.capaUrl} alt="" className="size-full object-cover" loading="lazy" />
-                            ) : (
-                              <ImageOff aria-hidden className="size-5" />
-                            )}
-                          </span>
-                          <span className="flex min-w-0 flex-col gap-0.5">
-                            <span className="texto-etiqueta text-destaque-azul uppercase">{o.rotulo}</span>
-                            <span className="line-clamp-2 texto-titulo-card-pequeno break-words text-texto-primario">{o.titulo}</span>
-                            {motivo ? <span className="texto-pequeno text-texto-secundario">{motivo}</span> : null}
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              {erro?.campo === "item" ? (
-                <p id="erro-item" role="alert" className="texto-pequeno text-status-perigo-texto">
-                  {erro.mensagem}
-                </p>
-              ) : null}
-            </fieldset>
-          </div>
-        ) : null}
+          ) : null}
 
-        {comDatas ? (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="frase-chamada">Frase de chamada (opcional)</Label>
-            <Textarea
-              id="frase-chamada"
-              rows={2}
-              value={frase}
-              onChange={(e) => setFrase(e.target.value)}
-              aria-invalid={erro?.campo === "fraseChamada" ? true : undefined}
-              aria-describedby="frase-chamada-mensagem frase-chamada-contador"
+          {ehChamada ? (
+            <CampoTexto
+              id="foto-alt"
+              rotulo="Texto alternativo da foto"
+              valor={fotoAlt}
+              aoMudar={setFotoAlt}
+              ajuda="Descreva a foto para quem não pode ver. Vem da Mídia; ajuste se precisar."
+              erro={erro?.campo === "fotoAlt" ? erro.mensagem : undefined}
             />
-            <div className="flex items-start justify-between gap-3">
-              <p
-                id="frase-chamada-mensagem"
-                role={erro?.campo === "fraseChamada" ? "alert" : undefined}
-                className={cn("texto-pequeno", erro?.campo === "fraseChamada" ? "text-status-perigo-texto" : "text-texto-terciario")}
-              >
-                {erro?.campo === "fraseChamada" ? erro.mensagem : "Aparece no site no lugar da linha fina. Vazia, fica a linha fina."}
-              </p>
-              <p
-                id="frase-chamada-contador"
-                className={cn("shrink-0 texto-pequeno tabular-nums", frase.trim().length > fraseMaxima ? "text-status-perigo-texto" : "text-texto-terciario")}
-              >
-                {frase.trim().length}/{fraseMaxima}
-              </p>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {comDatas ? (
+          <CampoComContador
+              id="frase-chamada"
+              rotulo={ehChamada ? "Frase" : "Frase de chamada (opcional)"}
+              valor={frase}
+              aoMudar={setFrase}
+              maximo={fraseMaxima}
+              linhas={2}
+              ajuda={ehChamada ? "O texto grande do slide. Escreva uma frase curta e direta." : "Aparece no site no lugar da linha fina. Vazia, fica a linha fina."}
+              erro={erro?.campo === "fraseChamada" ? erro.mensagem : undefined}
+            />
+
+          {ehChamada ? (
+            <CampoComContador
+              id="texto-apoio"
+              rotulo="Texto de apoio"
+              valor={apoio}
+              aoMudar={setApoio}
+              maximo={limites.chamadaApoioMaximo}
+              linhas={3}
+              ajuda="Aparece embaixo da frase."
+              erro={erro?.campo === "textoApoio" ? erro.mensagem : undefined}
+            />
+          ) : null}
+
+          {ehChamada ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 texto-rotulo text-texto-primario">Para onde vai o botão</legend>
+              <div className="flex flex-wrap gap-2">
+                {DESTINOS_DA_CHAMADA.map((d) => (
+                  <label
+                    key={d}
+                    className={CHIP}
+                  >
+                    <input type="radio" name="destino" value={d} checked={destino === d} onChange={() => mudarDestino(d)} className="sr-only" />
+                    {DESTINOS[d].nome}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {ehChamada ? (
+            <CampoComContador
+              id="botao-texto"
+              rotulo="Texto do botão"
+              valor={botao}
+              aoMudar={setBotao}
+              maximo={limites.chamadaBotaoMaximo}
+              ajuda={`Vazio: “${DESTINOS[destino].botaoPadrao}”.`}
+              erro={erro?.campo === "botaoTexto" ? erro.mensagem : undefined}
+            />
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <CampoQuando
               id="entra-em"
@@ -351,15 +501,86 @@ function Conteudo({
               erro={erro?.campo === "saiEm" ? erro.mensagem : undefined}
             />
           </div>
-        ) : null}
-      </DialogBody>
-      <DialogFooter>
-        <Button type="button" variant="secundario" onClick={aoFechar}>
-          Cancelar
-        </Button>
-        <Button type="submit">{pedido.modo === "adicionar" ? "Pôr no carrossel" : pedido.modo === "editar" ? "Salvar" : "Escolher notícia"}</Button>
-      </DialogFooter>
-    </form>
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" variant="secundario" onClick={aoFechar}>
+            Cancelar
+          </Button>
+          <Button type="submit">{editando ? "Salvar" : "Pôr no carrossel"}</Button>
+        </DialogFooter>
+      </form>
+      {ehChamada ? (
+        <SeletorDeMidia
+          aberto={seletorAberto}
+          aoMudarAberto={setSeletorAberto}
+          so="imagens"
+          titulo="Foto da Chamada"
+          descricao="Escolha uma foto da Mídia ou envie uma nova. Foto com pessoas só com autorização delas."
+          limites={limitesDaMidia}
+          aoEscolher={(arquivo) => {
+            setFoto({ id: arquivo.id, url: arquivo.url });
+            if (!limpar(fotoAlt)) setFotoAlt(arquivo.alt);
+            setSeletorAberto(false);
+            setErro(null);
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function CampoTexto({ id, rotulo, valor, aoMudar, ajuda, erro }: { id: string; rotulo: string; valor: string; aoMudar: (v: string) => void; ajuda: string; erro?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{rotulo}</Label>
+      <Input id={id} value={valor} onChange={(e) => aoMudar(e.target.value)} aria-invalid={erro ? true : undefined} aria-describedby={`${id}-mensagem`} />
+      <p id={`${id}-mensagem`} role={erro ? "alert" : undefined} className={cn("texto-pequeno", erro ? "text-status-perigo-texto" : "text-texto-terciario")}>
+        {erro ?? ajuda}
+      </p>
+    </div>
+  );
+}
+
+function CampoComContador({
+  id,
+  rotulo,
+  valor,
+  aoMudar,
+  maximo,
+  linhas,
+  ajuda,
+  erro,
+}: {
+  id: string;
+  rotulo: string;
+  valor: string;
+  aoMudar: (v: string) => void;
+  maximo: number;
+  /** Com linhas, uma área de texto; sem, um campo de uma linha. */
+  linhas?: number;
+  ajuda: string;
+  erro?: string;
+}) {
+  const tamanho = limpar(valor).length;
+  const props = {
+    id,
+    value: valor,
+    "aria-invalid": erro ? true : undefined,
+    "aria-describedby": `${id}-mensagem ${id}-contador`,
+  } as const;
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{rotulo}</Label>
+      {linhas ? <Textarea rows={linhas} {...props} onChange={(e) => aoMudar(e.target.value)} /> : <Input {...props} onChange={(e) => aoMudar(e.target.value)} />}
+      <div className="flex items-start justify-between gap-3">
+        <p id={`${id}-mensagem`} role={erro ? "alert" : undefined} className={cn("texto-pequeno", erro ? "text-status-perigo-texto" : "text-texto-terciario")}>
+          {erro ?? ajuda}
+        </p>
+        <p id={`${id}-contador`} className={cn("shrink-0 texto-pequeno tabular-nums", tamanho > maximo ? "text-status-perigo-texto" : "text-texto-terciario")}>
+          {tamanho}/{maximo}
+        </p>
+      </div>
+    </div>
   );
 }
 

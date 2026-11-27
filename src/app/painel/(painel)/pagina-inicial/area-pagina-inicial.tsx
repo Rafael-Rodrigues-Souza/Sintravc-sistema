@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, CalendarClock, Eye, GripVertical, ImageOff, MoreHorizontal, Pencil, Plus, Radio, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, GripVertical, ImageOff, MoreHorizontal, Pencil, Plus, Radio, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
@@ -19,10 +19,10 @@ import type { PainelDaHome } from "@/lib/pagina-inicial/rascunho";
 import {
   alteracoesNaoPublicadas,
   chaveDoItem,
-  chaveNaArea,
   estadoDoItem,
   esquemaDadosDaHome,
   paraONavegador,
+  rotuloDaChamada,
   type DadosDaHomeNoNavegador,
 } from "@/lib/pagina-inicial/regras";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ function textoDoEstado(item: ItemNoNavegador, detalhe: DetalheDoItem | undefined
   if (detalhe && !detalhe.noSite) return { texto: "Fora do ar: não aparece no site", apagado: true, perigo: true };
   if (detalhe && !detalhe.temCapa) return { texto: "Sem capa: não aparece no carrossel", apagado: true, perigo: true };
   const estado = estadoDoItem(lerDatas(item), agora);
-  const tipo = item.tipo === "programa" ? "Programa" : item.tipo === "episodio" ? "Episódio" : "Notícia";
+  const tipo = item.tipo === "programa" ? "Programa" : item.tipo === "episodio" ? "Episódio" : item.tipo === "chamada" ? "Chamada" : "Notícia";
   if (estado.tipo === "saiu") return { texto: `Saiu em ${diaEHora(item.saiEm!)}`, apagado: true };
   if (estado.tipo === "agendado") return { texto: `Agendado: entra em ${diaEHora(item.entraEm!)}`, apagado: false };
   return { texto: item.saiEm ? `Sai do destaque em ${diaEHora(item.saiEm)}` : `${tipo} · sem data de saída`, apagado: false };
@@ -62,6 +62,7 @@ export function AreaPaginaInicial({
   intervaloMs,
   ultimoPrograma,
   sugerida,
+  limitesDaMidia,
 }: {
   pessoaId: string;
   inicial: PainelDaHome;
@@ -70,6 +71,8 @@ export function AreaPaginaInicial({
   intervaloMs: number;
   ultimoPrograma: { numero: number; titulo: string } | null;
   sugerida: { opcao: OpcaoDeDestaque | null } | null;
+  /** Para enviar a foto da Chamada sem sair da janela. */
+  limitesDaMidia: { tamanhoMaximoBytes: number; mensagemDeTamanho: string };
 }) {
   const router = useRouter();
   const [painel, setPainel] = React.useState(inicial);
@@ -133,7 +136,7 @@ export function AreaPaginaInicial({
 
   const rascunho = React.useMemo(() => esquemaDadosDaHome.parse(dados), [dados]);
   const alteracoes = alteracoesNaoPublicadas(rascunho, painel.publicado);
-  const { carrosselMaximo, listaPosicoes } = painel.limites;
+  const { carrosselMaximo } = painel.limites;
   const carrosselCheio = dados.carrossel.length >= carrosselMaximo;
   const temPrograma = dados.carrossel.some((i) => i.tipo === "programa");
   const conflito = estado.situacao === "conflito";
@@ -151,30 +154,39 @@ export function AreaPaginaInicial({
     mudar({ ...dados, carrossel: dados.carrossel.filter((_, i) => i !== indice) }, `${itens[chaveDoItem(item)]?.titulo ?? "Destaque"} removido do carrossel.`);
   };
 
+  /** A Chamada não está no banco das opções: o painel monta o detalhe dela (a frase e a foto). */
+  const detalheDaChamada = (item: ItemNoNavegador, fotoUrl: string | null): DetalheDoItem => ({
+    chave: chaveDoItem(item),
+    tipo: "chamada",
+    itemId: item.itemId,
+    titulo: item.fraseChamada ?? "Chamada",
+    rotulo: rotuloDaChamada(item.chamada?.destino ?? "filie_se"),
+    capaUrl: fotoUrl,
+    noSite: true,
+    temCapa: true,
+  });
+
   const aoEscolher = (resultado: ResultadoDaJanela) => {
     if (!janela) return;
     const opcao = resultado.opcao;
     if (opcao) setItens((atual) => ({ ...atual, [opcao.chave]: opcao }));
+    const campos = { entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada, chamada: resultado.chamada };
     if (janela.modo === "adicionar") {
-      const item: ItemNoNavegador = resultado.opcao
-        ? { tipo: resultado.opcao.tipo, itemId: resultado.opcao.itemId, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada }
-        : { tipo: "programa", itemId: null, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada };
+      const item: ItemNoNavegador = opcao
+        ? { tipo: opcao.tipo, itemId: opcao.itemId, ...campos, chamada: null }
+        : resultado.tipo === "chamada"
+          ? // O id da Chamada nasce aqui e a acompanha no rascunho e no publicado (E63).
+            { tipo: "chamada", itemId: crypto.randomUUID(), ...campos }
+          : { tipo: "programa", itemId: null, ...campos, chamada: null };
+      if (item.tipo === "chamada") setItens((atual) => ({ ...atual, [chaveDoItem(item)]: detalheDaChamada(item, resultado.fotoUrl) }));
       mudar({ ...dados, carrossel: [...dados.carrossel, item] }, "Destaque posto no fim do carrossel.");
-    } else if (janela.modo === "editar") {
-      const carrossel = dados.carrossel.map((i, k) =>
-        k === janela.indice ? { ...i, entraEm: resultado.entraEm, saiEm: resultado.saiEm, fraseChamada: resultado.fraseChamada } : i,
-      );
+    } else {
+      const carrossel = dados.carrossel.map((i, k) => (k === janela.indice ? { ...i, ...campos, chamada: i.tipo === "chamada" ? campos.chamada : null } : i));
+      const editado = carrossel[janela.indice]!;
+      if (editado.tipo === "chamada") setItens((atual) => ({ ...atual, [chaveDoItem(editado)]: detalheDaChamada(editado, resultado.fotoUrl) }));
       mudar({ ...dados, carrossel }, "Destaque alterado.");
-    } else if (resultado.opcao) {
-      const lista = Array.from({ length: listaPosicoes }, (_, k) => (k === janela.posicao ? { noticiaId: resultado.opcao!.itemId } : (dados.lista[k] ?? null)));
-      mudar({ ...dados, lista }, `Posição ${janela.posicao + 1} da lista: ${resultado.opcao.titulo}.`);
     }
     setJanela(null);
-  };
-
-  const automatico = (posicao: number) => {
-    const lista = Array.from({ length: listaPosicoes }, (_, k) => (k === posicao ? null : (dados.lista[k] ?? null)));
-    mudar({ ...dados, lista }, `Posição ${posicao + 1} da lista voltou ao automático.`);
   };
 
   const soltarSobre = (alvo: number) => {
@@ -303,13 +315,14 @@ export function AreaPaginaInicial({
 
       {/* Carrossel do topo */}
       <section aria-labelledby="titulo-carrossel" className="flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-4 lg:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-1">
+        {/* Texto e botão lado a lado do sm em diante; no celular, o botão desce na largura toda. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             <h2 id="titulo-carrossel" className="texto-titulo-card text-texto-primario">
               Carrossel do topo
             </h2>
             <p className="texto-pequeno text-texto-secundario">
-              Até {carrosselMaximo} destaques. Use imagem horizontal (16:9) com texto alternativo.
+              Até {carrosselMaximo} destaques: notícias, episódios, o programa e Chamadas. Use imagem horizontal (16:9) com texto alternativo.
             </p>
           </div>
           <Button
@@ -317,7 +330,7 @@ export function AreaPaginaInicial({
             disabled={carrosselCheio || conflito}
             onClick={() => setJanela({ modo: "adicionar" })}
             aria-describedby={carrosselCheio ? "carrossel-cheio" : undefined}
-            className="w-full sm:w-auto"
+            className="w-full shrink-0 sm:w-auto"
           >
             <Plus aria-hidden />
             Adicionar destaque
@@ -341,7 +354,8 @@ export function AreaPaginaInicial({
               const chave = chaveDoItem(item);
               const detalhe = itens[chave];
               const situacao = textoDoEstado(item, detalhe, agora);
-              const titulo = detalhe?.titulo ?? "Destaque";
+              const ehChamada = item.tipo === "chamada";
+              const titulo = (ehChamada ? item.fraseChamada : detalhe?.titulo) ?? "Destaque";
               return (
                 <li
                   key={chave}
@@ -386,7 +400,7 @@ export function AreaPaginaInicial({
                   <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5", situacao.apagado && "opacity-60")}>
                     <p className="texto-etiqueta text-destaque-azul uppercase">{detalhe?.rotulo ?? ""}</p>
                     <p className="line-clamp-2 texto-titulo-card-pequeno break-words text-texto-primario">{titulo}</p>
-                    {item.fraseChamada ? (
+                    {item.fraseChamada && !ehChamada ? (
                       <p className="line-clamp-2 texto-pequeno break-words text-texto-primario" data-testid="frase-do-item">
                         <span className="sr-only">Frase de chamada: </span>“{item.fraseChamada}”
                       </p>
@@ -402,7 +416,17 @@ export function AreaPaginaInicial({
                     podeTirarDoAr={noArNoSite(chave)}
                     aoMover={(passo) => mover(i, i + passo)}
                     aoEditar={() =>
-                      setJanela({ modo: "editar", indice: i, entraEm: item.entraEm, saiEm: item.saiEm, fraseChamada: item.fraseChamada ?? null, titulo })
+                      setJanela({
+                        modo: "editar",
+                        indice: i,
+                        tipo: item.tipo,
+                        titulo,
+                        entraEm: item.entraEm,
+                        saiEm: item.saiEm,
+                        fraseChamada: item.fraseChamada ?? null,
+                        chamada: rascunho.carrossel[i]?.chamada ?? null,
+                        fotoUrl: detalhe?.capaUrl ?? null,
+                      })
                     }
                     aoTirarDoAr={() => setConfirmacao({ tipo: "tirar", chave, titulo })}
                     aoRemover={() => remover(i)}
@@ -412,69 +436,6 @@ export function AreaPaginaInicial({
             })}
           </ol>
         )}
-      </section>
-
-      {/* Lista “Em destaque” */}
-      <section aria-labelledby="titulo-lista" className="flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-4 lg:p-6">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 id="titulo-lista" className="texto-titulo-card text-texto-primario">
-            Em destaque (lista ao lado do carrossel)
-          </h2>
-          <p className="texto-pequeno text-texto-secundario">
-            {listaPosicoes} posições. Deixe no automático para mostrar as notícias mais recentes.
-          </p>
-        </div>
-        <ol aria-label="Posições da lista Em destaque" className="flex flex-col">
-          {Array.from({ length: listaPosicoes }, (_, i) => {
-            const posicao = dados.lista[i] ?? null;
-            const item = posicao ? ({ tipo: "noticia", itemId: posicao.noticiaId } as const) : null;
-            const chave = item ? chaveDoItem(item) : null;
-            const detalhe = chave ? itens[chave] : undefined;
-            const quem = item ? painel.escolhidoPor[chaveNaArea("lista", item)] : undefined;
-            return (
-              <li key={i} data-testid="posicao-lista" className="flex items-center gap-2 border-t border-borda-padrao py-3 first:border-t-0 sm:gap-3">
-                <span aria-hidden className="w-5 shrink-0 text-center texto-titulo-card-pequeno text-texto-secundario">
-                  {i + 1}
-                </span>
-                <Miniatura url={posicao ? (detalhe?.capaUrl ?? null) : null} automatico={!posicao} />
-                <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5", detalhe && !detalhe.noSite && "opacity-60")}>
-                  <span className="sr-only">Posição {i + 1}: </span>
-                  {posicao ? (
-                    <>
-                      <p className="texto-etiqueta text-destaque-azul uppercase">{detalhe?.rotulo.replace(/^Notícia · /, "") ?? "Notícia"}</p>
-                      <p className="line-clamp-2 texto-titulo-card-pequeno break-words text-texto-primario">{detalhe?.titulo ?? "Notícia"}</p>
-                      <p className={cn("texto-pequeno", detalhe && !detalhe.noSite ? "text-status-perigo-texto" : "text-texto-secundario")}>
-                        {detalhe && !detalhe.noSite ? "Fora do ar: o site mostra uma automática no lugar" : quem ? `Escolhido por ${quem}` : "Escolhido por você"}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="texto-titulo-card-pequeno text-texto-primario">Automático</p>
-                      <p className="texto-pequeno text-texto-secundario">A notícia mais recente que ainda não está em destaque.</p>
-                    </>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="secundario" size="pequeno" disabled={conflito} onClick={() => setJanela({ modo: "trocar", posicao: i })} aria-label={`Trocar a posição ${i + 1}`}>
-                    Trocar
-                  </Button>
-                  {posicao ? (
-                    <button
-                      type="button"
-                      disabled={conflito}
-                      onClick={() => automatico(i)}
-                      aria-label={`Voltar a posição ${i + 1} ao automático`}
-                      title="Voltar ao automático"
-                      className="alvo-toque inline-flex size-9 items-center justify-center rounded-[10px] border border-borda-padrao text-texto-secundario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring"
-                    >
-                      <RotateCcw aria-hidden className="size-4" />
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
       </section>
 
       {/* Último programa: automático (R12) */}
@@ -521,8 +482,8 @@ export function AreaPaginaInicial({
         aoEscolher={aoEscolher}
         temPrograma={temPrograma}
         noCarrossel={new Set(dados.carrossel.map(chaveDoItem))}
-        naLista={new Set(dados.lista.flatMap((p) => (p ? [p.noticiaId] : [])))}
-        fraseMaxima={painel.limites.fraseChamadaMaximo}
+        limites={painel.limites}
+        limitesDaMidia={limitesDaMidia}
       />
 
       <AlertDialog open={!!confirmacao} onOpenChange={(aberta) => !aberta && !ocupado && setConfirmacao(null)}>
@@ -568,15 +529,13 @@ export function AreaPaginaInicial({
   );
 }
 
-function Miniatura({ url, automatico }: { url: string | null; automatico?: boolean }) {
+function Miniatura({ url }: { url: string | null }) {
   return (
     <div className="flex aspect-video w-20 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-fundo-superficie-alt text-texto-terciario sm:w-[104px]">
       {url ? (
         // Miniatura do painel: a capa da Mídia ou a rota do painel (o navegador da equipe pode pedir ao YouTube).
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="size-full object-cover" loading="lazy" />
-      ) : automatico ? (
-        <CalendarClock aria-hidden className="size-5" />
       ) : (
         <ImageOff aria-hidden className="size-5" />
       )}

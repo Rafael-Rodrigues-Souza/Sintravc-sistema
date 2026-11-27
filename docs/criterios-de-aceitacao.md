@@ -131,7 +131,9 @@ Como Visitante, quero falar com o sindicato pelo canal mais prático, para tirar
 
 **Quando** acesso a página Contato depois de 1 minuto
 
-**Então** vejo o novo telefone no Contato, na barra superior e no rodapé
+**Então** vejo o novo telefone no Contato, no rodapé e no menu do celular
+
+> A barra superior saiu do site no E63 (#75, decisão do Rafael em 27/11/2026): o telefone não aparece mais no topo do computador.
 
 **CA-US05.2 · Abrir WhatsApp**
 

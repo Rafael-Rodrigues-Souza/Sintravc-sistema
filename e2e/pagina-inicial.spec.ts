@@ -7,12 +7,12 @@ import { RESPONSIVO } from "../playwright.config";
 import { alvosDeToquePequenos } from "./alvo-de-toque";
 import { apertar } from "./entrar";
 import { publicarNoticiaPelaTela } from "./noticias";
-import { adicionarDestaquePelaTela, episodioNoAr, esperarSalvo, itensDoCarrossel, limparHome, ordemNaHome, ordemNoPainel } from "./pagina-inicial";
+import { adicionarChamadaPelaTela, adicionarDestaquePelaTela, episodioNoAr, esperarSalvo, itensDoCarrossel, limparHome, ordemNaHome, ordemNoPainel } from "./pagina-inicial";
 import { campoDaqui, consultar } from "./radio";
 import { entrarComo, semAnimacao, semRolagemLateral } from "./responsivo";
 
 /**
- * Página inicial no painel (US26, RF46, E13, E43, E62): o carrossel, a lista “Em destaque”, o
+ * Página inicial no painel (US26, RF46, E13, E43, E62, E63): o carrossel com as Chamadas, o
  * rascunho salvo sozinho, a prévia, “Publicar alterações” e “Tirar do ar agora”.
  */
 
@@ -50,7 +50,9 @@ test("CA-US26.1 · reordenar pelo teclado e pelo menu, a prévia confere com o s
   await editar.getByLabel("Frase de chamada (opcional)").fill("x".repeat(91));
   await expect(editar.getByText("91/90")).toBeVisible();
   await editar.getByRole("button", { name: "Salvar" }).click();
-  await expect(editar.getByRole("alert")).toHaveText("A frase de chamada tem até 90 caracteres.");
+  // E23: o Alerta 2.0 no topo e a mensagem embaixo do campo.
+  await expect(editar.getByRole("alert").filter({ hasText: "Confira o destaque" })).toContainText("A frase de chamada tem até 90 caracteres.");
+  await expect(editar.getByRole("alert").filter({ hasNotText: "Confira o destaque" })).toHaveText("A frase de chamada tem até 90 caracteres.");
   await editar.getByLabel("Frase de chamada (opcional)").fill("Ouça o programa desta semana");
   await editar.getByRole("button", { name: "Salvar" }).click();
   await expect(editar).toBeHidden();
@@ -156,45 +158,90 @@ test("“Destacar na Home” do editor abre a janela com a notícia; agendado mo
   expect(await ordemNaHome(page)).toEqual([PROGRAMA]);
 });
 
-test("lista “Em destaque”: trocar uma posição, publicar, ver no site e voltar ao automático", async ({ page }) => {
-  const noticia = `Home e2e lista ${Date.now()}`;
-  await entrarComo(page, pessoas.adm, "/painel");
-  await publicarNoticiaPelaTela(page, noticia);
-  // Mais recentes que a escolhida, para a posição 2 não ser a mesma no automático.
-  await publicarNoticiaPelaTela(page, `Home e2e mais nova A ${Date.now()}`);
-  await publicarNoticiaPelaTela(page, `Home e2e mais nova B ${Date.now()}`);
+test("Chamada (E63): escolher a foto na Mídia, escrever, publicar, ver no site com o botão Filie-se e trocar o destino para Benefícios", async ({ page }) => {
+  const frase = `Chamada e2e ${Date.now()}`;
+  const apoio = "Texto de apoio do teste, curto e direto.";
+  const alt = "Ônibus amarelo na avenida, ilustração de teste";
+  await entrarComo(page, pessoas.com, "/painel/pagina-inicial");
+  await expect(page.getByRole("heading", { level: 2, name: /Em destaque/ })).toHaveCount(0);
 
-  await page.goto("/painel/pagina-inicial");
-  const posicao = page.getByTestId("posicao-lista").nth(1);
-  await expect(posicao).toContainText("Automático");
-  await page.getByRole("button", { name: "Trocar a posição 2" }).click();
-  const janela = page.getByRole("dialog", { name: "Escolher a notícia da posição 2" });
-  await janela.getByLabel("Buscar notícia").fill(noticia);
-  await janela.getByRole("radio", { name: new RegExp(noticia) }).locator("..").click();
-  await janela.getByRole("button", { name: "Escolher notícia" }).click();
-  await expect(posicao).toContainText(noticia);
-  await expect(posicao).toContainText("Escolhido por você");
+  // Sem foto, a janela avisa e não fecha.
+  await page.getByRole("button", { name: "Adicionar destaque" }).click();
+  const janela = page.getByRole("dialog", { name: "Adicionar destaque" });
+  await janela.getByText("Chamada", { exact: true }).click();
+  await expect(janela.getByLabel("Texto do botão")).toHaveValue("Filie-se");
+  await janela.getByRole("button", { name: "Pôr no carrossel" }).click();
+  // E23: o Alerta 2.0 no topo e a mensagem embaixo do campo.
+  await expect(janela.getByRole("alert").filter({ hasText: "Confira o destaque" })).toContainText("Escolha a foto da Chamada.");
+  await expect(janela.getByRole("alert").filter({ hasNotText: "Confira o destaque" })).toHaveText("Escolha a foto da Chamada.");
+  await janela.getByRole("button", { name: "Cancelar" }).click();
+
+  await adicionarChamadaPelaTela(page, { frase, apoio, alt });
+  const item = itensDoCarrossel(page).last();
+  await expect(item).toContainText(frase);
+  await expect(item).toContainText("Chamada · Filie-se");
   await esperarSalvo(page);
-  await page.reload();
-  await expect(posicao).toContainText("Escolhido por Mariana");
 
   await page.getByRole("button", { name: "Publicar alterações" }).first().click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Publicar agora" }).click();
   await expect(page.getByText("Alterações publicadas.", { exact: false })).toBeVisible();
 
+  // No site: a Chamada é o 2º slide (depois do programa), com a foto e o texto alternativo, a frase, o apoio e o botão.
   await page.goto("/");
-  await expect(page.getByTestId("lista-em-destaque").getByRole("listitem").nth(1)).toContainText(noticia);
+  expect(await ordemNaHome(page)).toEqual([PROGRAMA, frase]);
+  await page.getByTestId("carrossel-home").getByRole("button", { name: "Próximo destaque" }).click();
+  const slide = page.locator("[data-testid=slide-home][data-ativo]");
+  await expect(slide.getByRole("heading", { level: 2 })).toHaveText(frase);
+  await expect(slide).toContainText(apoio);
+  await expect(slide.getByRole("img", { name: alt })).toBeVisible();
+  const botao = slide.getByRole("link", { name: /Filie-se/ });
+  await expect(botao).toHaveAttribute("href", /^https:\/\/wa\.me\/55\d+/);
+  await expect(botao).toHaveAttribute("target", "_blank");
 
+  // Editar: trocar o destino troca o texto padrão do botão.
   await page.goto("/painel/pagina-inicial");
-  await page.getByRole("button", { name: "Voltar a posição 2 ao automático" }).click();
-  await expect(posicao).toContainText("Automático");
-  await expect(page.getByTestId("alteracoes-nao-publicadas")).toContainText("1 alteração ainda não publicada");
+  await page.getByRole("button", { name: `Ações do destaque “${frase}”` }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  const edicao = page.getByRole("dialog", { name: "Editar Chamada" });
+  await edicao.getByText("Benefícios", { exact: true }).click();
+  await expect(edicao.getByLabel("Texto do botão")).toHaveValue("Ver benefícios");
+  await edicao.getByRole("button", { name: "Salvar" }).click();
+  await expect(itensDoCarrossel(page).last()).toContainText("Chamada · Benefícios");
+  await esperarSalvo(page);
+  await page.getByRole("button", { name: "Publicar alterações" }).first().click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Publicar agora" }).click();
+  await expect(page.getByText("Alterações publicadas.", { exact: false })).toBeVisible();
 
-  // Descartar volta ao que está no site.
-  await page.getByRole("button", { name: "Descartar alterações" }).click();
-  await page.getByRole("alertdialog", { name: "Descartar alterações?" }).getByRole("button", { name: "Descartar alterações" }).click();
-  await expect(posicao).toContainText(noticia);
-  await expect(page.getByTestId("alteracoes-nao-publicadas")).toContainText("Igual ao site");
+  await page.goto("/");
+  await page.getByTestId("carrossel-home").getByRole("button", { name: "Próximo destaque" }).click();
+  await expect(page.locator("[data-testid=slide-home][data-ativo]").getByRole("link", { name: /Ver benefícios/ })).toHaveAttribute("href", "/sindicato/beneficios");
+});
+
+test("aba Rádio Chofer (E63): “Sempre o último programa” ou um episódio da lista, e o programa repetido fica travado", async ({ page }) => {
+  const episodio = `Home e2e aba rádio ${Date.now()}`;
+  await episodioNoAr(episodio);
+  await entrarComo(page, pessoas.com, "/painel/pagina-inicial");
+
+  // O programa já está no carrossel (seed): a opção vem travada, com o motivo.
+  await page.getByRole("button", { name: "Adicionar destaque" }).click();
+  const janela = page.getByRole("dialog", { name: "Adicionar destaque" });
+  await expect(janela.getByText("Episódio", { exact: true })).toHaveCount(0);
+  await expect(janela.getByText("Programa Rádio Chofer", { exact: true })).toHaveCount(0);
+  await janela.getByText("Rádio Chofer", { exact: true }).click();
+  await expect(janela.getByRole("radio", { name: /Sempre o último programa/ })).toBeDisabled();
+  await expect(janela).toContainText("Já está no carrossel");
+  await janela.getByRole("button", { name: "Pôr no carrossel" }).click();
+  // E23: o Alerta 2.0 no topo e a mensagem embaixo do campo.
+  await expect(janela.getByRole("alert").filter({ hasText: "Confira o destaque" })).toContainText("Escolha o último programa ou um episódio.");
+  await expect(janela.getByRole("alert").filter({ hasNotText: "Confira o destaque" })).toHaveText("Escolha o último programa ou um episódio.");
+  await janela.getByRole("button", { name: "Cancelar" }).click();
+
+  // Sem o programa, “Sempre o último programa” volta; o episódio entra pela mesma aba.
+  await page.getByRole("button", { name: `Ações do destaque “${PROGRAMA}”` }).click();
+  await page.getByRole("menuitem", { name: "Remover do carrossel" }).click();
+  await adicionarDestaquePelaTela(page, { tipo: "Episódio", titulo: episodio });
+  await adicionarDestaquePelaTela(page, { tipo: "Programa Rádio Chofer" });
+  expect(await ordemNoPainel(page)).toEqual([episodio, PROGRAMA]);
 });
 
 test("o Atendimento não abre a Página inicial nem a prévia (403)", async ({ page }) => {
@@ -215,6 +262,11 @@ test.describe("Página inicial no celular e no tablet", { tag: "@responsivo" }, 
     await apertar(page.getByRole("button", { name: `Ações do destaque “${episodio}”` }), hasTouch);
     await apertar(page.getByRole("menuitem", { name: "Mover para cima" }), hasTouch);
     expect(await ordemNoPainel(page)).toEqual([episodio, PROGRAMA]);
+
+    // A janela da Chamada (E63) também funciona no toque, com o seletor da Mídia.
+    const frase = `Chamada toque ${Date.now()}`;
+    await adicionarChamadaPelaTela(page, { frase, apoio: "Apoio no toque.", alt: "Ilustração de teste" }, { toque: hasTouch });
+    expect(await ordemNoPainel(page)).toEqual([episodio, PROGRAMA, frase]);
 
     await expect(page.getByRole("button", { name: "Publicar alterações" }).filter({ visible: true })).toHaveCount(1);
     await expect(page.getByRole("link", { name: /Pré-visualizar/ }).filter({ visible: true })).toHaveCount(1);

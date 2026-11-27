@@ -7,7 +7,7 @@ import { revalidarSitePublico } from "@/lib/site/revalidar";
 import type { PedidoDestaque } from "@/lib/tarefas/fila";
 
 import { detalhesDosItens } from "./itens";
-import { chaveDoItem, type TipoDoItem } from "./regras";
+import { chaveDaLinha, itemDaLinha } from "./rascunho";
 
 export type ResultadoVirada = { tipo: "feita" } | { tipo: "ignorada" };
 
@@ -28,9 +28,9 @@ export async function executarViradaDoDestaque(pedido: PedidoDestaque, deps: { a
     const publicados = await tx
       .select()
       .from(destaqueHome)
-      .where(and(eq(destaqueHome.versao, "publicado"), eq(destaqueHome.area, "carrossel")))
+      .where(eq(destaqueHome.versao, "publicado"))
       .for("update");
-    const linha = publicados.find((l) => l.itemTipo && chaveDoItem({ tipo: l.itemTipo, itemId: l.itemId }) === pedido.chave);
+    const linha = publicados.find((l) => chaveDaLinha(l) === pedido.chave);
     const hora = pedido.virada === "entrar" ? linha?.entraEm : linha?.saiEm;
     if (!linha || hora?.getTime() !== marcadoPara.getTime()) return { tipo: "ignorada" } as const;
 
@@ -41,7 +41,7 @@ export async function executarViradaDoDestaque(pedido: PedidoDestaque, deps: { a
       .limit(1);
     if (jaFeita) return { tipo: "ignorada" } as const;
 
-    const detalhes = await detalhesDosItens([{ tipo: linha.itemTipo as TipoDoItem, itemId: linha.itemId }], agora);
+    const detalhes = await detalhesDosItens([itemDaLinha(linha)], agora);
     await registrarAtividade(tx, {
       ator: { tipo: "sistema" },
       acao,

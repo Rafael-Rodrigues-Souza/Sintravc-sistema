@@ -7,13 +7,13 @@ import type { DadosNoticia } from "@/lib/conteudos/dados";
 import { ocultarConteudos } from "@/lib/conteudos/ciclo-de-vida";
 import { publicarNoticia } from "@/lib/conteudos/publicar";
 import { banco } from "@/lib/db";
-import { atividade, destaqueHome, episodio, paginaInicial } from "@/lib/db/schema";
+import { atividade, destaqueHome, episodio, midiaUso, paginaInicial } from "@/lib/db/schema";
 import { enviarMidia } from "@/lib/midia/enviar";
 import { SemPermissao, type QuemDaEquipe } from "@/lib/permissoes";
 import { lerParametro } from "@/lib/parametros";
 import { filaEmMemoria } from "@/lib/tarefas/fila";
 import { armazenamentoEmMemoria } from "@/testes/armazenamento-memoria";
-import { imagem } from "@/testes/arquivos/gerar";
+import { imagem, pdf } from "@/testes/arquivos/gerar";
 import { pessoaDaEquipe } from "@/testes/equipe";
 import { noticiaCompleta, rascunhoSalvo } from "@/testes/noticias";
 
@@ -39,13 +39,13 @@ function proximaHora() {
 const agoraDepois = () => new Date(relogio + 60 * 1000);
 const horas = (base: Date, h: number) => new Date(base.getTime() + h * 3_600_000);
 
-const programa: ItemDoCarrossel = { tipo: "programa", itemId: null, entraEm: null, saiEm: null, fraseChamada: null };
+const programa: ItemDoCarrossel = { tipo: "programa", itemId: null, entraEm: null, saiEm: null, fraseChamada: null, chamada: null };
 
 async function voltarAoInicio() {
   await banco().delete(destaqueHome);
   await banco()
     .insert(destaqueHome)
-    .values(["rascunho", "publicado"].map((versao) => ({ versao: versao as "rascunho", area: "carrossel" as const, posicao: 1, itemTipo: "programa" as const })));
+    .values(["rascunho", "publicado"].map((versao) => ({ versao: versao as "rascunho", posicao: 1, itemTipo: "programa" as const })));
   await banco().update(paginaInicial).set({ revisao: 0, salvoEm: null, salvoPor: null, publicadoEm: null, publicadoPor: null });
 }
 
@@ -102,9 +102,21 @@ const noticia = (id: string, mais: Partial<ItemDoCarrossel> = {}): ItemDoCarross
   entraEm: null,
   saiEm: null,
   fraseChamada: null,
+  chamada: null,
   ...mais,
 });
-const dados = (carrossel: ItemDoCarrossel[], lista: DadosDaHome["lista"] = [null, null, null]): DadosDaHome => ({ carrossel, lista });
+const episodioItem = (id: string): ItemDoCarrossel => ({ tipo: "episodio", itemId: id, entraEm: null, saiEm: null, fraseChamada: null, chamada: null });
+/** Uma Chamada (E63) com a foto dada. O id é gerado aqui, como no painel. */
+const chamada = (fotoMidiaId: string, mais: Partial<ItemDoCarrossel> = {}, id = randomUUID()): ItemDoCarrossel => ({
+  tipo: "chamada",
+  itemId: id,
+  entraEm: null,
+  saiEm: null,
+  fraseChamada: "Junto, o rodoviário pesa mais.",
+  chamada: { fotoMidiaId, fotoAlt: "Ônibus na avenida", textoApoio: "Faça parte do sindicato.", botaoTexto: null, destino: "filie_se" },
+  ...mais,
+});
+const dados = (carrossel: ItemDoCarrossel[]): DadosDaHome => ({ carrossel });
 
 async function revisaoAtual() {
   const [c] = await banco().select({ revisao: paginaInicial.revisao }).from(paginaInicial);
@@ -126,7 +138,7 @@ async function atividadesDaHome(acao: string) {
 }
 
 const idsDosSlides = (slides: Awaited<ReturnType<typeof destaquesDaHome>>["slides"]) =>
-  slides.map((s) => (s.tipo === "noticia" ? s.noticia.id : s.tipo === "episodio" ? s.episodio.id : "programa"));
+  slides.map((s) => (s.tipo === "noticia" ? s.noticia.id : s.tipo === "episodio" ? s.episodio.id : s.tipo === "chamada" ? s.chamada.itemId : "programa"));
 
 describe("Página inicial: permissões (spec §4)", () => {
   it("ADM e COM editam; ATD não vê nem edita", async () => {
@@ -156,7 +168,7 @@ describe("Página inicial: rascunho salvo sozinho (E62)", () => {
     const painel = await lerPainel({ quem });
     expect(painel.rascunho.carrossel.map(chaveDoItem)).toEqual([`noticia:${a}`, "programa:programa"]);
     expect(painel.publicado.carrossel.map(chaveDoItem)).toEqual(["programa:programa"]);
-    expect(painel.escolhidoPor[`carrossel:noticia:${a}`]).toBe("Carla Escolheu");
+    expect(painel.escolhidoPor[`noticia:${a}`]).toBe("Carla Escolheu");
     expect(idsDosSlides((await destaquesDaHome(agoraDepois())).slides)).toEqual(["programa"]);
     // O salvamento automático não vai para a Atividade.
     expect(await atividadesDaHome("pagina_inicial.publicar")).toHaveLength(0);
@@ -188,16 +200,14 @@ describe("Página inicial: rascunho salvo sozinho (E62)", () => {
     const quem = await pessoaDaEquipe("COM");
     const { id: rascunho } = await rascunhoSalvo(quem, await noticiaCompleta({ titulo: "Home rascunho" }));
     await expect(salvar(quem, dados([noticia(rascunho)]))).rejects.toThrow("Esta notícia não está no site");
-    await expect(salvar(quem, dados([], [{ noticiaId: rascunho }, null, null]))).rejects.toThrow("Esta notícia não está no site");
     const futuro = await episodioNoAr(quem, horas(agoraDepois(), 24));
-    await expect(salvar(quem, dados([{ tipo: "episodio", itemId: futuro, entraEm: null, saiEm: null, fraseChamada: null }]))).rejects.toThrow("Este episódio não está no site");
+    await expect(salvar(quem, dados([episodioItem(futuro)]))).rejects.toThrow("Este episódio não está no site");
   });
 
-  it("notícia sem capa não entra no carrossel, mas entra na lista", async () => {
+  it("notícia sem capa não entra no carrossel", async () => {
     const quem = await pessoaDaEquipe("COM");
     const semCapa = await publicada(quem, {}, false);
     await expect(salvar(quem, dados([noticia(semCapa)]))).rejects.toThrow("Esta notícia não tem capa");
-    await expect(salvar(quem, dados([programa], [{ noticiaId: semCapa }, null, null]))).resolves.toMatchObject({ tipo: "salvo" });
   });
 
   it("recusa saída que já passou e saída antes da entrada", async () => {
@@ -284,7 +294,7 @@ describe("Página inicial: publicar e descartar (E13, E62)", () => {
   it("descartar volta o rascunho ao publicado, com a Atividade", async () => {
     const quem = await pessoaDaEquipe("ADM");
     const a = await publicada(quem);
-    await salvar(quem, dados([noticia(a)], [{ noticiaId: a }, null, null]));
+    await salvar(quem, dados([noticia(a)]));
     const r = await descartarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem });
     expect(r.tipo).toBe("salvo");
     const painel = await lerPainel({ quem });
@@ -376,27 +386,20 @@ describe("Home do site: segue o relógio (E62)", () => {
     expect(idsDosSlides((await destaquesDaHome(horas(agora, 3))).slides)).toEqual(["programa"]);
   });
 
-  it("episódio no carrossel e notícia oculta pulada; a lista completa com as mais recentes", async () => {
+  it("episódio no carrossel e notícia oculta pulada", async () => {
     const quem = await pessoaDaEquipe("ADM");
     const a = await publicada(quem);
-    const b = await publicada(quem);
-    const c = await publicada(quem);
     const ep = await episodioNoAr(quem, new Date("2000-06-01T16:00:00Z"));
     const agora = agoraDepois();
-    await salvar(quem, dados([{ tipo: "episodio", itemId: ep, entraEm: null, saiEm: null, fraseChamada: null }, noticia(a)], [null, { noticiaId: a }, null]), agora);
+    await salvar(quem, dados([episodioItem(ep), noticia(a)]), agora);
     await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
 
     const home = await destaquesDaHome(agora);
     expect(idsDosSlides(home.slides)).toEqual([ep, a]);
-    // A posição 2 é a escolhida (a), mesmo estando no carrossel; as outras pegam c e b.
-    expect(home.lista.map((n) => n.id)).toEqual([c, a, b]);
     expect(home.intervaloSegundos).toBe(8);
 
     await ocultarConteudos({ ids: [a], motivo: "Informação errada" }, { quem });
-    const depois = await destaquesDaHome(agora);
-    expect(idsDosSlides(depois.slides)).toEqual([ep]);
-    expect(depois.lista.map((n) => n.id)).toEqual([c, b, depois.lista[2]!.id]);
-    expect(depois.lista.map((n) => n.id)).not.toContain(a);
+    expect(idsDosSlides((await destaquesDaHome(agora)).slides)).toEqual([ep]);
   });
 });
 
@@ -443,5 +446,77 @@ describe("Opções da janela “Adicionar destaque”", () => {
       [semCapa, false],
       [comCapa, true],
     ]);
+  });
+});
+
+describe("Página inicial: Chamada (E63, #75)", () => {
+  async function foto(quem: QuemDaEquipe) {
+    const { armazenamento } = armazenamentoEmMemoria();
+    return (await enviarMidia({ bytes: await imagem("png"), nome: "chamada.png" }, { quem, armazenamento })).id;
+  }
+  const usosDaFoto = (midiaId: string) =>
+    banco().select({ donoTipo: midiaUso.donoTipo, donoId: midiaUso.donoId }).from(midiaUso).where(eq(midiaUso.midiaId, midiaId)).orderBy(asc(midiaUso.donoId));
+
+  it("publicada, vira slide com os textos e o destino; acima dos limites do Parametro, recusa", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const f = await foto(quem);
+    const agora = agoraDepois();
+    const frase = await lerParametro("home.chamada_frase_maximo");
+    await expect(salvar(quem, dados([chamada(f, { fraseChamada: "x".repeat(frase + 1) })]), agora)).rejects.toThrow(
+      `A frase da Chamada tem até ${frase} caracteres.`,
+    );
+
+    const id = randomUUID();
+    await salvar(quem, dados([chamada(f, {}, id), programa]), agora);
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
+    const { slides } = await destaquesDaHome(agora);
+    expect(slides[0]).toEqual({
+      tipo: "chamada",
+      frase: "Junto, o rodoviário pesa mais.",
+      chamada: { itemId: id, fotoMidiaId: f, fotoAlt: "Ônibus na avenida", textoApoio: "Faça parte do sindicato.", botaoTexto: null, destino: "filie_se" },
+    });
+    // O resumo da Atividade guarda os campos da Chamada.
+    const publicacao = (await atividadesDaHome("pagina_inicial.publicar")).at(-1);
+    expect(JSON.stringify(publicacao!.detalhe)).toContain("Faça parte do sindicato.");
+  });
+
+  it("a foto tem de ser uma imagem da Mídia", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const { armazenamento } = armazenamentoEmMemoria();
+    const doc = (await enviarMidia({ bytes: await pdf(1), nome: "edital.pdf" }, { quem, armazenamento })).id;
+    await expect(salvar(quem, dados([chamada(doc)]))).rejects.toThrow("A foto da Chamada tem de ser uma imagem da Mídia.");
+    await expect(salvar(quem, dados([chamada(randomUUID())]))).rejects.toThrow("A foto da Chamada tem de ser uma imagem da Mídia.");
+  });
+
+  it("a foto fica presa pelo MidiaUso enquanto estiver no rascunho ou no publicado", async () => {
+    const quem = await pessoaDaEquipe("ADM");
+    const f = await foto(quem);
+    const id = randomUUID();
+    await salvar(quem, dados([chamada(f, {}, id)]));
+    expect(await usosDaFoto(f)).toEqual([{ donoTipo: "destaque", donoId: id }]);
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora: agoraDepois() });
+
+    // Tirada do rascunho, continua no publicado: o uso fica.
+    await salvar(quem, dados([programa]));
+    expect(await usosDaFoto(f)).toEqual([{ donoTipo: "destaque", donoId: id }]);
+    // Publicado sem ela, o uso sai.
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora: agoraDepois() });
+    expect(await usosDaFoto(f)).toEqual([]);
+  });
+
+  it("“Tirar do ar agora” registra a frase gravada no servidor, e a T04 também", async () => {
+    const quem = await pessoaDaEquipe("COM");
+    const f = await foto(quem);
+    const agora = agoraDepois();
+    const item = chamada(f, { saiEm: horas(agora, 5) });
+    await salvar(quem, dados([item, programa]), agora);
+    await publicarAlteracoes({ revisaoBase: await revisaoAtual() }, { quem, fila: filaEmMemoria().fila, agora });
+
+    const r = await executarViradaDoDestaque({ chave: chaveDoItem(item), virada: "sair", para: horas(agora, 5).toISOString() }, { agora: horas(agora, 5) });
+    expect(r).toEqual({ tipo: "feita" });
+    expect((await atividadesDaHome("destaque.sair_do_ar")).at(-1)!.alvoRotulo).toBe("Junto, o rodoviário pesa mais.");
+
+    await tirarDoArAgora({ chave: chaveDoItem(item), revisaoBase: await revisaoAtual() }, { quem, agora: horas(agora, 1) });
+    expect((await atividadesDaHome("destaque.tirar_do_ar")).at(-1)!.alvoRotulo).toBe("Junto, o rodoviário pesa mais.");
   });
 });

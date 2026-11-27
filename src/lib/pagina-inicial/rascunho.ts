@@ -1,8 +1,8 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { registrarAtividade } from "@/lib/atividade";
 import { banco, type Transacao } from "@/lib/db";
-import { destaqueHome, paginaInicial, pessoaEquipe } from "@/lib/db/schema";
+import { destaqueHome, midia, midiaUso, paginaInicial, pessoaEquipe } from "@/lib/db/schema";
 import { lerParametro } from "@/lib/parametros";
 import { exigir, type QuemDaEquipe } from "@/lib/permissoes";
 import type { Fila } from "@/lib/tarefas/fila";
@@ -11,12 +11,11 @@ import { detalhesDosItens, type DetalheDoItem } from "./itens";
 import {
   alteracoesNaoPublicadas,
   chaveDoItem,
-  chaveNaArea,
   conferirDados,
   ErroPaginaInicial,
   estadoDoItem,
-  type AreaDoDestaque,
   type DadosDaHome,
+  type ItemDoCarrossel,
   type LimitesDaHome,
 } from "./regras";
 
@@ -33,24 +32,33 @@ export const CONFLITO = "Outra pessoa mudou a página inicial enquanto você mex
 // --- Leitura do banco --------------------------------------------------------------------------
 
 async function linhasDa(db: Transacao | ReturnType<typeof banco>, versao: Versao): Promise<Linha[]> {
-  return db.select().from(destaqueHome).where(eq(destaqueHome.versao, versao)).orderBy(asc(destaqueHome.area), asc(destaqueHome.posicao));
+  return db.select().from(destaqueHome).where(eq(destaqueHome.versao, versao)).orderBy(asc(destaqueHome.posicao));
 }
 
-function paraDados(linhas: Linha[], listaPosicoes: number): DadosDaHome {
-  const carrossel = linhas
-    .filter((l) => l.area === "carrossel")
-    .map((l) => ({ tipo: l.itemTipo!, itemId: l.itemId, entraEm: l.entraEm, saiEm: l.saiEm, fraseChamada: l.fraseChamada }));
-  const lista = Array.from({ length: listaPosicoes }, (_, i) => {
-    const linha = linhas.find((l) => l.area === "lista" && l.posicao === i + 1 && l.modo === "escolhido" && l.itemId);
-    return linha ? { noticiaId: linha.itemId! } : null;
-  });
-  return { carrossel, lista };
+export function itemDaLinha(l: Linha): ItemDoCarrossel {
+  return {
+    tipo: l.itemTipo,
+    itemId: l.itemId,
+    entraEm: l.entraEm,
+    saiEm: l.saiEm,
+    fraseChamada: l.fraseChamada,
+    chamada:
+      l.itemTipo === "chamada"
+        ? { fotoMidiaId: l.fotoMidiaId!, fotoAlt: l.fotoAlt ?? "", textoApoio: l.textoApoio ?? "", botaoTexto: l.botaoTexto, destino: l.destino! }
+        : null,
+  };
+}
+
+/** A chave do item de uma linha (igual no rascunho e no publicado). */
+export const chaveDaLinha = (l: Linha) => chaveDoItem(itemDaLinha(l));
+
+function paraDados(linhas: Linha[]): DadosDaHome {
+  return { carrossel: linhas.map(itemDaLinha) };
 }
 
 /** O publicado da Home, para o site e para a T04. */
 export async function lerDadosDaHome(versao: Versao = "publicado"): Promise<DadosDaHome> {
-  const [linhas, listaPosicoes] = await Promise.all([linhasDa(banco(), versao), lerParametro("home.lista_posicoes")]);
-  return paraDados(linhas, listaPosicoes);
+  return paraDados(await linhasDa(banco(), versao));
 }
 
 async function travarControle(tx: Transacao) {
@@ -60,55 +68,61 @@ async function travarControle(tx: Transacao) {
 }
 
 /**
- * Grava `dados` como a versão inteira. Quem escolheu cada item vem de `anteriores` (pela chave no
- * carrossel e pela notícia na lista); o que é novo fica com `quem`.
+ * Grava `dados` como a versão inteira. Quem escolheu cada item vem de `anteriores` (pela chave); o
+ * que é novo fica com `quem`. Depois, refaz o MidiaUso das fotos das Chamadas.
  */
 async function gravarVersao(tx: Transacao, versao: Versao, dados: DadosDaHome, anteriores: Linha[], quem: string | null) {
   await tx.delete(destaqueHome).where(eq(destaqueHome.versao, versao));
-  const quemEscolheu = (area: AreaDoDestaque, chave: string) =>
-    anteriores.find((l) => l.itemTipo && chaveNaArea(l.area, { tipo: l.itemTipo, itemId: l.itemId }) === chave)?.escolhidoPor ?? quem;
-  const linhas = [
-    ...dados.carrossel.map((item, i) => ({
-      versao,
-      area: "carrossel" as const,
-      posicao: i + 1,
-      modo: "escolhido" as const,
-      itemTipo: item.tipo,
-      itemId: item.itemId,
-      entraEm: item.entraEm,
-      saiEm: item.saiEm,
-      fraseChamada: item.fraseChamada,
-      escolhidoPor: quemEscolheu("carrossel", chaveNaArea("carrossel", item)),
-    })),
-    ...dados.lista.flatMap((posicao, i) =>
-      posicao
-        ? [
-            {
-              versao,
-              area: "lista" as const,
-              posicao: i + 1,
-              modo: "escolhido" as const,
-              itemTipo: "noticia" as const,
-              itemId: posicao.noticiaId,
-              escolhidoPor: quemEscolheu("lista", chaveNaArea("lista", { tipo: "noticia", itemId: posicao.noticiaId })),
-            },
-          ]
-        : [],
-    ),
-  ];
+  const quemEscolheu = (chave: string) => anteriores.find((l) => chaveDaLinha(l) === chave)?.escolhidoPor ?? quem;
+  const linhas = dados.carrossel.map((item, i) => ({
+    versao,
+    posicao: i + 1,
+    itemTipo: item.tipo,
+    itemId: item.itemId,
+    entraEm: item.entraEm,
+    saiEm: item.saiEm,
+    fraseChamada: item.fraseChamada,
+    fotoMidiaId: item.chamada?.fotoMidiaId ?? null,
+    fotoAlt: item.chamada?.fotoAlt ?? null,
+    textoApoio: item.chamada?.textoApoio ?? null,
+    botaoTexto: item.chamada?.botaoTexto ?? null,
+    destino: item.chamada?.destino ?? null,
+    escolhidoPor: quemEscolheu(chaveDoItem(item)),
+  }));
   if (linhas.length) await tx.insert(destaqueHome).values(linhas);
+  await gravarUsosDasFotos(tx);
 }
 
 /**
- * Só entra o que está no ar (E62): notícia publicada (com capa, no carrossel) e episódio no ar. O
- * que já estava no rascunho pode ficar, mesmo que tenha saído do ar depois: o painel marca e o site pula.
+ * MidiaUso das fotos das Chamadas (RN16, E63): `dono_tipo = 'destaque'` e `dono_id` = o id da
+ * Chamada, para cada foto usada no rascunho ou no publicado. Enquanto estiver em uma das duas, a foto
+ * não pode ser excluída da Mídia, e o “Usado em” mostra a Página inicial.
  */
-async function conferirItensNovos(dados: DadosDaHome, anterior: DadosDaHome, agora: Date) {
+async function gravarUsosDasFotos(tx: Transacao) {
+  await tx.delete(midiaUso).where(eq(midiaUso.donoTipo, "destaque"));
+  const fotos = await tx
+    .selectDistinct({ midiaId: destaqueHome.fotoMidiaId, donoId: destaqueHome.itemId })
+    .from(destaqueHome)
+    .where(eq(destaqueHome.itemTipo, "chamada"));
+  const valores = fotos.flatMap((f) => (f.midiaId && f.donoId ? [{ midiaId: f.midiaId, donoTipo: "destaque", donoId: f.donoId }] : []));
+  if (valores.length) await tx.insert(midiaUso).values(valores);
+}
+
+/**
+ * Só entra o que está no ar (E62): notícia publicada com capa e episódio no ar. O que já estava no
+ * rascunho pode ficar, mesmo que tenha saído do ar depois: o painel marca e o site pula. A foto de
+ * cada Chamada (nova ou trocada) tem de ser uma imagem da Mídia (E63).
+ */
+async function conferirItensNovos(tx: Transacao, dados: DadosDaHome, anterior: DadosDaHome, agora: Date) {
   const jaNoCarrossel = new Set(anterior.carrossel.map(chaveDoItem));
-  const jaNaLista = new Set(anterior.lista.flatMap((p) => (p ? [p.noticiaId] : [])));
-  const novosCarrossel = dados.carrossel.filter((i) => !jaNoCarrossel.has(chaveDoItem(i)));
-  const novosLista = dados.lista.flatMap((p) => (p && !jaNaLista.has(p.noticiaId) ? [{ tipo: "noticia" as const, itemId: p.noticiaId }] : []));
-  const site = await detalhesDosItens([...novosCarrossel, ...novosLista], agora);
+  const novosCarrossel = dados.carrossel.filter((i) => !jaNoCarrossel.has(chaveDoItem(i)) && i.tipo !== "chamada");
+  const fotosAntes = new Set(anterior.carrossel.flatMap((i) => (i.chamada ? [i.chamada.fotoMidiaId] : [])));
+  const fotosNovas = [...new Set(dados.carrossel.flatMap((i) => (i.chamada && !fotosAntes.has(i.chamada.fotoMidiaId) ? [i.chamada.fotoMidiaId] : [])))];
+  if (fotosNovas.length) {
+    const imagens = await tx.select({ id: midia.id }).from(midia).where(and(inArray(midia.id, fotosNovas), eq(midia.tipo, "imagem")));
+    if (imagens.length !== fotosNovas.length) throw new ErroPaginaInicial("A foto da Chamada tem de ser uma imagem da Mídia.", "foto");
+  }
+  const site = await detalhesDosItens(novosCarrossel, agora);
   const naoEstaNoSite = (tipo: "noticia" | "episodio") =>
     new ErroPaginaInicial(
       tipo === "noticia"
@@ -118,22 +132,24 @@ async function conferirItensNovos(dados: DadosDaHome, anterior: DadosDaHome, ago
     );
   for (const item of novosCarrossel) {
     const detalhe = site[chaveDoItem(item)];
-    if (item.tipo !== "programa" && !detalhe?.noSite) throw naoEstaNoSite(item.tipo);
+    if ((item.tipo === "noticia" || item.tipo === "episodio") && !detalhe?.noSite) throw naoEstaNoSite(item.tipo);
     if (!detalhe?.temCapa) throw new ErroPaginaInicial("Esta notícia não tem capa. O carrossel precisa de uma imagem.", "item");
-    if (item.saiEm && item.saiEm.getTime() <= agora.getTime()) throw new ErroPaginaInicial("A saída já passou. Escolha uma data no futuro.", "saiEm");
   }
-  for (const item of novosLista) {
-    if (!site[chaveDoItem(item)]?.noSite) throw naoEstaNoSite("noticia");
+  for (const item of dados.carrossel) {
+    if (jaNoCarrossel.has(chaveDoItem(item))) continue;
+    if (item.saiEm && item.saiEm.getTime() <= agora.getTime()) throw new ErroPaginaInicial("A saída já passou. Escolha uma data no futuro.", "saiEm");
   }
 }
 
 async function limites(): Promise<LimitesDaHome> {
-  const [carrosselMaximo, listaPosicoes, fraseChamadaMaximo] = await Promise.all([
+  const [carrosselMaximo, fraseChamadaMaximo, chamadaFraseMaximo, chamadaApoioMaximo, chamadaBotaoMaximo] = await Promise.all([
     lerParametro("home.carrossel_maximo"),
-    lerParametro("home.lista_posicoes"),
     lerParametro("home.frase_chamada_maximo"),
+    lerParametro("home.chamada_frase_maximo"),
+    lerParametro("home.chamada_apoio_maximo"),
+    lerParametro("home.chamada_botao_maximo"),
   ]);
-  return { carrosselMaximo, listaPosicoes, fraseChamadaMaximo };
+  return { carrosselMaximo, fraseChamadaMaximo, chamadaFraseMaximo, chamadaApoioMaximo, chamadaBotaoMaximo };
 }
 
 const iguais = (a: DadosDaHome, b: DadosDaHome) => alteracoesNaoPublicadas(a, b) === 0;
@@ -145,8 +161,10 @@ function resumo(dados: DadosDaHome) {
       entra_em: i.entraEm?.toISOString() ?? null,
       sai_em: i.saiEm?.toISOString() ?? null,
       frase_chamada: i.fraseChamada,
+      ...(i.chamada
+        ? { foto_midia_id: i.chamada.fotoMidiaId, foto_alt: i.chamada.fotoAlt, texto_apoio: i.chamada.textoApoio, botao_texto: i.chamada.botaoTexto, destino: i.chamada.destino }
+        : {}),
     })),
-    lista: dados.lista.map((p) => p?.noticiaId ?? "automatico"),
   };
 }
 
@@ -178,17 +196,16 @@ export type Conflito = { tipo: "conflito" };
 export async function salvarRascunho(pedido: { revisaoBase: number; dados: DadosDaHome }, deps: Deps): Promise<Salvo | Conflito> {
   exigir(deps.quem, "gerenciar", RECURSO);
   const agora = deps.agora ?? new Date();
-  const lim = await limites();
-  conferirDados(pedido.dados, lim);
-  const dados: DadosDaHome = { carrossel: pedido.dados.carrossel, lista: Array.from({ length: lim.listaPosicoes }, (_, i) => pedido.dados.lista[i] ?? null) };
+  conferirDados(pedido.dados, await limites());
+  const dados: DadosDaHome = { carrossel: pedido.dados.carrossel };
 
   return banco().transaction(async (tx) => {
     const controle = await travarControle(tx);
     if (controle.revisao !== pedido.revisaoBase) return { tipo: "conflito" } as const;
     const linhas = await linhasDa(tx, "rascunho");
-    const anterior = paraDados(linhas, lim.listaPosicoes);
+    const anterior = paraDados(linhas);
     if (iguais(dados, anterior)) return { tipo: "salvo", revisao: controle.revisao, salvoEm: (controle.salvoEm ?? agora).toISOString() } as const;
-    await conferirItensNovos(dados, anterior, agora);
+    await conferirItensNovos(tx, dados, anterior, agora);
     await gravarVersao(tx, "rascunho", dados, linhas, deps.quem.id);
     const revisao = controle.revisao + 1;
     await tx.update(paginaInicial).set({ revisao, salvoEm: agora, salvoPor: deps.quem.id }).where(eq(paginaInicial.id, "home"));
@@ -203,13 +220,12 @@ export async function salvarRascunho(pedido: { revisaoBase: number; dados: Dados
 export async function publicarAlteracoes(pedido: { revisaoBase: number }, deps: DepsComFila): Promise<{ revisao: number; publicadoEm: string }> {
   exigir(deps.quem, "gerenciar", RECURSO);
   const agora = deps.agora ?? new Date();
-  const { listaPosicoes } = await limites();
   return banco().transaction(async (tx) => {
     const controle = await travarControle(tx);
     if (controle.revisao !== pedido.revisaoBase) throw new ErroPaginaInicial(CONFLITO);
     const [rascunho, publicado] = await Promise.all([linhasDa(tx, "rascunho"), linhasDa(tx, "publicado")]);
-    const dadosRascunho = paraDados(rascunho, listaPosicoes);
-    const dadosPublicado = paraDados(publicado, listaPosicoes);
+    const dadosRascunho = paraDados(rascunho);
+    const dadosPublicado = paraDados(publicado);
     if (iguais(dadosRascunho, dadosPublicado)) throw new ErroPaginaInicial("Não há alterações para publicar.");
     await gravarVersao(tx, "publicado", dadosRascunho, rascunho, deps.quem.id);
     await tx.update(paginaInicial).set({ publicadoEm: agora, publicadoPor: deps.quem.id }).where(eq(paginaInicial.id, "home"));
@@ -230,13 +246,12 @@ export async function publicarAlteracoes(pedido: { revisaoBase: number }, deps: 
 export async function descartarAlteracoes(pedido: { revisaoBase: number }, deps: Deps): Promise<Salvo> {
   exigir(deps.quem, "gerenciar", RECURSO);
   const agora = deps.agora ?? new Date();
-  const { listaPosicoes } = await limites();
   return banco().transaction(async (tx) => {
     const controle = await travarControle(tx);
     if (controle.revisao !== pedido.revisaoBase) throw new ErroPaginaInicial(CONFLITO);
     const [rascunho, publicado] = await Promise.all([linhasDa(tx, "rascunho"), linhasDa(tx, "publicado")]);
-    const dadosRascunho = paraDados(rascunho, listaPosicoes);
-    const dadosPublicado = paraDados(publicado, listaPosicoes);
+    const dadosRascunho = paraDados(rascunho);
+    const dadosPublicado = paraDados(publicado);
     if (iguais(dadosRascunho, dadosPublicado)) throw new ErroPaginaInicial("Não há alterações para descartar.");
     await gravarVersao(tx, "rascunho", dadosPublicado, publicado, deps.quem.id);
     const revisao = controle.revisao + 1;
@@ -260,7 +275,7 @@ export async function tirarDoArAgora(pedido: { chave: string; revisaoBase: numbe
   return banco().transaction(async (tx) => {
     const controle = await travarControle(tx);
     if (controle.revisao !== pedido.revisaoBase) throw new ErroPaginaInicial(CONFLITO);
-    const daChave = (l: Linha) => l.area === "carrossel" && l.itemTipo !== null && chaveDoItem({ tipo: l.itemTipo, itemId: l.itemId }) === pedido.chave;
+    const daChave = (l: Linha) => chaveDaLinha(l) === pedido.chave;
     const [publicado] = (await linhasDa(tx, "publicado")).filter(daChave);
     if (!publicado || estadoDoItem(publicado, agora).tipo !== "no_ar") throw new ErroPaginaInicial("Este destaque não está no ar.");
     await tx.update(destaqueHome).set({ saiEm: agora }).where(eq(destaqueHome.id, publicado.id));
@@ -271,7 +286,7 @@ export async function tirarDoArAgora(pedido: { chave: string; revisaoBase: numbe
     }
     const revisao = controle.revisao + 1;
     await tx.update(paginaInicial).set({ revisao, salvoEm: agora, salvoPor: deps.quem.id }).where(eq(paginaInicial.id, "home"));
-    const item = { tipo: publicado.itemTipo!, itemId: publicado.itemId };
+    const item = itemDaLinha(publicado);
     const titulo = (await detalhesDosItens([item], agora))[chaveDoItem(item)]?.titulo ?? "Destaque da Home";
     await registrar(tx, deps.quem, "destaque.tirar_do_ar", { tipo: "destaque", id: publicado.id, rotulo: titulo.slice(0, 200) }, {
       item: pedido.chave,
@@ -290,7 +305,7 @@ export type PainelDaHome = {
   publicado: DadosDaHome;
   /** Detalhes de cada item citado no rascunho ou no publicado, pela chave. */
   itens: Record<string, DetalheDoItem>;
-  /** Quem escolheu cada item do rascunho, pela chave na área (`chaveNaArea`). */
+  /** Quem escolheu cada item do rascunho, pela chave. */
   escolhidoPor: Record<string, string>;
   limites: LimitesDaHome;
 };
@@ -304,9 +319,9 @@ export async function lerPainel(deps: Deps): Promise<PainelDaHome> {
     linhasDa(banco(), "rascunho"),
     linhasDa(banco(), "publicado"),
   ]);
-  const dadosRascunho = paraDados(rascunho, lim.listaPosicoes);
-  const dadosPublicado = paraDados(publicado, lim.listaPosicoes);
-  const todas = [...rascunho, ...publicado].filter((l) => l.itemTipo).map((l) => ({ tipo: l.itemTipo!, itemId: l.itemId }));
+  const dadosRascunho = paraDados(rascunho);
+  const dadosPublicado = paraDados(publicado);
+  const todas = [...dadosPublicado.carrossel, ...dadosRascunho.carrossel];
   const idsPessoas = [...new Set(rascunho.flatMap((l) => (l.escolhidoPor ? [l.escolhidoPor] : [])))];
   const [itens, pessoas] = await Promise.all([
     detalhesDosItens(todas, agora),
@@ -315,9 +330,7 @@ export async function lerPainel(deps: Deps): Promise<PainelDaHome> {
   const nomes = new Map(pessoas.map((p) => [p.id, p.nome]));
   const escolhidoPor: Record<string, string> = {};
   for (const l of rascunho) {
-    if (l.itemTipo && l.escolhidoPor && nomes.has(l.escolhidoPor)) {
-      escolhidoPor[chaveNaArea(l.area, { tipo: l.itemTipo, itemId: l.itemId })] = nomes.get(l.escolhidoPor)!;
-    }
+    if (l.escolhidoPor && nomes.has(l.escolhidoPor)) escolhidoPor[chaveDaLinha(l)] = nomes.get(l.escolhidoPor)!;
   }
   return {
     revisao: controle?.revisao ?? 0,

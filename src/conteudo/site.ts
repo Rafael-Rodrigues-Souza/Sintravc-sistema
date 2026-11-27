@@ -378,11 +378,8 @@ export const RADIO_PAGINA = {
  */
 export const HOME_PAGINA = {
   carrosselRotulo: "Destaques",
-  emDestaque: "Em destaque",
   anterior: "Destaque anterior",
   proximo: "Próximo destaque",
-  pausar: "Pausar a troca automática",
-  continuar: "Continuar a troca automática",
   programaSelo: "Rádio Chofer",
   programaTitulo: "A voz dos rodoviários de Conquista",
   ouvirUltimo: "Ouvir o último programa",

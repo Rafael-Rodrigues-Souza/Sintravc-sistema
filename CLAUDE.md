@@ -19,16 +19,17 @@ Site público, Painel de gestão e Área do associado do SINTRAVC (Sindicato dos
 
 ## Antes de implementar uma tela
 
-1. Consulte `docs/correcoes-figma.md`. O que está ali vale sobre o Figma, mesmo que a tela ainda não tenha sido corrigida.
-2. Confira a fase da tela (spec §1 e §5). A Fase 1 não usa a API do sindicato e não tem “Entrar” do associado.
-3. Estados não desenhados seguem o padrão do E23:
+1. Leia o `docs/design.md` (guia visual: princípios, tokens, componentes e o que evitar) antes de criar ou mudar uma tela.
+2. Consulte `docs/correcoes-figma.md`. O que está ali vale sobre o Figma, mesmo que a tela ainda não tenha sido corrigida.
+3. Confira a fase da tela (spec §1 e §5). A Fase 1 não usa a API do sindicato e não tem “Entrar” do associado.
+4. Estados não desenhados seguem o padrão do E23:
    - Alerta 2.0 nos formulários;
    - vazio com ícone, frase e ação;
    - Skeleton ao carregar;
    - AlertDialog nas confirmações;
    - Sonner nos avisos.
-4. Os critérios de aceitação da história (`docs/criterios-de-aceitacao.md`) são o teste de pronto.
-5. No celular e no tablet em pé, a tela segue o frame mobile do Figma (E49) ou, sem ele, o padrão mobile do E50. A skill `conferir-responsivo` (E48) roda em toda issue que cria ou muda layout, nos perfis `celular`, `ipad-deitado` e `computador` e nos dois temas. A varredura completa (todos os perfis do `RESPONSIVO`) roda no fim do bloco do site público e antes do deploy. Toda tela nova tem pelo menos um e2e marcado com `@responsivo`, e o CI roda esses e2e em todos os perfis do `playwright.config.ts`. Os tamanhos ficam só no objeto `RESPONSIVO` desse arquivo: não repita os números.
+5. Os critérios de aceitação da história (`docs/criterios-de-aceitacao.md`) são o teste de pronto.
+6. No celular e no tablet em pé, a tela segue o frame mobile do Figma (E49) ou, sem ele, o padrão mobile do E50. A skill `conferir-responsivo` (E48) roda em toda issue que cria ou muda layout, nos perfis `celular`, `ipad-deitado` e `computador` e nos dois temas. A varredura completa (todos os perfis do `RESPONSIVO`) roda no fim do bloco do site público e antes do deploy, junto com a skill `web-design-guidelines` como auditoria de acabamento. Toda tela nova tem pelo menos um e2e marcado com `@responsivo`, e o CI roda esses e2e em todos os perfis do `playwright.config.ts`. Os tamanhos ficam só no objeto `RESPONSIVO` desse arquivo: não repita os números.
 
 ## Conteúdo institucional e jurídico
 
