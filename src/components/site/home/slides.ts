@@ -1,10 +1,8 @@
 import { LINKS } from "@/components/site/navegacao";
 import { HOME_PAGINA, RADIO_PAGINA } from "@/conteudo/site";
 import type { ProgramaAoVivo } from "@/lib/config-site/esquema";
-import { dataCurtaNaBahia } from "@/lib/datas";
 import { textoDoHorario, programaNoAr } from "@/lib/episodios/programa";
-import type { NoticiaDoSite } from "@/lib/noticias-do-site/consultas";
-import { CAPA_DO_PROGRAMA, chaveDoItem } from "@/lib/pagina-inicial/regras";
+import { CAPA_DO_PROGRAMA, chaveDoItem, textoDoBotao } from "@/lib/pagina-inicial/regras";
 import type { SlideDaHome } from "@/lib/pagina-inicial/site";
 
 export type SeloDoSlide = { texto: string; tom: "amarelo" | "escuro" | "ao-vivo" | "categoria"; cor?: string };
@@ -16,31 +14,35 @@ export type SlideNaTela = {
   titulo: string;
   resumo: string | null;
   imagem: { url: string; alt: string };
-  acoes: { rotulo: string; href: string; principal: boolean; tocar?: boolean }[];
+  /** `externo`: abre fora do site, em outra aba (o WhatsApp da filiação, com o ícone). */
+  acoes: { rotulo: string; href: string; principal: boolean; tocar?: boolean; externo?: boolean }[];
 };
 
-/** Um item da lista “Em destaque”, ao lado do carrossel. */
-export type ItemDaLista = { id: string; titulo: string; href: string; data: string; dataIso: string; capa: { url: string; alt: string } | null; categoria: { nome: string; cor: string } | null };
-
-export function paraALista(n: NoticiaDoSite): ItemDaLista {
-  return {
-    id: n.id,
-    titulo: n.titulo,
-    href: n.href,
-    data: dataCurtaNaBahia(n.publicadoEm),
-    dataIso: n.publicadoEm.toISOString(),
-    capa: n.capa,
-    categoria: n.categoria ? { nome: n.categoria.nome, cor: n.categoria.cor } : null,
-  };
-}
-
 /**
- * Os slides do carrossel (E62): notícia, episódio ou o programa Rádio Chofer, com o horário ao vivo.
- * Com frase de chamada (escrita pela Comunicação no painel), ela entra no lugar da linha fina.
+ * Os slides do carrossel (E62, E63): notícia, episódio, o programa Rádio Chofer (com o horário ao
+ * vivo) e a Chamada. Com frase de chamada (escrita pela Comunicação no painel), ela entra no lugar da
+ * linha fina; na Chamada, a frase é o título e o texto de apoio vem embaixo.
  */
-export function slidesNaTela(slides: SlideDaHome[], programa: ProgramaAoVivo, agora: Date): SlideNaTela[] {
+export function slidesNaTela(
+  slides: SlideDaHome[],
+  programa: ProgramaAoVivo,
+  agora: Date,
+  chamadas: { fotos: Record<string, string>; linkFiliacao: string },
+): SlideNaTela[] {
   const t = HOME_PAGINA;
   return slides.map((s) => {
+    if (s.tipo === "chamada") {
+      const c = s.chamada;
+      const filiacao = c.destino === "filie_se";
+      return {
+        chave: chaveDoItem({ tipo: "chamada", itemId: c.itemId }),
+        selos: [],
+        titulo: s.frase ?? "",
+        resumo: c.textoApoio,
+        imagem: { url: chamadas.fotos[c.fotoMidiaId] ?? CAPA_DO_PROGRAMA, alt: c.fotoAlt },
+        acoes: [{ rotulo: textoDoBotao(c), href: filiacao ? chamadas.linkFiliacao : LINKS.beneficios.href, principal: true, externo: filiacao }],
+      };
+    }
     if (s.tipo === "noticia") {
       const n = s.noticia;
       return {

@@ -9,7 +9,7 @@ import { useDeslize, vizinhoNaFila } from "@/components/site/deslize";
 import { HOME_PAGINA } from "@/conteudo/site";
 import { cn } from "@/lib/utils";
 
-import type { ItemDaLista, SeloDoSlide, SlideNaTela } from "./slides";
+import type { SeloDoSlide, SlideNaTela } from "./slides";
 
 const t = HOME_PAGINA;
 
@@ -20,8 +20,10 @@ const botaoRedondo =
 const doisDigitos = (n: number) => String(n).padStart(2, "0");
 
 /**
- * Carrossel da Home (Figma 32:647 / 35:750; E62). No computador, o slide à esquerda e a lista “Em
- * destaque” à direita, com o contador e os controles; no celular (35:750), só o slide e os controles.
+ * Carrossel da Home (E62; visual do E63, “variação 2”): a foto de cada slide ocupa a seção marinha de
+ * ponta a ponta, e o texto fica por cima, sobre um degradê marinho forte do lado do texto (embaixo no
+ * celular, à esquerda no computador), para qualquer foto ter contraste. A lista “Em destaque” saiu
+ * (E63). No computador, o contador “01 / 05” fica junto dos controles; no celular, os indicadores.
  *
  * - Troca sozinho a cada `intervaloSegundos`. Para com o mouse em cima, com o foco do teclado dentro,
  *   depois que a pessoa usa as setas ou o deslize, e com o botão Pausar (WCAG 2.2.2).
@@ -32,12 +34,10 @@ const doisDigitos = (n: number) => String(n).padStart(2, "0");
  */
 export function CarrosselHome({
   slides,
-  lista,
   intervaloSegundos,
   modo = "site",
 }: {
   slides: SlideNaTela[];
-  lista: ItemDaLista[];
   intervaloSegundos: number;
   /** "previa": no painel, sem trocar sozinho. */
   modo?: "site" | "previa";
@@ -118,20 +118,17 @@ export function CarrosselHome({
           )}
         </button>
       ) : null}
-      <div aria-hidden className="ml-2 flex items-center gap-1.5">
+      <div aria-hidden className="ml-2 flex items-center gap-1.5 lg:hidden">
         {slides.map((s, i) => (
-          <span key={s.chave} className={cn("h-1 rounded-full transition-[width] motion-reduce:transition-none", i === indice ? "w-8 bg-destaque-amarelo" : "w-3 bg-sobre-escuro-inativo")} />
+          <span key={s.chave} className={cn("h-1.5 rounded-full transition-[width] motion-reduce:transition-none", i === indice ? "w-8 bg-destaque-amarelo" : "w-3 bg-sobre-escuro-inativo")} />
         ))}
       </div>
+      {/* O contador visível (“01 / 05”) só no computador; o leitor de tela ouve “Destaque 2 de 5” quando a pessoa troca. */}
+      <p aria-hidden className="ml-2 hidden texto-pequeno text-texto-invertido-sec tabular-nums lg:block" data-testid="contador-carrossel">
+        {doisDigitos(indice + 1)} / {doisDigitos(total)}
+      </p>
     </div>
   ) : null;
-
-  // O contador visível (“01 / 05”) fica na lista; o leitor de tela ouve “Destaque 2 de 5” quando a pessoa troca.
-  const contador = (
-    <p aria-hidden className="texto-pequeno text-texto-invertido-sec tabular-nums" data-testid="contador-carrossel">
-      {doisDigitos(indice + 1)} / {doisDigitos(total)}
-    </p>
-  );
 
   return (
     <section
@@ -152,10 +149,16 @@ export function CarrosselHome({
         e.preventDefault();
         ir(e.key === "ArrowLeft" ? -1 : 1);
       }}
-      className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_380px]"
+      className="relative isolate overflow-hidden bg-fundo-marinho"
     >
-      <div className="flex min-w-0 flex-col gap-4">
-        {/* Slides empilhados no mesmo lugar: a altura é a do maior e nada pula ao trocar. */}
+      {/* O degradê marinho fica entre a foto (atrás) e o texto: sólido do lado do texto e some do outro. */}
+      <span
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-fundo-marinho from-40% via-fundo-marinho/85 via-60% to-fundo-marinho/5 lg:bg-gradient-to-r lg:from-30% lg:via-fundo-marinho/80 lg:via-50% lg:to-transparent lg:to-80%"
+      />
+      <div className="conteudo-site flex flex-col gap-6 pt-[200px] pb-8 sm:pt-[260px] lg:min-h-[600px] lg:justify-end lg:py-16">
+        {/* Slides empilhados no mesmo lugar: a altura é a do maior e nada pula ao trocar. A foto de
+            cada um fica atrás de tudo, na seção inteira (o slide não é posicionado). */}
         <div className={cn("grid min-w-0", varios && "touch-pan-y touch-pinch-zoom")} {...(varios ? deslize : {})}>
           {slides.map((s, i) => {
             const ativo = i === indice;
@@ -170,7 +173,7 @@ export function CarrosselHome({
                 data-testid="slide-home"
                 data-ativo={ativo ? "" : undefined}
                 className={cn(
-                  "col-start-1 row-start-1 flex min-w-0 flex-col gap-4 transition-[opacity,visibility] duration-300 ease-out motion-reduce:duration-0",
+                  "col-start-1 row-start-1 flex min-w-0 flex-col items-start justify-end gap-4 transition-[opacity,visibility] duration-500 ease-out motion-reduce:duration-0 lg:max-w-[640px] lg:gap-5",
                   ativo ? "opacity-100" : "invisible opacity-0",
                 )}
               >
@@ -179,48 +182,12 @@ export function CarrosselHome({
             );
           })}
         </div>
-        {varios ? <div className="flex items-center justify-between gap-4 lg:hidden">{controles}</div> : null}
+        {controles}
         {varios ? (
           <p aria-live={anunciar ? "polite" : "off"} aria-atomic className="sr-only">
             Destaque {indice + 1} de {total}
           </p>
         ) : null}
-      </div>
-
-      {/* A lista “Em destaque”: só no computador, como no Figma (o celular, 35:750, mostra só o carrossel). */}
-      <div className="hidden min-w-0 flex-col justify-between gap-6 lg:flex">
-        <div className="flex flex-col">
-          <div className="flex items-center justify-between gap-4 border-b border-sobre-escuro-divisor pb-3">
-            <h2 className="texto-eyebrow text-destaque-amarelo">{t.emDestaque}</h2>
-            {varios ? contador : null}
-          </div>
-          {lista.length > 0 ? (
-            <ol className="flex flex-col divide-y divide-sobre-escuro-divisor" data-testid="lista-em-destaque">
-              {lista.map((n) => (
-                <li key={n.id}>
-                  <Link href={n.href} className="group flex items-center gap-4 rounded-[12px] py-4 outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo">
-                    {n.capa ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- capa da Mídia
-                      <img src={n.capa.url} alt="" loading="lazy" className="h-[84px] w-[108px] shrink-0 rounded-[12px] object-cover" />
-                    ) : (
-                      <span aria-hidden className="h-[84px] w-[108px] shrink-0 rounded-[12px] bg-sobre-escuro-chip" />
-                    )}
-                    <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-                      {n.categoria ? <SeloCategoria nome={n.categoria.nome} cor={n.categoria.cor} /> : null}
-                      <span className="line-clamp-3 texto-titulo-card-pequeno break-words text-texto-invertido group-hover:underline group-hover:underline-offset-2">
-                        {n.titulo}
-                      </span>
-                      <time dateTime={n.dataIso} className="texto-pequeno text-texto-invertido-sec">
-                        {n.data}
-                      </time>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ol>
-          ) : null}
-        </div>
-        {controles}
       </div>
     </section>
   );
@@ -229,33 +196,24 @@ export function CarrosselHome({
 function Slide({ slide: s, primeiro }: { slide: SlideNaTela; primeiro: boolean }) {
   return (
     <>
-      <div className="relative flex min-h-[446px] flex-col justify-end overflow-hidden rounded-[24px] bg-fundo-marinho-profundo lg:min-h-[560px]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- capa da Mídia ou do Rádio Chofer; só a primeira carrega logo (LCP) */}
-        <img
-          src={s.imagem.url}
-          alt={s.imagem.alt}
-          loading={primeiro ? "eager" : "lazy"}
-          fetchPriority={primeiro ? "high" : "auto"}
-          className="absolute inset-0 size-full object-cover"
-        />
-        <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-fundo-marinho-profundo via-fundo-marinho-profundo/75 to-fundo-marinho-profundo/10 lg:bg-gradient-to-r lg:via-fundo-marinho-profundo/70 lg:to-transparent" />
-        <div className="relative flex flex-col gap-4 p-6 lg:max-w-[600px] lg:gap-5 lg:p-11">
-          {s.selos.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {s.selos.map((selo) => (
-                <Selo key={selo.texto} selo={selo} />
-              ))}
-            </div>
-          ) : null}
-          <h2 className="texto-display-mobile [overflow-wrap:anywhere] text-texto-invertido uppercase lg:texto-display">{s.titulo}</h2>
-          {s.resumo ? <p className="line-clamp-3 texto-corpo text-texto-invertido-sec lg:texto-corpo-grande">{s.resumo}</p> : null}
-          <div className="hidden flex-wrap gap-3 pt-1 lg:flex">
-            <Acoes slide={s} />
-          </div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- capa da Mídia, do Rádio Chofer ou foto da Chamada; só a primeira carrega logo (LCP) */}
+      <img
+        src={s.imagem.url}
+        alt={s.imagem.alt}
+        loading={primeiro ? "eager" : "lazy"}
+        fetchPriority={primeiro ? "high" : "auto"}
+        className="absolute inset-0 -z-20 size-full object-cover"
+      />
+      {s.selos.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {s.selos.map((selo) => (
+            <Selo key={selo.texto} selo={selo} />
+          ))}
         </div>
-      </div>
-      {/* No celular (35:750), os botões ficam embaixo do cartão, na largura toda. */}
-      <div className="flex flex-col gap-3 lg:hidden">
+      ) : null}
+      <h2 className="font-condensed text-[38px] leading-[1.02] font-bold text-balance [overflow-wrap:anywhere] text-texto-invertido sm:text-[46px] lg:text-[64px]">{s.titulo}</h2>
+      {s.resumo ? <p className="line-clamp-3 max-w-[520px] texto-corpo text-texto-invertido-sec lg:texto-corpo-grande">{s.resumo}</p> : null}
+      <div className="flex w-full flex-col gap-3 pt-1 sm:w-auto sm:flex-row sm:flex-wrap">
         <Acoes slide={s} />
       </div>
     </>
@@ -263,26 +221,35 @@ function Slide({ slide: s, primeiro }: { slide: SlideNaTela; primeiro: boolean }
 }
 
 function Acoes({ slide }: { slide: SlideNaTela }) {
-  return slide.acoes.map((a) => (
-    <Link
-      key={a.rotulo}
-      href={a.href}
-      className={cn(
-        "alvo-toque inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 texto-botao whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo focus-visible:ring-offset-2 focus-visible:ring-offset-fundo-marinho",
-        a.principal
-          ? "bg-destaque-amarelo text-destaque-amarelo-texto hover:brightness-95"
-          : "border-[1.5px] border-sobre-escuro-borda bg-sobre-escuro-superficie text-texto-invertido hover:bg-sobre-escuro-chip",
-      )}
-    >
-      {a.tocar ? <IconeTocar pequeno /> : null}
-      {a.rotulo}
-      {a.principal ? <span className="sr-only">: {slide.titulo}</span> : null}
-    </Link>
-  ));
+  return slide.acoes.map((a) => {
+    const classe = cn(
+      "alvo-toque inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 texto-botao whitespace-nowrap outline-none focus-visible:ring-[3px] focus-visible:ring-destaque-amarelo focus-visible:ring-offset-2 focus-visible:ring-offset-fundo-marinho",
+      a.principal
+        ? "bg-destaque-amarelo text-destaque-amarelo-texto hover:brightness-95"
+        : "border-[1.5px] border-sobre-escuro-borda bg-sobre-escuro-superficie text-texto-invertido hover:bg-sobre-escuro-chip",
+    );
+    if (a.externo) {
+      return (
+        <a key={a.rotulo} href={a.href} target="_blank" rel="noopener noreferrer" className={classe}>
+          <IconeFigma src="/site/icone-whatsapp.svg" tamanho={18} />
+          {a.rotulo}
+          <span className="sr-only"> (abre o WhatsApp)</span>
+        </a>
+      );
+    }
+    return (
+      <Link key={a.rotulo} href={a.href} className={classe}>
+        {a.tocar ? <IconeTocar pequeno /> : null}
+        {a.rotulo}
+        {a.principal ? <span className="sr-only">: {slide.titulo}</span> : null}
+      </Link>
+    );
+  });
 }
 
 function Selo({ selo }: { selo: SeloDoSlide }) {
-  if (selo.tom === "categoria") return <SeloCategoria nome={selo.texto} cor={selo.cor ?? "azul"} />;
+  // O contorno claro faz o selo marinho aparecer sobre o fundo marinho (E63).
+  if (selo.tom === "categoria") return <SeloCategoria nome={selo.texto} cor={selo.cor ?? "azul"} className="ring-1 ring-sobre-escuro-borda" />;
   return (
     <span
       className={cn(

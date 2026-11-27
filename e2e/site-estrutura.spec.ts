@@ -30,14 +30,17 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     await semAviso(page, baseURL);
   });
 
-  test("contato da ConfigSite na barra superior e no rodapé, e Filiar-se com a mensagem pronta (CA-US05.1, CA-US06.1)", async ({ page }) => {
+  test("topo só com logo, menu, tema e Filiar-se (E63, no lugar do telefone do CA-US05.1); contato no rodapé (CA-US06.1)", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByTestId("barra-telefone")).toHaveText(TELEFONE);
+    // E63: sem barra superior, sem telefone e sem busca no topo. O telefone fica no rodapé, no Contato e no menu do celular.
+    const topo = page.getByRole("banner");
+    await expect(topo).not.toContainText(TELEFONE);
+    await expect(page.getByRole("link", { name: "Buscar notícias" })).toHaveCount(0);
+    await expect(topo.getByRole("group", { name: "Tema" })).toBeVisible();
     await expect(rodape(page).getByTestId("rodape-telefone")).toHaveText(TELEFONE);
     await expect(rodape(page)).toContainText("Rua Laudicéia Gusmão, 586 - Centro, Vitória da Conquista - BA");
     await expect(rodape(page)).toContainText("CEP 45000-705");
     await expect(rodape(page)).toContainText(HORARIO);
-    await expect(page.getByText(`Atendimento: ${HORARIO}`)).toBeVisible();
 
     // Cabeçalho e rodapé (a Home tem também a seção Filie-se, fora desta conta).
     const filiar = page.getByRole("banner").or(rodape(page)).getByRole("link", { name: "Filiar-se pelo WhatsApp" });
@@ -66,7 +69,7 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     await expect(menuPrincipal(page).getByRole("link", { name: "Benefícios" })).toBeVisible();
   });
 
-  test("na menor tela com o menu no cabeçalho (1024 px), os 6 itens cabem numa linha antes da busca", async ({ page }) => {
+  test("na menor tela com o menu no cabeçalho (1024 px), os 6 itens cabem numa linha antes do tema", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 700 });
     await page.goto("/");
     await expect(menuPrincipal(page).getByRole("listitem").filter({ visible: true })).toHaveCount(6);
@@ -76,8 +79,8 @@ test.describe("cabeçalho e rodapé do site (desktop)", () => {
     }
     expect(alturas.size, "todos os itens com a altura de uma linha").toBe(1);
     const fimDoMenu = (await menuPrincipal(page).boundingBox())!;
-    const busca = (await page.getByRole("link", { name: "Buscar notícias" }).boundingBox())!;
-    expect(fimDoMenu.x + fimDoMenu.width).toBeLessThan(busca.x);
+    const tema = (await page.getByRole("banner").getByRole("group", { name: "Tema" }).boundingBox())!;
+    expect(fimDoMenu.x + fimDoMenu.width).toBeLessThan(tema.x);
     await semRolagemLateral(page);
   });
 
@@ -218,6 +221,9 @@ test.describe("menu mobile do visitante", { tag: "@responsivo" }, () => {
     await expect(menu.getByRole("link", { name: "Início", exact: true })).toHaveAttribute("aria-current", "page");
     await expect(menu.getByRole("link", { name: /entrar/i })).toHaveCount(0);
     await expect(menu.getByRole("link", { name: "Filiar-se pelo WhatsApp" })).toHaveAttribute("href", FILIACAO);
+    // O telefone saiu do topo do computador e fica aqui (E63).
+    await expect(menu.getByTestId("menu-telefone")).toHaveText(TELEFONE);
+    await expect(menu.getByTestId("menu-telefone")).toHaveAttribute("href", /^tel:/);
 
     // Sindicato abre e fecha no toque, com aria-expanded.
     const sindicato = menu.getByRole("button", { name: "Sindicato" });
@@ -472,6 +478,31 @@ test.describe("alvos de toque do site (RNF10, E48)", { tag: "@responsivo" }, () 
   });
 });
 
+test.describe("topo do site (E63)", { tag: "@responsivo" }, () => {
+  test("logo, menu, tema e Filiar-se, sem busca nem telefone; preso ao rolar, com a sombra só depois de rolar", async ({ page, baseURL }) => {
+    await semAviso(page, baseURL);
+    await page.goto("/noticias");
+    const topo = page.getByRole("banner");
+    await expect(topo.getByRole("link", { name: /SINTRAVC/ })).toBeVisible();
+    await expect(topo).not.toContainText(TELEFONE);
+    await expect(page.getByRole("link", { name: "Buscar notícias" })).toHaveCount(0);
+    await expect(page.getByTestId("barra-superior")).toHaveCount(0);
+    if (telaEstreita(page)) {
+      await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
+    } else {
+      // O item atual do menu fica marcado para o leitor de tela.
+      await expect(menuPrincipal(page).getByRole("button", { name: "Notícias" })).toBeVisible();
+      await expect(topo.getByRole("link", { name: "Filiar-se pelo WhatsApp" })).toBeVisible();
+    }
+    await expect(topo).not.toHaveAttribute("data-rolou");
+    await page.evaluate(() => window.scrollTo(0, 600));
+    await expect(topo).toHaveAttribute("data-rolou", "");
+    const caixa = (await topo.boundingBox())!;
+    expect(Math.round(caixa.y)).toBe(0);
+    await semRolagemLateral(page);
+  });
+});
+
 test.describe("redes sociais da ConfigSite (RN43, E57)", { tag: "@responsivo" }, () => {
   /** Seed (#64): Instagram e YouTube; o e2e acrescenta o Facebook de teste. Sem canal, o WhatsApp abre a recepção. */
   const REDES_DO_RODAPE = [
@@ -481,11 +512,11 @@ test.describe("redes sociais da ConfigSite (RN43, E57)", { tag: "@responsivo" },
     { nome: "WhatsApp da recepção", href: WHATSAPP },
   ];
 
-  test("ícones das redes no rodapé e na barra superior, com nome, link em nova aba e alvo de toque", async ({ page, baseURL }) => {
+  test("ícones das redes no rodapé, com nome, link em nova aba e alvo de toque", async ({ page, baseURL }) => {
     await semAviso(page, baseURL);
     await page.goto("/");
-    const lugares = telaEstreita(page) ? [rodape(page)] : [rodape(page), page.getByTestId("barra-superior")];
-    for (const lugar of lugares) {
+    // A barra superior saiu (E63): as redes ficam só no rodapé (e no Contato).
+    for (const lugar of [rodape(page)]) {
       const links = lugar.getByRole("link", { name: /^(Instagram|Facebook|YouTube|WhatsApp da recepção|Canal no WhatsApp)$/ });
       await expect(links).toHaveCount(REDES_DO_RODAPE.length);
       for (const rede of REDES_DO_RODAPE) {

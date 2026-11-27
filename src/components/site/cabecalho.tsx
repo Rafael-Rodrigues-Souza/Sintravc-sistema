@@ -1,32 +1,25 @@
-import Link from "next/link";
-
 import { IconeFigma } from "@/components/icone-figma";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/marca/logo";
 
 import { AlternarTemaSite } from "./alternar-tema-site";
+import { CabecalhoFixo } from "./cabecalho-fixo";
 import { MenuMobile } from "./menu-mobile";
 import { NavegacaoPrincipal } from "./navegacao-principal";
-import { LINKS } from "./navegacao";
-
-const botaoRedondo =
-  "alvo-toque flex size-11 shrink-0 items-center justify-center rounded-full border border-borda-padrao bg-fundo-superficie text-texto-primario outline-none hover:bg-fundo-superficie-alt focus-visible:ring-[3px] focus-visible:ring-ring";
 
 /**
- * Cabeçalho do site na Fase 1 (Figma 295:51107 e 54:890; N13): sem “Entrar” (E01).
- * No desktop, menu, busca, tema e “Filiar-se”; abaixo de lg, logo, tema e o botão do menu.
+ * Cabeçalho do site na Fase 1 (Figma 295:51107 e 54:890; N13; E63): sem “Entrar” (E01), sem busca e
+ * sem telefone (E63: a busca fica dentro de Notícias e de Documentos; o telefone no Contato, no
+ * rodapé e no menu do celular). No desktop, logo, menu, tema e “Filiar-se”, que faz o papel de
+ * contato; abaixo de lg, logo, tema e o botão do menu.
  */
 export function Cabecalho({ linkFiliacao }: { linkFiliacao: string }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-borda-padrao bg-fundo-cabecalho print:static">
-      <div className="conteudo-site flex items-center justify-between gap-4 py-2.5 lg:py-3.5">
-        <Logo className="h-[46px] lg:h-[55px]" />
+    <CabecalhoFixo>
+      <div className="conteudo-site flex items-center justify-between gap-4 py-2.5 lg:py-4">
+        <Logo className="h-[46px] lg:h-[56px]" />
         <NavegacaoPrincipal />
         <div className="flex items-center gap-2 lg:gap-3 print:hidden">
-          {/* A busca de notícias chega com a #15. */}
-          <Link href={LINKS.noticias.href} aria-label="Buscar notícias" className={`${botaoRedondo} hidden lg:flex`}>
-            <IconeFigma src="/site/icone-busca.svg" tamanho={20} />
-          </Link>
           <div className="hidden lg:block">
             <AlternarTemaSite />
           </div>
@@ -39,6 +32,6 @@ export function Cabecalho({ linkFiliacao }: { linkFiliacao: string }) {
           <MenuMobile />
         </div>
       </div>
-    </header>
+    </CabecalhoFixo>
   );
 }

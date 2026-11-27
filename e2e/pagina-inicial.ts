@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, type Page } from "@playwright/test";
+import sharp from "sharp";
 
 import { apertar } from "./entrar";
 import { consultar } from "./radio";
@@ -12,10 +13,11 @@ import { consultar } from "./radio";
  */
 export async function limparHome() {
   await consultar((sql) => sql`delete from destaque_home returning id`);
+  await consultar((sql) => sql`delete from midia_uso where dono_tipo = 'destaque' returning midia_id`);
   await consultar(
     (sql) => sql`
-      insert into destaque_home (versao, area, posicao, modo, item_tipo)
-      values ('rascunho', 'carrossel', 1, 'escolhido', 'programa'), ('publicado', 'carrossel', 1, 'escolhido', 'programa')
+      insert into destaque_home (versao, posicao, item_tipo)
+      values ('rascunho', 1, 'programa'), ('publicado', 1, 'programa')
       returning id`,
   );
   await consultar((sql) => sql`update pagina_inicial set revisao = revisao + 1, salvo_em = null, salvo_por = null returning id`);
@@ -47,6 +49,34 @@ export async function ordemNoPainel(page: Page) {
 export async function ordemNaHome(page: Page) {
   // O texto de verdade (o CSS põe o título em maiúsculas).
   return (await page.getByTestId("slide-home").getByRole("heading", { level: 2, includeHidden: true }).allTextContents()).map((t) => t.trim());
+}
+
+/**
+ * “Adicionar destaque” › Chamada pela tela (E63): envia uma imagem de teste pelo seletor da Mídia,
+ * descreve a foto e escreve a frase e o texto de apoio. O destino padrão é Filie-se.
+ */
+export async function adicionarChamadaPelaTela(
+  page: Page,
+  { frase, apoio, alt, destino }: { frase: string; apoio: string; alt: string; destino?: "Benefícios" },
+  { toque = false } = {},
+) {
+  await apertar(page.getByRole("button", { name: "Adicionar destaque" }), toque);
+  const janela = page.getByRole("dialog", { name: "Adicionar destaque" });
+  await apertar(janela.getByText("Chamada", { exact: true }), toque);
+  await apertar(janela.getByRole("button", { name: "Escolher foto" }), toque);
+  const seletor = page.getByRole("dialog", { name: "Foto da Chamada" });
+  const foto = await sharp({ create: { width: 1600, height: 900, channels: 3, background: "#e8b53a" } }).png().toBuffer();
+  const nome = `chamada-e2e-${Date.now()}.png`;
+  await seletor.getByTestId("entrada-arquivos").setInputFiles({ name: nome, mimeType: "image/png", buffer: foto });
+  await expect(seletor.getByRole("button", { name: nome, pressed: true })).toBeVisible();
+  await apertar(seletor.getByRole("button", { name: "Usar este arquivo" }), toque);
+  await expect(seletor).toBeHidden();
+  await janela.getByLabel("Texto alternativo da foto").fill(alt);
+  await janela.getByLabel("Frase", { exact: true }).fill(frase);
+  await janela.getByLabel("Texto de apoio").fill(apoio);
+  if (destino) await apertar(janela.getByText(destino, { exact: true }), toque);
+  await apertar(janela.getByRole("button", { name: "Pôr no carrossel" }), toque);
+  await expect(janela).toBeHidden();
 }
 
 export async function esperarSalvo(page: Page) {

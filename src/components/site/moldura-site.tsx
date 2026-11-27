@@ -2,11 +2,10 @@ import { cookies } from "next/headers";
 
 import { comunicadosNoAr } from "@/lib/comunicados/faixa";
 import { lerConfigSite } from "@/lib/config-site";
-import { linkFiliacao, linkWhatsApp } from "@/lib/config-site/links";
+import { formatarTelefone, linkFiliacao, linkTelefone, linkWhatsApp } from "@/lib/config-site/links";
 import { lerParametro } from "@/lib/parametros";
 
 import { AvisoCookies } from "./aviso-cookies";
-import { BarraSuperior } from "./barra-superior";
 import { Cabecalho } from "./cabecalho";
 import { COOKIE_CONSENTIMENTO, lerEscolha } from "./consentimento-comum";
 import { COOKIE_COMUNICADOS_FECHADOS, lerFechados } from "./comunicados-fechados";
@@ -15,8 +14,9 @@ import { ProvedorSite } from "./provedor-site";
 import { Rodape } from "./rodape";
 
 /**
- * Moldura de todas as páginas do site (#13): barra superior, cabeçalho, conteúdo, rodapé e aviso de
- * cookies, com a faixa de comunicado logo abaixo do cabeçalho (RF08, E58). Lê a ConfigSite (RN43), a
+ * Moldura de todas as páginas do site (#13): cabeçalho, conteúdo, rodapé e aviso de cookies, com a
+ * faixa de comunicado logo abaixo do cabeçalho (RF08, E58). A barra superior saiu (E63): o telefone
+ * fica no Contato, no rodapé e no menu do celular, e as redes no rodapé. Lê a ConfigSite (RN43), a
  * escolha de cookies (E56) e os comunicados no ar no servidor, a cada visita. Usada pelo layout do
  * grupo (site) e pela página 404.
  */
@@ -29,7 +29,12 @@ export async function MolduraSite({ children }: { children: React.ReactNode }) {
 
   return (
     <ProvedorSite
-      contato={{ linkFiliacao: filiacao, linkWhatsApp: linkWhatsApp(contato.whatsappRecepcao), horario: contato.horario }}
+      contato={{
+        linkFiliacao: filiacao,
+        linkWhatsApp: linkWhatsApp(contato.whatsappRecepcao),
+        horario: contato.horario,
+        telefone: { href: linkTelefone(contato.telefone), texto: formatarTelefone(contato.telefone) },
+      }}
       escolhaInicial={lerEscolha(loja.get(COOKIE_CONSENTIMENTO)?.value)}
     >
       <div id="topo" className="flex min-h-dvh flex-col bg-fundo-pagina">
@@ -39,7 +44,6 @@ export async function MolduraSite({ children }: { children: React.ReactNode }) {
         >
           Pular para o conteúdo
         </a>
-        <BarraSuperior config={config} />
         <Cabecalho linkFiliacao={filiacao} />
         <FaixaComunicado comunicados={faixa.comunicados} intervaloSegundos={faixa.intervaloSegundos} diasDoCookie={faixa.diasDoCookie} />
         <main id="conteudo" tabIndex={-1} className="flex-1 outline-none">

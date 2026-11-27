@@ -16,6 +16,8 @@ export type ContatoPublico = {
   linkFiliacao: string;
   linkWhatsApp: string;
   horario: string;
+  /** O telefone da recepção, no menu do celular (E63: saiu do topo do computador). */
+  telefone?: { href: string; texto: string };
 };
 
 type ValorSite = {

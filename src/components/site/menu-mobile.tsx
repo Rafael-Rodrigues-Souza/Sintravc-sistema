@@ -115,6 +115,16 @@ export function MenuMobile() {
                   Filiar-se pelo WhatsApp
                 </a>
               </Button>
+              {contato.telefone ? (
+                <a
+                  href={contato.telefone.href}
+                  data-testid="menu-telefone"
+                  className="alvo-toque texto-rotulo flex items-center gap-2 self-start rounded-md text-texto-primario outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+                >
+                  <IconeFigma src="/site/icone-telefone.svg" tamanho={16} />
+                  {contato.telefone.texto}
+                </a>
+              ) : null}
               <p className="texto-pequeno flex items-center gap-2 text-texto-terciario">
                 <IconeFigma src="/site/icone-relogio.svg" tamanho={16} />
                 <span>

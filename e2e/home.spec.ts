@@ -11,7 +11,7 @@ import { consultar } from "./radio";
 import { entrarComo, semAnimacao, semRolagemLateral } from "./responsivo";
 
 /**
- * Home pública (US01, RF01, RN41, P6, E62): carrossel com Anterior, Próximo, teclado, Pausar e
+ * Home pública (US01, RF01, RN41, P6, E62, E63): carrossel com Anterior, Próximo, teclado, Pausar e
  * “reduzir movimento”, acesso rápido sem “Agendar”, últimas notícias com o seletor, último programa
  * e os contadores das redes.
  */
@@ -25,8 +25,8 @@ async function carrosselComDois(titulo: string) {
   await consultar((sql) => sql`delete from destaque_home where versao = 'publicado' returning id`);
   await consultar(
     (sql) => sql`
-      insert into destaque_home (versao, area, posicao, modo, item_tipo, item_id)
-      values ('publicado', 'carrossel', 1, 'escolhido', 'programa', null), ('publicado', 'carrossel', 2, 'escolhido', 'episodio', ${id})
+      insert into destaque_home (versao, posicao, item_tipo, item_id)
+      values ('publicado', 1, 'programa', null), ('publicado', 2, 'episodio', ${id})
       returning id`,
   );
   return id;
@@ -131,14 +131,14 @@ test("com “reduzir movimento”, não troca sozinho, e o botão tem o mesmo HT
   expect(html[0]).toBe(html[1]);
 });
 
-test("lista “Em destaque” automática e últimas notícias com o seletor de categoria", async ({ page }) => {
+test("sem a lista “Em destaque” (E63); últimas notícias com o seletor de categoria", async ({ page }) => {
   const noticia = `Home e2e última ${Date.now()}`;
   await entrarComo(page, pessoas.com, "/painel");
   await publicarNoticiaPelaTela(page, noticia, { categoria: "Esportes" });
 
   await page.goto("/");
-  // A mais recente vai para a lista automática e é a primeira das últimas notícias.
-  await expect(page.getByTestId("lista-em-destaque").getByRole("listitem").first()).toContainText(noticia);
+  await expect(page.getByTestId("lista-em-destaque")).toHaveCount(0);
+  await expect(page.getByText("Em destaque", { exact: true })).toHaveCount(0);
   const ultimas = page.getByTestId("ultimas-noticias");
   await expect(ultimas.getByRole("article").first()).toContainText(noticia);
 
