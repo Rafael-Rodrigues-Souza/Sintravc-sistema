@@ -314,8 +314,9 @@ export function AreaPaginaInicial({
 
       {/* Carrossel do topo */}
       <section aria-labelledby="titulo-carrossel" className="flex flex-col gap-4 rounded-[20px] border border-borda-padrao bg-fundo-superficie p-4 lg:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-1">
+        {/* Texto e botão lado a lado do sm em diante; no celular, o botão desce na largura toda. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             <h2 id="titulo-carrossel" className="texto-titulo-card text-texto-primario">
               Carrossel do topo
             </h2>
@@ -328,7 +329,7 @@ export function AreaPaginaInicial({
             disabled={carrosselCheio || conflito}
             onClick={() => setJanela({ modo: "adicionar" })}
             aria-describedby={carrosselCheio ? "carrossel-cheio" : undefined}
-            className="w-full sm:w-auto"
+            className="w-full shrink-0 sm:w-auto"
           >
             <Plus aria-hidden />
             Adicionar destaque

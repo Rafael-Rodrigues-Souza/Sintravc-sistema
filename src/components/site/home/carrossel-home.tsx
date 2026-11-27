@@ -173,8 +173,10 @@ export function CarrosselHome({
                 data-testid="slide-home"
                 data-ativo={ativo ? "" : undefined}
                 className={cn(
-                  "col-start-1 row-start-1 flex min-w-0 flex-col items-start justify-end gap-4 transition-[opacity,visibility] duration-500 ease-out motion-reduce:duration-0 lg:max-w-[640px] lg:gap-5",
-                  ativo ? "opacity-100" : "invisible opacity-0",
+                  // Esmaece um e só depois mostra o outro: os textos ficam no mesmo lugar e não podem se cruzar
+                  // (como na faixa de comunicado, E58). Com “reduzir movimento”, troca sem transição.
+                  "col-start-1 row-start-1 flex min-w-0 flex-col items-start justify-end gap-4 transition-[opacity,visibility] duration-200 ease-out motion-reduce:delay-0 motion-reduce:duration-0 lg:max-w-[640px] lg:gap-5",
+                  ativo ? "opacity-100 delay-200" : "invisible opacity-0",
                 )}
               >
                 <Slide slide={s} primeiro={i === 0} />

@@ -242,7 +242,7 @@ function Conteudo({
                     <label
                       key={t}
                       className={cn(
-                        "alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho has-[:checked]:bg-destaque-marinho has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo",
+                        "alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo",
                         travado && "cursor-not-allowed opacity-50",
                       )}
                     >
@@ -429,7 +429,7 @@ function Conteudo({
                 {DESTINOS_DA_CHAMADA.map((d) => (
                   <label
                     key={d}
-                    className="alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho has-[:checked]:bg-destaque-marinho has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo"
+                    className="alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo"
                   >
                     <input type="radio" name="destino" value={d} checked={destino === d} onChange={() => mudarDestino(d)} className="sr-only" />
                     {NOME_DO_DESTINO[d]}
