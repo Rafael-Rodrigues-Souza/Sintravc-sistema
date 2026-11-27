@@ -143,7 +143,7 @@ test("os 4 tipos publicados aparecem no site: notícia com capa, episódio, prog
   await expect(ativo(page).getByRole("link", { name: /Ver benefícios/ })).toHaveAttribute("href", "/sindicato/beneficios");
 });
 
-test("a seção do carrossel ocupa a altura da tela abaixo do topo, sem mostrar o Acesso rápido logo de cara (E63)", async ({ page }) => {
+test("a seção do carrossel ocupa a tela abaixo do topo, com uma sobra para o começo da próxima seção (E63)", async ({ page }) => {
   await carrosselComDois(`Home e2e altura ${Date.now()}`);
   for (const [largura, altura] of [
     [1920, 1080],
@@ -153,9 +153,10 @@ test("a seção do carrossel ocupa a altura da tela abaixo do topo, sem mostrar 
     await page.goto("/");
     await expect(carrossel(page)).toHaveAttribute("data-movimento", /./);
     const caixa = (await carrossel(page).boundingBox())!;
-    // Vai até o fim da janela (com a régua de 520 a 960 px).
-    expect(Math.round(caixa.y + caixa.height)).toBeGreaterThanOrEqual(Math.min(altura, Math.round(caixa.y) + 960) - 1);
-    await expect(page.getByTestId("acesso-rapido")).not.toBeInViewport();
+    // Vai até 88 px antes do fim da janela (com a régua de 520 a 960 px): o começo da próxima seção aparece.
+    const fim = Math.round(caixa.y + caixa.height);
+    expect(Math.abs(fim - Math.min(altura - 88, Math.round(caixa.y) + 960))).toBeLessThanOrEqual(2);
+    expect(fim).toBeLessThan(altura);
   }
 });
 

@@ -141,7 +141,12 @@ export async function adicionarDestaquePelaTela(
   await apertar(page.getByRole("button", { name: "Adicionar destaque" }), toque);
   const janela = page.getByRole("dialog", { name: "Adicionar destaque" });
   await expect(janela).toBeVisible();
-  await apertar(janela.getByText(tipo, { exact: true }), toque);
+  // E63: episódio e programa ficam na aba “Rádio Chofer” (sempre o último programa ou um episódio).
+  await apertar(janela.getByText(tipo === "Notícia" ? "Notícia" : "Rádio Chofer", { exact: true }), toque);
+  if (tipo === "Programa Rádio Chofer") {
+    await apertar(janela.getByText("Sempre o último programa", { exact: true }), toque);
+    await expect(janela.getByRole("radio", { name: /Sempre o último programa/ })).toBeChecked();
+  }
   if (titulo) {
     await janela.getByLabel(tipo === "Episódio" ? "Buscar episódio" : "Buscar notícia").fill(titulo);
     await apertar(janela.getByRole("radio", { name: new RegExp(titulo) }).locator(".."), toque);

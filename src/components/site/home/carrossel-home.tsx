@@ -22,8 +22,8 @@ const botaoRedondo =
  * celular, à esquerda no computador), para qualquer foto ter contraste. A lista “Em destaque” saiu
  * (E63).
  *
- * - Altura da tela (E63): a seção vai do fim do topo (cabeçalho e faixa de comunicado) até o fim da
- *   janela, para o “Acesso rápido” não aparecer logo de cara. O topo é medido no navegador (e de novo
+ * - Altura da tela (E63): a seção vai do fim do topo (cabeçalho e faixa de comunicado) até quase o
+ *   fim da janela, com uma sobra de 88 px para aparecer o começo da próxima seção. O topo é medido no navegador (e de novo
  *   quando a janela muda ou a faixa fecha); antes disso, vale uma reserva. Com mínimo e máximo, para
  *   telas baixas e muito altas. São medidas de layout, não regra: ficam aqui (como no E62).
  * - Troca sozinho a cada `intervaloSegundos`, na regra da faixa de comunicado (E58): para enquanto o
@@ -146,8 +146,9 @@ export function CarrosselHome({
         ir(e.key === "ArrowLeft" ? -1 : 1);
       }}
       style={{ "--topo-carrossel": topo === null ? undefined : `${topo}px` } as React.CSSProperties}
-      // Altura da tela menos o topo (reserva de 150 px até medir), entre 520 e 960 px (E63).
-      className="relative isolate flex min-h-[clamp(520px,calc(100svh-var(--topo-carrossel,150px)),960px)] flex-col overflow-hidden bg-fundo-marinho"
+      // Altura da tela menos o topo (reserva de 150 px até medir) e menos 88 px de sobra, para o começo da
+      // próxima seção aparecer; entre 520 e 960 px (E63).
+      className="relative isolate flex min-h-[clamp(520px,calc(100svh-var(--topo-carrossel,150px)-88px),960px)] flex-col overflow-hidden bg-fundo-marinho"
     >
       {/* O degradê marinho fica entre a foto (atrás) e o texto: sólido do lado do texto e some do outro. */}
       <span

@@ -49,7 +49,10 @@ export type ResultadoDaJanela = {
 
 type LimitesDaMidia = { tamanhoMaximoBytes: number; mensagemDeTamanho: string };
 
-const NOME_DO_TIPO: Record<Tipo, string> = { noticia: "Notícia", episodio: "Episódio", programa: "Programa Rádio Chofer", chamada: "Chamada" };
+/** As abas de “Adicionar destaque” (E63): Rádio Chofer junta o programa (sempre o último) e os episódios. */
+type Aba = "noticia" | "radio" | "chamada";
+const NOME_DA_ABA: Record<Aba, string> = { noticia: "Notícia", radio: "Rádio Chofer", chamada: "Chamada" };
+const abaDoTipo = (tipo: Tipo): Aba => (tipo === "episodio" || tipo === "programa" ? "radio" : tipo);
 
 /** ISO → valor do campo datetime-local, no horário da Bahia (RNF06). */
 function paraCampo(iso: string | null): string {
@@ -69,7 +72,8 @@ const limpar = (v: string) => v.trim().replace(/\s+/g, " ");
 type Campo = "item" | "entraEm" | "saiEm" | "fraseChamada" | "foto" | "fotoAlt" | "textoApoio" | "botaoTexto";
 
 /**
- * A janela do carrossel (E62, E63): “Adicionar destaque” (tipo, busca no que está no ar, ou os campos
+ * A janela do carrossel (E62, E63): “Adicionar destaque” (Notícia, Rádio Chofer — sempre o último
+ * programa ou um episódio — ou Chamada; busca no que está no ar, ou os campos
  * da Chamada, e as datas) e “Editar” (datas e frase; na Chamada, todos os campos). Só mostra o que
  * está no ar; a notícia sem capa fica travada.
  */
@@ -128,7 +132,10 @@ function Conteudo({
 }) {
   const editando = pedido.modo === "editar" ? pedido : null;
   const [tipo, setTipo] = React.useState<Tipo>(editando?.tipo ?? "noticia");
-  const comBusca = !editando && (tipo === "noticia" || tipo === "episodio");
+  const aba = abaDoTipo(tipo);
+  const comBusca = !editando && aba !== "chamada";
+  /** O que a busca traz: notícias na aba Notícia, episódios na aba Rádio Chofer. */
+  const tipoBusca = aba === "radio" ? "episodio" : "noticia";
   const [busca, setBusca] = React.useState("");
   const [opcoes, setOpcoes] = React.useState<OpcaoDeDestaque[] | null>(null);
   const [erroDaBusca, setErroDaBusca] = React.useState<string | null>(null);
@@ -154,11 +161,11 @@ function Conteudo({
     if (!comBusca) return;
     // A sugerida (E43) aparece mesmo se for mais antiga que as primeiras da lista.
     const comAEscolhida = (lista: OpcaoDeDestaque[]) =>
-      !escolhida || escolhida.tipo !== tipo || busca.trim() || lista.some((o) => o.itemId === escolhida.itemId) ? lista : [escolhida, ...lista];
+      !escolhida || escolhida.tipo !== tipoBusca || busca.trim() || lista.some((o) => o.itemId === escolhida.itemId) ? lista : [escolhida, ...lista];
     let valendo = true;
     const relogio = setTimeout(async () => {
       setErroDaBusca(null);
-      const r = await acaoOpcoesDeDestaque({ tipo, busca }).catch(() => SEM_CONEXAO);
+      const r = await acaoOpcoesDeDestaque({ tipo: tipoBusca, busca }).catch(() => SEM_CONEXAO);
       if (!valendo) return;
       if (r.tipo === "erro") {
         setErroDaBusca(r.mensagem);
@@ -172,7 +179,7 @@ function Conteudo({
       clearTimeout(relogio);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo, busca, comBusca]);
+  }, [tipoBusca, busca, comBusca]);
 
   const travadaPorque = (o: OpcaoDeDestaque): string | null => {
     if (noCarrossel.has(o.chave)) return "Já está no carrossel";
@@ -190,8 +197,10 @@ function Conteudo({
     e.preventDefault();
     setErro(null);
     let opcao: OpcaoDeDestaque | null = null;
-    if (comBusca) {
-      if (!escolhida) return setErro({ campo: "item", mensagem: "Escolha o que vai para o destaque." });
+    if (comBusca && tipo !== "programa") {
+      if (!escolhida) {
+        return setErro({ campo: "item", mensagem: aba === "radio" ? "Escolha o último programa ou um episódio." : "Escolha o que vai para o destaque." });
+      }
       opcao = escolhida;
     }
     const fraseLimpa = limpar(frase) || null;
@@ -236,56 +245,73 @@ function Conteudo({
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 texto-rotulo text-texto-primario">Tipo</legend>
               <div className="flex flex-wrap gap-2">
-                {(["noticia", "episodio", "programa", "chamada"] as const).map((t) => {
-                  const travado = t === "programa" && temPrograma;
-                  return (
-                    <label
-                      key={t}
-                      className={cn(
-                        "alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo",
-                        travado && "cursor-not-allowed opacity-50",
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="tipo"
-                        value={t}
-                        checked={tipo === t}
-                        disabled={travado}
-                        onChange={() => {
-                          setTipo(t);
-                          setEscolhida(null);
-                          setOpcoes(null);
-                          setErro(null);
-                        }}
-                        className="sr-only"
-                      />
-                      {NOME_DO_TIPO[t]}
-                    </label>
-                  );
-                })}
+                {(["noticia", "radio", "chamada"] as const).map((a) => (
+                  <label
+                    key={a}
+                    className="alvo-toque flex cursor-pointer items-center gap-2 rounded-full border border-borda-padrao px-4 py-2 texto-navegacao has-[:checked]:border-destaque-marinho-fixo has-[:checked]:bg-destaque-marinho-fixo has-[:checked]:text-texto-invertido has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring dark:has-[:checked]:border-destaque-amarelo dark:has-[:checked]:bg-destaque-amarelo dark:has-[:checked]:text-destaque-marinho-fixo"
+                  >
+                    <input
+                      type="radio"
+                      name="tipo"
+                      value={a}
+                      checked={aba === a}
+                      onChange={() => {
+                        // Na aba Rádio Chofer, “Sempre o último programa” já vem escolhido (se ainda não está no carrossel).
+                        setTipo(a === "radio" ? (temPrograma ? "episodio" : "programa") : a);
+                        setEscolhida(null);
+                        setOpcoes(null);
+                        setErro(null);
+                      }}
+                      className="sr-only"
+                    />
+                    {NOME_DA_ABA[a]}
+                  </label>
+                ))}
               </div>
-              {temPrograma ? <p className="texto-pequeno text-texto-secundario">O programa Rádio Chofer já está no carrossel.</p> : null}
             </fieldset>
-          ) : null}
-
-          {!editando && tipo === "programa" ? (
-            <p className="rounded-[12px] bg-fundo-superficie-alt p-4 texto-pequeno text-texto-primario">
-              O slide do programa mostra “{HOME_PAGINA.programaTitulo}”, o horário do programa ao vivo e os botões para ouvir o último programa e ver todos.
-            </p>
           ) : null}
 
           {comBusca ? (
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="busca-destaque">{tipo === "episodio" ? "Buscar episódio" : "Buscar notícia"}</Label>
+                <Label htmlFor="busca-destaque">{aba === "radio" ? "Buscar episódio" : "Buscar notícia"}</Label>
                 <div className="relative">
                   <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-texto-terciario" />
                   <Input id="busca-destaque" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-10" placeholder="Digite parte do título" />
                 </div>
               </div>
               <fieldset aria-describedby={erro?.campo === "item" ? "erro-item" : undefined} className="flex flex-col gap-2">
-                <legend className="sr-only">{tipo === "episodio" ? "Episódios no ar" : "Notícias publicadas"}</legend>
+                <legend className="sr-only">{aba === "radio" ? "O último programa ou um episódio no ar" : "Notícias publicadas"}</legend>
+                {aba === "radio" ? (
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-[12px] border border-borda-padrao p-2.5 has-[:checked]:border-destaque-azul has-[:checked]:bg-destaque-azul-suave has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring",
+                      temPrograma && "cursor-not-allowed opacity-60",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="opcao"
+                      value="programa"
+                      checked={tipo === "programa"}
+                      disabled={temPrograma}
+                      onChange={() => {
+                        setTipo("programa");
+                        setEscolhida(null);
+                        setErro(null);
+                      }}
+                      className="sr-only"
+                    />
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="texto-titulo-card-pequeno text-texto-primario">Sempre o último programa</span>
+                      <span className="texto-pequeno text-texto-secundario">
+                        {temPrograma
+                          ? "Já está no carrossel"
+                          : `O slide “${HOME_PAGINA.programaTitulo}”, com o horário ao vivo e o botão para ouvir o último programa. Troca sozinho a cada episódio novo.`}
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
                 {opcoes === null ? (
                   <div className="flex flex-col gap-2" aria-busy="true" aria-label="Carregando">
                     {Array.from({ length: 3 }, (_, i) => (
@@ -296,7 +322,7 @@ function Conteudo({
                   <div className="flex flex-col items-center gap-1 rounded-[12px] border border-dashed border-borda-padrao px-4 py-6 text-center">
                     <Search aria-hidden className="size-5 text-texto-terciario" />
                     <p className="texto-pequeno text-texto-primario">
-                      {erroDaBusca ?? (busca.trim() ? "Nada encontrado com essa busca." : tipo === "episodio" ? "Nenhum episódio no ar." : "Nenhuma notícia publicada.")}
+                      {erroDaBusca ?? (busca.trim() ? "Nada encontrado com essa busca." : aba === "radio" ? "Nenhum episódio no ar." : "Nenhuma notícia publicada.")}
                     </p>
                     {busca.trim() ? (
                       <Button type="button" variant="secundario" size="pequeno" className="mt-2" onClick={() => setBusca("")}>
@@ -323,6 +349,7 @@ function Conteudo({
                               checked={escolhida?.itemId === o.itemId}
                               disabled={!!motivo}
                               onChange={() => {
+                                setTipo(o.tipo);
                                 setEscolhida(o);
                                 setErro(null);
                               }}

@@ -213,6 +213,31 @@ test("Chamada (E63): escolher a foto na Mídia, escrever, publicar, ver no site 
   await expect(page.locator("[data-testid=slide-home][data-ativo]").getByRole("link", { name: /Ver benefícios/ })).toHaveAttribute("href", "/sindicato/beneficios");
 });
 
+test("aba Rádio Chofer (E63): “Sempre o último programa” ou um episódio da lista, e o programa repetido fica travado", async ({ page }) => {
+  const episodio = `Home e2e aba rádio ${Date.now()}`;
+  await episodioNoAr(episodio);
+  await entrarComo(page, pessoas.com, "/painel/pagina-inicial");
+
+  // O programa já está no carrossel (seed): a opção vem travada, com o motivo.
+  await page.getByRole("button", { name: "Adicionar destaque" }).click();
+  const janela = page.getByRole("dialog", { name: "Adicionar destaque" });
+  await expect(janela.getByText("Episódio", { exact: true })).toHaveCount(0);
+  await expect(janela.getByText("Programa Rádio Chofer", { exact: true })).toHaveCount(0);
+  await janela.getByText("Rádio Chofer", { exact: true }).click();
+  await expect(janela.getByRole("radio", { name: /Sempre o último programa/ })).toBeDisabled();
+  await expect(janela).toContainText("Já está no carrossel");
+  await janela.getByRole("button", { name: "Pôr no carrossel" }).click();
+  await expect(janela.getByRole("alert")).toHaveText("Escolha o último programa ou um episódio.");
+  await janela.getByRole("button", { name: "Cancelar" }).click();
+
+  // Sem o programa, “Sempre o último programa” volta; o episódio entra pela mesma aba.
+  await page.getByRole("button", { name: `Ações do destaque “${PROGRAMA}”` }).click();
+  await page.getByRole("menuitem", { name: "Remover do carrossel" }).click();
+  await adicionarDestaquePelaTela(page, { tipo: "Episódio", titulo: episodio });
+  await adicionarDestaquePelaTela(page, { tipo: "Programa Rádio Chofer" });
+  expect(await ordemNoPainel(page)).toEqual([episodio, PROGRAMA]);
+});
+
 test("o Atendimento não abre a Página inicial nem a prévia (403)", async ({ page }) => {
   await entrarComo(page, pessoas.atd, "/painel");
   expect((await page.goto("/painel/pagina-inicial"))?.status()).toBe(403);
